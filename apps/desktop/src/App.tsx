@@ -1,13 +1,23 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useState } from "react";
 import {
   sidecar,
-  type ExecuteResponse,
-  type HealthResponse,
   type ExecuteRequestInput,
+  type HealthResponse,
 } from "./lib/sidecar";
+import {
+  newRequestTab,
+  type CollectionItem,
+  type RequestTab,
+} from "./state/types";
+import { MOCK_COLLECTIONS } from "./state/mock-collections";
+import { Sidebar } from "./components/Sidebar";
+import { RequestTabBar } from "./components/RequestTabBar";
+import { UrlBar } from "./components/UrlBar";
+import { RequestPanel } from "./components/RequestPanel";
+import { ResponsePanel } from "./components/ResponsePanel";
+import { StatusBar } from "./components/StatusBar";
 
-type Method = ExecuteRequestInput["method"];
-const METHODS: Method[] = ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"];
+const APP_VERSION = "0.0.1";
 
 type SidecarStatus =
   | { state: "checking" }
@@ -15,214 +25,150 @@ type SidecarStatus =
   | { state: "down"; error: string };
 
 export default function App() {
-  const [status, setStatus] = useState<SidecarStatus>({ state: "checking" });
-  const [method, setMethod] = useState<Method>("GET");
-  const [url, setUrl] = useState("https://httpbin.org/get");
-  const [headersRaw, setHeadersRaw] = useState("");
-  const [body, setBody] = useState("");
-  const [response, setResponse] = useState<ExecuteResponse | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [sidecarStatus, setSidecarStatus] = useState<SidecarStatus>({ state: "checking" });
+  const [tabs, setTabs] = useState<RequestTab[]>([
+    newRequestTab({
+      name: "Search repos",
+      method: "GET",
+      url: "https://api.github.com/search/repositories?q=tauri&sort=stars",
+    }),
+  ]);
+  const [activeId, setActiveId] = useState<string>(tabs[0].id);
 
+  // Health-check the sidecar on mount; in production this'll re-fire on
+  // disconnect once the Tauri shell is doing supervised spawning.
   useEffect(() => {
     let alive = true;
-    sidecar
-      .health()
-      .then((info) => alive && setStatus({ state: "ok", info }))
-      .catch((e: unknown) =>
-        alive && setStatus({ state: "down", error: e instanceof Error ? e.message : String(e) }),
-      );
+    const tick = () =>
+      sidecar
+        .health()
+        .then((info) => alive && setSidecarStatus({ state: "ok", info }))
+        .catch((e: unknown) =>
+          alive &&
+          setSidecarStatus({
+            state: "down",
+            error: e instanceof Error ? e.message : String(e),
+          }),
+        );
+    tick();
+    const id = setInterval(tick, 5000);
     return () => {
       alive = false;
+      clearInterval(id);
     };
   }, []);
 
-  async function send(e: FormEvent) {
-    e.preventDefault();
-    setBusy(true);
-    setError(null);
-    setResponse(null);
+  const active = tabs.find((t) => t.id === activeId) ?? tabs[0];
+
+  function patchActive(patch: Partial<RequestTab>) {
+    setTabs((curr) =>
+      curr.map((t) => (t.id === activeId ? { ...t, ...patch } : t)),
+    );
+  }
+
+  function newTab(seed?: Partial<RequestTab>) {
+    const t = newRequestTab(seed);
+    setTabs((curr) => [...curr, t]);
+    setActiveId(t.id);
+  }
+
+  function closeTab(id: string) {
+    setTabs((curr) => {
+      const next = curr.filter((t) => t.id !== id);
+      // Always keep at least one tab open
+      const ensured = next.length > 0 ? next : [newRequestTab()];
+      if (id === activeId) {
+        const fallback = ensured[Math.max(0, curr.findIndex((t) => t.id === id) - 1)];
+        setActiveId((fallback ?? ensured[0]).id);
+      }
+      return ensured;
+    });
+  }
+
+  function openCollectionItem(item: CollectionItem) {
+    // If the same URL+method is already open, focus it; otherwise open new.
+    const existing = tabs.find(
+      (t) => t.url === item.url && t.method === item.method,
+    );
+    if (existing) {
+      setActiveId(existing.id);
+      return;
+    }
+    newTab({
+      name: item.name,
+      method: item.method,
+      url: item.url,
+    });
+  }
+
+  async function send() {
+    if (!active.url || active.busy) return;
+    patchActive({ busy: true, error: null });
     try {
-      const headers = parseHeaders(headersRaw);
-      const result = await sidecar.execute({
-        method,
-        url,
+      const headers = parseHeaders(active.headersRaw);
+      const input: ExecuteRequestInput = {
+        method: active.method,
+        url: active.url,
         headers,
-        body: body.length > 0 ? body : null,
-      });
-      setResponse(result);
+        body: active.body.length > 0 ? active.body : null,
+      };
+      const response = await sidecar.execute(input);
+      patchActive({ busy: false, response, error: null, lastRunAt: Date.now() });
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setBusy(false);
+      patchActive({
+        busy: false,
+        error: e instanceof Error ? e.message : String(e),
+      });
     }
   }
 
   return (
-    <div className="flex h-full flex-col">
-      <header className="flex items-center justify-between border-b border-neutral-800 px-6 py-3">
-        <div className="flex items-baseline gap-3">
-          <h1 className="text-lg font-semibold tracking-tight">Theridion</h1>
-          <span className="text-xs text-neutral-500">pre-alpha</span>
-        </div>
-        <SidecarStatusBadge status={status} />
-      </header>
-
-      <main className="grid flex-1 grid-cols-2 overflow-hidden">
-        <form onSubmit={send} className="flex flex-col gap-3 overflow-y-auto border-r border-neutral-800 p-5">
-          <div className="flex gap-2">
-            <select
-              value={method}
-              onChange={(e) => setMethod(e.target.value as Method)}
-              className="rounded border border-neutral-700 bg-neutral-900 px-2 py-1.5 text-sm font-medium"
-            >
-              {METHODS.map((m) => (
-                <option key={m} value={m}>
-                  {m}
-                </option>
-              ))}
-            </select>
-            <input
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              placeholder="https://api.example.com/v1/things"
-              className="flex-1 rounded border border-neutral-700 bg-neutral-900 px-3 py-1.5 font-mono text-sm placeholder-neutral-600 focus:border-neutral-500 focus:outline-none"
-              autoComplete="off"
-              spellCheck={false}
-            />
-            <button
-              type="submit"
-              disabled={busy || status.state !== "ok" || url.length === 0}
-              className="rounded bg-emerald-600 px-4 py-1.5 text-sm font-medium text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:bg-neutral-700"
-            >
-              {busy ? "Sending…" : "Send"}
-            </button>
-          </div>
-
-          <Field label="Headers (one per line: Name: value)">
-            <textarea
-              value={headersRaw}
-              onChange={(e) => setHeadersRaw(e.target.value)}
-              placeholder="Accept: application/json"
-              rows={4}
-              className="w-full resize-y rounded border border-neutral-700 bg-neutral-900 px-3 py-2 font-mono text-sm placeholder-neutral-600 focus:border-neutral-500 focus:outline-none"
-              spellCheck={false}
-            />
-          </Field>
-
-          <Field label="Body">
-            <textarea
-              value={body}
-              onChange={(e) => setBody(e.target.value)}
-              placeholder='{"hello":"world"}'
-              rows={8}
-              className="w-full resize-y rounded border border-neutral-700 bg-neutral-900 px-3 py-2 font-mono text-sm placeholder-neutral-600 focus:border-neutral-500 focus:outline-none"
-              spellCheck={false}
-            />
-          </Field>
-        </form>
-
-        <section className="flex flex-col overflow-hidden p-5">
-          {error && (
-            <div className="mb-3 rounded border border-red-900 bg-red-950/40 px-3 py-2 text-sm text-red-300">
-              {error}
-            </div>
-          )}
-          {response ? <ResponseView res={response} /> : <ResponsePlaceholder />}
-        </section>
-      </main>
-    </div>
-  );
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <label className="flex flex-col gap-1.5 text-sm">
-      <span className="text-xs font-medium uppercase tracking-wider text-neutral-500">{label}</span>
-      {children}
-    </label>
-  );
-}
-
-function SidecarStatusBadge({ status }: { status: SidecarStatus }) {
-  if (status.state === "checking") {
-    return <Badge tone="muted">connecting…</Badge>;
-  }
-  if (status.state === "ok") {
-    return (
-      <Badge tone="ok" title={`uptime ${status.info.uptime_seconds.toFixed(1)}s`}>
-        sidecar v{status.info.version}
-      </Badge>
-    );
-  }
-  return <Badge tone="bad" title={status.error}>sidecar offline</Badge>;
-}
-
-function Badge({
-  tone,
-  title,
-  children,
-}: {
-  tone: "ok" | "bad" | "muted";
-  title?: string;
-  children: React.ReactNode;
-}) {
-  const toneClass =
-    tone === "ok"
-      ? "border-emerald-700 bg-emerald-950/50 text-emerald-300"
-      : tone === "bad"
-      ? "border-red-700 bg-red-950/50 text-red-300"
-      : "border-neutral-700 bg-neutral-900 text-neutral-400";
-  return (
-    <span title={title} className={`rounded-full border px-2.5 py-0.5 text-xs font-medium ${toneClass}`}>
-      {children}
-    </span>
-  );
-}
-
-function ResponsePlaceholder() {
-  return (
-    <div className="flex flex-1 items-center justify-center text-sm text-neutral-600">
-      No response yet — send a request to see results here.
-    </div>
-  );
-}
-
-function ResponseView({ res }: { res: ExecuteResponse }) {
-  const statusTone =
-    res.status >= 500 ? "bad" : res.status >= 400 ? "warn" : res.status >= 300 ? "info" : "ok";
-  const toneClass =
-    statusTone === "ok"
-      ? "text-emerald-400"
-      : statusTone === "info"
-      ? "text-sky-400"
-      : statusTone === "warn"
-      ? "text-amber-400"
-      : "text-red-400";
-  return (
-    <div className="flex flex-1 flex-col overflow-hidden">
-      <div className="mb-3 flex items-center gap-4 text-sm">
-        <span className={`font-mono font-semibold ${toneClass}`}>
-          {res.status} {res.status_text}
-        </span>
-        <span className="text-neutral-500">{res.elapsed_ms.toFixed(0)} ms</span>
-        <span className="text-neutral-500">{formatBytes(res.body_size_bytes)}</span>
+    <div className="grid h-full grid-cols-[260px_1fr] grid-rows-[1fr_auto] bg-neutral-950 text-neutral-100">
+      <div className="row-span-1 overflow-hidden">
+        <Sidebar collections={MOCK_COLLECTIONS} onOpen={openCollectionItem} />
       </div>
-      <details className="mb-3 rounded border border-neutral-800 bg-neutral-900/50">
-        <summary className="cursor-pointer px-3 py-2 text-xs font-medium uppercase tracking-wider text-neutral-400">
-          Headers ({Object.keys(res.headers).length})
-        </summary>
-        <div className="border-t border-neutral-800 px-3 py-2 font-mono text-xs leading-relaxed">
-          {Object.entries(res.headers).map(([k, v]) => (
-            <div key={k}>
-              <span className="text-neutral-400">{k}:</span> <span className="text-neutral-200">{v}</span>
-            </div>
-          ))}
+
+      <main className="flex min-h-0 flex-col overflow-hidden">
+        <RequestTabBar
+          tabs={tabs}
+          activeId={activeId}
+          onSelect={setActiveId}
+          onClose={closeTab}
+          onNew={() => newTab()}
+        />
+        <UrlBar
+          method={active.method}
+          url={active.url}
+          busy={active.busy}
+          canSend={active.url.length > 0 && !active.busy}
+          onMethodChange={(method) => patchActive({ method })}
+          onUrlChange={(url) => patchActive({ url })}
+          onSend={send}
+        />
+        <div className="grid min-h-0 flex-1 grid-cols-2">
+          <div className="min-h-0 overflow-hidden border-r border-neutral-800">
+            <RequestPanel
+              url={active.url}
+              headersRaw={active.headersRaw}
+              body={active.body}
+              onUrlChange={(url) => patchActive({ url })}
+              onHeadersChange={(headersRaw) => patchActive({ headersRaw })}
+              onBodyChange={(body) => patchActive({ body })}
+            />
+          </div>
+          <div className="min-h-0 overflow-hidden">
+            <ResponsePanel
+              busy={active.busy}
+              response={active.response}
+              error={active.error}
+            />
+          </div>
         </div>
-      </details>
-      <pre className="flex-1 overflow-auto rounded border border-neutral-800 bg-neutral-900/50 p-3 font-mono text-xs leading-relaxed text-neutral-200">
-        {tryPrettyPrint(res.body, res.headers["content-type"] ?? "")}
-      </pre>
+      </main>
+
+      <div className="col-span-2">
+        <StatusBar sidecarStatus={sidecarStatus} appVersion={APP_VERSION} />
+      </div>
     </div>
   );
 }
@@ -239,26 +185,4 @@ function parseHeaders(raw: string): Record<string, string> {
     if (name) out[name] = value;
   }
   return out;
-}
-
-function tryPrettyPrint(body: string, contentType: string): string {
-  if (contentType.includes("application/json") || looksLikeJson(body)) {
-    try {
-      return JSON.stringify(JSON.parse(body), null, 2);
-    } catch {
-      // fall through
-    }
-  }
-  return body;
-}
-
-function looksLikeJson(s: string): boolean {
-  const t = s.trimStart();
-  return t.startsWith("{") || t.startsWith("[");
-}
-
-function formatBytes(n: number): string {
-  if (n < 1024) return `${n} B`;
-  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
-  return `${(n / (1024 * 1024)).toFixed(2)} MB`;
 }
