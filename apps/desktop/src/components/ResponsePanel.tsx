@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { AlertTriangle, Copy, Inbox } from "lucide-react";
 import type { ExecuteResponse } from "../lib/sidecar";
-import { JsonView } from "./JsonView";
+import { CodeEditor } from "./CodeEditor";
 
 type Tab = "body" | "headers";
 
@@ -97,7 +97,6 @@ function Stat({ label, value }: { label: string; value: string }) {
 function BodyView({ res }: { res: ExecuteResponse }) {
   const ct = res.headers["content-type"] ?? "";
   const pretty = useMemo(() => prettify(res.body, ct), [res.body, ct]);
-  const isJson = ct.includes("application/json") || looksLikeJson(res.body);
   return (
     <div className="relative h-full">
       <button
@@ -108,13 +107,13 @@ function BodyView({ res }: { res: ExecuteResponse }) {
       >
         <Copy className="h-3 w-3" /> Copy
       </button>
-      {isJson ? (
-        <JsonView text={pretty} />
-      ) : (
-        <pre className="h-full overflow-auto p-3 font-mono text-xs leading-relaxed text-neutral-200">
-          <code>{pretty}</code>
-        </pre>
-      )}
+      <div className="h-full overflow-hidden">
+        <CodeEditor
+          value={pretty}
+          contentTypeHint={ct}
+          readOnly
+        />
+      </div>
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { CodeEditor } from "./CodeEditor";
 
 type Tab = "params" | "headers" | "body" | "auth" | "tests";
 
@@ -173,16 +174,15 @@ function HeadersView({ value, onChange }: { value: string; onChange: (s: string)
 
 function BodyView({ value, onChange }: { value: string; onChange: (s: string) => void }) {
   return (
-    <div>
+    <div className="flex h-full min-h-0 flex-col">
       <p className="mb-2 text-[11px] uppercase tracking-wider text-neutral-500">Body</p>
-      <textarea
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder='{"hello":"world"}'
-        rows={14}
-        className="w-full resize-y rounded border border-neutral-800 bg-neutral-900 px-3 py-2 font-mono text-xs text-neutral-100 placeholder-neutral-600 focus:border-neutral-600 focus:outline-none"
-        spellCheck={false}
-      />
+      <div className="min-h-[280px] flex-1 overflow-hidden rounded border border-neutral-800 bg-neutral-900">
+        <CodeEditor
+          value={value}
+          onChange={onChange}
+          placeholder='{"hello":"world"}'
+        />
+      </div>
     </div>
   );
 }
