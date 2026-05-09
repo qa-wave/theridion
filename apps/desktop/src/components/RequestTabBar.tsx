@@ -1,4 +1,4 @@
-import { Plus, X } from "lucide-react";
+import { Globe, Plus, X } from "lucide-react";
 import { HTTP_METHOD_COLOR, isDirty } from "../state/types";
 import type { RequestTab } from "../state/types";
 import type { EnvironmentSummary } from "../lib/sidecar";
@@ -10,6 +10,7 @@ interface Props {
   onSelect: (id: string) => void;
   onClose: (id: string) => void;
   onNew: () => void;
+  onOpenSoap: () => void;
   environments: EnvironmentSummary[];
   activeEnvId: string | null;
   onSelectEnv: (id: string | null) => void;
@@ -22,6 +23,7 @@ export function RequestTabBar({
   onSelect,
   onClose,
   onNew,
+  onOpenSoap,
   environments,
   activeEnvId,
   onSelectEnv,
@@ -80,6 +82,15 @@ export function RequestTabBar({
         title="New request"
       >
         <Plus className="h-3.5 w-3.5" />
+      </button>
+      <button
+        type="button"
+        onClick={onOpenSoap}
+        title="SOAP / WSDL"
+        className="inline-flex items-center gap-1 px-2 text-[11px] text-neutral-500 transition hover:bg-neutral-900/50 hover:text-neutral-100"
+      >
+        <Globe className="h-3.5 w-3.5" />
+        SOAP
       </button>
       <div className="flex items-center pr-2">
         <EnvDropdown

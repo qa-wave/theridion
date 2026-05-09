@@ -23,6 +23,7 @@ import { ResponsePanel } from "./components/ResponsePanel";
 import { StatusBar } from "./components/StatusBar";
 import { SavePopover } from "./components/SavePopover";
 import { EnvManagerModal } from "./components/EnvManagerModal";
+import { SoapModal } from "./components/SoapModal";
 
 const APP_VERSION = "0.0.1";
 const ACTIVE_ENV_KEY = "theridion.activeEnvironmentId";
@@ -49,6 +50,7 @@ export default function App() {
       : null,
   );
   const [envManagerOpen, setEnvManagerOpen] = useState(false);
+  const [soapModalOpen, setSoapModalOpen] = useState(false);
 
   // ---- sidecar health polling ---------------------------------------------
   useEffect(() => {
@@ -356,6 +358,7 @@ export default function App() {
           onSelect={setActiveId}
           onClose={closeTab}
           onNew={() => newTab()}
+          onOpenSoap={() => setSoapModalOpen(true)}
           environments={environments}
           activeEnvId={activeEnvId}
           onSelectEnv={setActiveEnvId}
@@ -417,6 +420,7 @@ export default function App() {
         onClose={() => setEnvManagerOpen(false)}
         onChanged={refreshEnvironments}
       />
+      <SoapModal open={soapModalOpen} onClose={() => setSoapModalOpen(false)} />
     </div>
   );
 }

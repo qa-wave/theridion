@@ -195,4 +195,52 @@ export const sidecar = {
         if (!r.ok && r.status !== 204) throw new Error(`delete env ${r.status}`);
       },
     ),
+
+  inspectWsdl: (wsdl_url: string) =>
+    call<WsdlSummary>("/api/soap/inspect", {
+      method: "POST",
+      body: JSON.stringify({ wsdl_url }),
+    }),
+  executeSoap: (input: SoapExecuteInput) =>
+    call<SoapExecuteOutput>("/api/soap/execute", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
 };
+
+// ---- SOAP types ---------------------------------------------------------
+
+export interface SoapOperation {
+  name: string;
+  soap_action: string | null;
+  documentation: string | null;
+}
+
+export interface SoapPort {
+  name: string;
+  binding: string;
+  address: string | null;
+  operations: SoapOperation[];
+}
+
+export interface SoapService {
+  name: string;
+  ports: SoapPort[];
+}
+
+export interface WsdlSummary {
+  target_namespace: string | null;
+  services: SoapService[];
+}
+
+export interface SoapExecuteInput {
+  wsdl_url: string;
+  operation: string;
+  args: Record<string, unknown>;
+}
+
+export interface SoapExecuteOutput {
+  ok: boolean;
+  result: unknown;
+  fault: string | null;
+}
