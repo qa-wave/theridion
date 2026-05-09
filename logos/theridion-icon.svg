@@ -1,0 +1,23 @@
+<svg viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Theridion icon">
+  <!-- Same rounded-square base as the mark, but the mesh is dropped: at
+       small sizes (16/32 px) those threads turn into noise, so we keep
+       only the spider so the silhouette stays legible. -->
+  <rect width="256" height="256" rx="56" fill="#0f0f10"/>
+
+  <!-- Spider body — beefier than in the mark so it reads at favicon size. -->
+  <g fill="#10b981" stroke="#10b981">
+    <ellipse cx="128" cy="108" rx="20" ry="16"/>
+    <polygon points="128,124 154,144 128,170 102,144"/>
+  </g>
+  <g fill="none" stroke="#10b981" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="112,98 80,82 56,98"/>
+    <polyline points="110,114 76,114 50,128"/>
+    <polyline points="112,128 76,142 56,160"/>
+    <polyline points="116,142 92,162 80,184"/>
+    <polyline points="144,98 176,82  200,98"/>
+    <polyline points="146,114 180,114 206,128"/>
+    <polyline points="144,128 180,142 200,160"/>
+    <polyline points="140,142 164,162 176,184"/>
+  </g>
+  <circle cx="122" cy="104" r="3" fill="#0f0f10"/>
+</svg>
