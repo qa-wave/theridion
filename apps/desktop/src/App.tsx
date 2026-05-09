@@ -423,7 +423,7 @@ export default function App() {
   }, [active, activeId, collections, sidecarStatus.state]);
 
   return (
-    <div className="grid h-full grid-cols-[260px_1fr] grid-rows-[1fr_auto] bg-neutral-950 text-neutral-100">
+    <div className="grid h-full grid-cols-[260px_1fr] grid-rows-[1fr_auto] bg-neutral-950 bg-mesh-gradient text-neutral-100">
       <div className="row-span-1 overflow-hidden">
         <Sidebar
           collections={collections}

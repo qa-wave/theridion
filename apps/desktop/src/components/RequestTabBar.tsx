@@ -38,8 +38,8 @@ export function RequestTabBar({
   onManageEnv,
 }: Props) {
   return (
-    <div className="flex items-stretch gap-px border-b border-neutral-800 bg-neutral-925 pl-2">
-      <div className="flex flex-1 items-stretch gap-px overflow-x-auto">
+    <div className="flex items-stretch gap-px border-b border-glass bg-neutral-925/80 pl-1">
+      <div className="flex flex-1 items-stretch gap-0.5 overflow-x-auto py-1 pl-1">
         {tabs.map((t) => {
           const active = t.id === activeId;
           return (
@@ -47,14 +47,14 @@ export function RequestTabBar({
               key={t.id}
               type="button"
               onClick={() => onSelect(t.id)}
-              className={`group relative flex max-w-[260px] items-center gap-2 px-3 py-2 text-xs transition ${
+              className={`group relative flex max-w-[240px] items-center gap-2 rounded-md px-3 py-1.5 text-xs transition-all duration-150 ${
                 active
-                  ? "bg-neutral-900 text-neutral-100"
-                  : "text-neutral-400 hover:bg-neutral-900/50 hover:text-neutral-200"
+                  ? "bg-neutral-800/70 text-neutral-100 shadow-inner-glow"
+                  : "text-neutral-500 hover:bg-neutral-800/40 hover:text-neutral-300"
               }`}
             >
               <span
-                className={`shrink-0 font-mono text-[10px] font-bold ${HTTP_METHOD_COLOR[t.method]}`}
+                className={`shrink-0 font-mono text-[10px] font-bold tracking-wide ${HTTP_METHOD_COLOR[t.method]}`}
               >
                 {t.method}
               </span>
@@ -62,7 +62,7 @@ export function RequestTabBar({
               {isDirty(t) && (
                 <span
                   aria-label="unsaved"
-                  className="h-1.5 w-1.5 rounded-full bg-sky-400"
+                  className="h-1.5 w-1.5 rounded-full bg-cobweb-400 shadow-[0_0_4px_rgba(34,211,238,0.4)]"
                 />
               )}
               <span
@@ -72,65 +72,77 @@ export function RequestTabBar({
                   e.stopPropagation();
                   onClose(t.id);
                 }}
-                className="ml-1 rounded p-0.5 text-neutral-500 opacity-0 transition hover:bg-neutral-800 hover:text-neutral-200 group-hover:opacity-100"
+                className="ml-0.5 rounded p-0.5 text-neutral-600 opacity-0 transition hover:bg-neutral-700/60 hover:text-neutral-300 group-hover:opacity-100"
               >
                 <X className="h-3 w-3" />
               </span>
-              {active && (
-                <span className="absolute inset-x-0 bottom-0 h-px bg-emerald-500" aria-hidden />
-              )}
             </button>
           );
         })}
       </div>
-      <button
-        type="button"
-        onClick={onNew}
-        className="px-3 text-neutral-500 transition hover:bg-neutral-900/50 hover:text-neutral-100"
-        title="New request"
-      >
-        <Plus className="h-3.5 w-3.5" />
-      </button>
-      <button
-        type="button"
-        onClick={onImportCurl}
-        title="Import cURL"
-        className="inline-flex items-center gap-1 px-2 text-[11px] text-neutral-500 transition hover:bg-neutral-900/50 hover:text-neutral-100"
-      >
-        <Terminal className="h-3.5 w-3.5" />
-        cURL
-      </button>
-      <button
-        type="button"
-        onClick={onOpenSoap}
-        title="SOAP / WSDL"
-        className="inline-flex items-center gap-1 px-2 text-[11px] text-neutral-500 transition hover:bg-neutral-900/50 hover:text-neutral-100"
-      >
-        <Globe className="h-3.5 w-3.5" />
-        SOAP
-      </button>
-      <button
-        type="button"
-        onClick={onToggleHistory}
-        title="Toggle history"
-        className={`inline-flex items-center gap-1 px-2 text-[11px] transition hover:bg-neutral-900/50 hover:text-neutral-100 ${
-          historyOpen ? "text-emerald-400" : "text-neutral-500"
-        }`}
-      >
-        <Clock className="h-3.5 w-3.5" />
-        History
-        {historyCount > 0 && (
-          <span className="text-neutral-600">{historyCount}</span>
-        )}
-      </button>
-      <div className="flex items-center pr-2">
-        <EnvDropdown
-          environments={environments}
-          activeId={activeEnvId}
-          onSelect={onSelectEnv}
-          onManage={onManageEnv}
-        />
+
+      {/* Action buttons — right side */}
+      <div className="flex items-center gap-0.5 px-1">
+        <BarButton onClick={onNew} title="New request (⌘T)">
+          <Plus className="h-3.5 w-3.5" />
+        </BarButton>
+        <BarButton onClick={onImportCurl} title="Import cURL">
+          <Terminal className="h-3.5 w-3.5" />
+          <span className="text-[11px]">cURL</span>
+        </BarButton>
+        <BarButton onClick={onOpenSoap} title="SOAP / WSDL">
+          <Globe className="h-3.5 w-3.5" />
+          <span className="text-[11px]">SOAP</span>
+        </BarButton>
+        <BarButton
+          onClick={onToggleHistory}
+          title="Toggle history"
+          active={historyOpen}
+        >
+          <Clock className="h-3.5 w-3.5" />
+          <span className="text-[11px]">
+            History
+            {historyCount > 0 && (
+              <span className="ml-1 text-neutral-600">{historyCount}</span>
+            )}
+          </span>
+        </BarButton>
+        <div className="ml-1 flex items-center border-l border-neutral-800/40 pl-2 pr-1">
+          <EnvDropdown
+            environments={environments}
+            activeId={activeEnvId}
+            onSelect={onSelectEnv}
+            onManage={onManageEnv}
+          />
+        </div>
       </div>
     </div>
+  );
+}
+
+function BarButton({
+  onClick,
+  title,
+  active,
+  children,
+}: {
+  onClick: () => void;
+  title: string;
+  active?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={title}
+      className={`inline-flex items-center gap-1 rounded-md px-2 py-1.5 transition-all duration-150 hover:bg-neutral-800/50 ${
+        active
+          ? "text-cobweb-400"
+          : "text-neutral-500 hover:text-neutral-300"
+      }`}
+    >
+      {children}
+    </button>
   );
 }

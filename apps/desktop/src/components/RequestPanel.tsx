@@ -43,7 +43,7 @@ export function RequestPanel({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex items-center gap-px border-b border-neutral-800 px-2">
+      <div className="flex items-center gap-px border-b border-glass px-2">
         {TABS.map((t) => {
           const active = tab === t.id;
           const count = t.id === "headers" ? countHeaders(headersRaw) : undefined;
@@ -74,7 +74,7 @@ export function RequestPanel({
                 <span className="ml-1 inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />
               )}
               {active && (
-                <span className="absolute inset-x-2 bottom-0 h-0.5 rounded-full bg-emerald-500" aria-hidden />
+                <span className="absolute inset-x-2 bottom-0 h-0.5 rounded-full bg-gradient-to-r from-cobweb-500 to-emerald-500" aria-hidden />
               )}
             </button>
           );

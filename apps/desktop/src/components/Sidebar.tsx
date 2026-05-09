@@ -46,7 +46,7 @@ export function Sidebar({
   const filter = query.toLowerCase();
 
   return (
-    <aside className="flex h-full flex-col border-r border-neutral-800/80 bg-neutral-925">
+    <aside className="flex h-full flex-col border-r border-glass bg-neutral-925/90">
       <div className="flex items-center gap-1 px-3 pt-3 pb-2">
         <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500">
           Collections
@@ -112,15 +112,21 @@ export function Sidebar({
 
 function EmptyState({ onNewCollection }: { onNewCollection: () => void }) {
   return (
-    <div className="mx-2 mt-4 rounded border border-dashed border-neutral-800 px-3 py-6 text-center">
-      <p className="text-xs text-neutral-500">No collections yet</p>
-      <p className="mt-1 text-[11px] text-neutral-600">
-        Hit <kbd className="rounded border border-neutral-700 bg-neutral-900 px-1 text-[10px]">⌘S</kbd> on a request, or
+    <div className="mx-2 mt-6 rounded-lg border border-dashed border-neutral-800/60 bg-neutral-900/20 px-4 py-8 text-center">
+      <div className="mx-auto mb-3 w-fit rounded-full bg-neutral-800/40 p-3">
+        <FolderClosed className="h-5 w-5 text-neutral-600" />
+      </div>
+      <p className="text-xs font-medium text-neutral-400">No collections yet</p>
+      <p className="mt-1.5 text-[11px] text-neutral-600">
+        Save a request with{" "}
+        <kbd className="rounded border border-neutral-800 bg-neutral-900/80 px-1 py-0.5 font-mono text-[10px] shadow-inner-glow">
+          &#x2318;S
+        </kbd>
       </p>
       <button
         type="button"
         onClick={onNewCollection}
-        className="mt-2 text-xs text-emerald-500 hover:text-emerald-400"
+        className="mt-3 rounded-md bg-cobweb-600/20 px-3 py-1.5 text-xs font-medium text-cobweb-400 transition hover:bg-cobweb-600/30"
       >
         + New collection
       </button>

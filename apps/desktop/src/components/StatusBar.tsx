@@ -1,4 +1,3 @@
-import { CircleDot } from "lucide-react";
 import type { HealthResponse } from "../lib/sidecar";
 
 interface Props {
@@ -12,25 +11,47 @@ interface Props {
 export function StatusBar({ sidecarStatus, appVersion }: Props) {
   const ok = sidecarStatus.state === "ok";
   const checking = sidecarStatus.state === "checking";
-  const dotClass = ok
-    ? "text-emerald-500"
-    : checking
-    ? "text-neutral-500"
-    : "text-rose-500";
   const label = ok
     ? `sidecar v${sidecarStatus.info.version}`
     : checking
-    ? "connecting…"
+    ? "connecting\u2026"
     : "sidecar offline";
   const title = sidecarStatus.state === "down" ? sidecarStatus.error : undefined;
 
   return (
-    <footer className="flex shrink-0 items-center gap-4 border-t border-neutral-800 bg-neutral-925 px-3 py-1.5 text-[11px] text-neutral-500">
-      <span className="inline-flex items-center gap-1.5" title={title}>
-        <CircleDot className={`h-3 w-3 ${dotClass}`} />
-        <span>{label}</span>
+    <footer className="glass relative flex shrink-0 items-center gap-4 border-t border-glass px-4 py-1.5 text-[11px] tracking-wide">
+      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cobweb-500/20 to-transparent" />
+      <span className="inline-flex items-center gap-2" title={title}>
+        <span className="relative flex h-2 w-2">
+          {ok && (
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-40" />
+          )}
+          <span
+            className={`relative inline-flex h-2 w-2 rounded-full ${
+              ok
+                ? "bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.5)]"
+                : checking
+                  ? "animate-pulse bg-neutral-500"
+                  : "bg-rose-500 shadow-[0_0_6px_rgba(244,63,94,0.5)]"
+            }`}
+          />
+        </span>
+        <span className={ok ? "text-neutral-400" : "text-neutral-500"}>{label}</span>
+        {ok && (
+          <span className="text-neutral-600">
+            &middot; uptime {formatUptime(sidecarStatus.info.uptime_seconds)}
+          </span>
+        )}
       </span>
-      <span className="ml-auto text-neutral-600">Theridion v{appVersion}</span>
+      <span className="ml-auto font-mono text-[10px] text-neutral-600">
+        Theridion v{appVersion}
+      </span>
     </footer>
   );
+}
+
+function formatUptime(s: number): string {
+  if (s < 60) return `${Math.round(s)}s`;
+  if (s < 3600) return `${Math.floor(s / 60)}m`;
+  return `${Math.floor(s / 3600)}h ${Math.floor((s % 3600) / 60)}m`;
 }
