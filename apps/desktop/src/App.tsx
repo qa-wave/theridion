@@ -330,6 +330,24 @@ export default function App() {
     await refreshCollections();
   }
 
+  async function renameCollection(id: string, name: string) {
+    await sidecar.renameCollection(id, name);
+    await refreshCollections();
+  }
+
+  async function renameItem(collectionId: string, itemId: string, name: string) {
+    await sidecar.renameItem(collectionId, itemId, name);
+    await refreshCollections();
+    // Update name in any open tab pointing at this request.
+    setTabs((curr) =>
+      curr.map((t) =>
+        t.savedAs?.collectionId === collectionId && t.savedAs?.requestId === itemId
+          ? { ...t, name }
+          : t,
+      ),
+    );
+  }
+
   async function deleteFolder(collectionId: string, folderId: string) {
     await sidecar.deleteFolder(collectionId, folderId);
     await refreshCollections();
@@ -381,6 +399,8 @@ export default function App() {
           onDeleteCollection={deleteCollection}
           onDeleteRequest={deleteRequest}
           onDeleteFolder={deleteFolder}
+          onRenameCollection={renameCollection}
+          onRenameItem={renameItem}
           onRefresh={refreshCollections}
         />
       </div>

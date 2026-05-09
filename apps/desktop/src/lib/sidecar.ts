@@ -230,6 +230,21 @@ export const sidecar = {
       method: "POST",
       body: JSON.stringify(body),
     }),
+  renameCollection: (collectionId: string, name: string) =>
+    call<StoredCollection>(`/api/collections/${collectionId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ name }),
+    }),
+  renameItem: (collectionId: string, itemId: string, name: string) =>
+    call<StoredCollection>(
+      `/api/collections/${collectionId}/items/${itemId}/rename`,
+      { method: "PATCH", body: JSON.stringify({ name }) },
+    ),
+  moveItem: (collectionId: string, itemId: string, targetFolderId: string | null) =>
+    call<StoredCollection>(
+      `/api/collections/${collectionId}/items/${itemId}/move`,
+      { method: "PATCH", body: JSON.stringify({ target_folder_id: targetFolderId }) },
+    ),
   deleteFolder: (collectionId: string, folderId: string) =>
     call<StoredCollection>(
       `/api/collections/${collectionId}/folders/${folderId}`,

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   ChevronDown,
   ChevronRight,
@@ -6,6 +6,7 @@ import {
   FolderOpen,
   FolderPlus,
   Loader2,
+  Pencil,
   Plus,
   RefreshCw,
   Search,
@@ -23,6 +24,8 @@ interface Props {
   onDeleteCollection: (id: string) => void;
   onDeleteRequest: (collectionId: string, requestId: string) => void;
   onDeleteFolder: (collectionId: string, folderId: string) => void;
+  onRenameCollection: (id: string, name: string) => void;
+  onRenameItem: (collectionId: string, itemId: string, name: string) => void;
   onRefresh: () => void;
 }
 
@@ -35,6 +38,8 @@ export function Sidebar({
   onDeleteCollection,
   onDeleteRequest,
   onDeleteFolder,
+  onRenameCollection,
+  onRenameItem,
   onRefresh,
 }: Props) {
   const [query, setQuery] = useState("");
@@ -95,6 +100,8 @@ export function Sidebar({
               onDeleteCollection={() => onDeleteCollection(c.id)}
               onDeleteFolder={(fid) => onDeleteFolder(c.id, fid)}
               onDeleteRequest={(rid) => onDeleteRequest(c.id, rid)}
+              onRenameCollection={(name) => onRenameCollection(c.id, name)}
+              onRenameItem={(itemId, name) => onRenameItem(c.id, itemId, name)}
             />
           ))
         )}
@@ -121,6 +128,42 @@ function EmptyState({ onNewCollection }: { onNewCollection: () => void }) {
   );
 }
 
+function InlineRenameInput({
+  initial,
+  onCommit,
+  onCancel,
+}: {
+  initial: string;
+  onCommit: (name: string) => void;
+  onCancel: () => void;
+}) {
+  const [value, setValue] = useState(initial);
+  const ref = useRef<HTMLInputElement>(null);
+  return (
+    <input
+      ref={ref}
+      autoFocus
+      value={value}
+      onChange={(e) => setValue(e.target.value)}
+      onBlur={() => {
+        if (value.trim() && value !== initial) onCommit(value.trim());
+        else onCancel();
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          if (value.trim() && value !== initial) onCommit(value.trim());
+          else onCancel();
+        } else if (e.key === "Escape") {
+          onCancel();
+        }
+      }}
+      className="w-full rounded border border-emerald-600 bg-neutral-900 px-1 py-0 text-xs text-neutral-100 focus:outline-none"
+      spellCheck={false}
+    />
+  );
+}
+
 function CollectionNode({
   collection,
   filter,
@@ -129,6 +172,8 @@ function CollectionNode({
   onDeleteCollection,
   onDeleteFolder,
   onDeleteRequest,
+  onRenameCollection,
+  onRenameItem,
 }: {
   collection: StoredCollection;
   filter: string;
@@ -137,8 +182,11 @@ function CollectionNode({
   onDeleteCollection: () => void;
   onDeleteFolder: (id: string) => void;
   onDeleteRequest: (id: string) => void;
+  onRenameCollection: (name: string) => void;
+  onRenameItem: (itemId: string, name: string) => void;
 }) {
   const [open, setOpen] = useState(true);
+  const [renaming, setRenaming] = useState(false);
   const visibleItems = filter
     ? filterTree(collection.items, filter)
     : collection.items;
@@ -151,19 +199,38 @@ function CollectionNode({
         <button
           type="button"
           onClick={() => setOpen(!open)}
-          className="flex flex-1 items-center gap-1 text-left text-xs font-semibold text-neutral-100"
+          className="shrink-0 text-neutral-500"
         >
-          {open ? (
-            <ChevronDown className="h-3 w-3 text-neutral-500" />
-          ) : (
-            <ChevronRight className="h-3 w-3 text-neutral-500" />
-          )}
-          {open ? (
-            <FolderOpen className="h-3.5 w-3.5 text-neutral-400" />
-          ) : (
-            <FolderClosed className="h-3.5 w-3.5 text-neutral-400" />
-          )}
-          <span className="truncate">{collection.name}</span>
+          {open ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+        </button>
+        {open ? (
+          <FolderOpen className="h-3.5 w-3.5 shrink-0 text-neutral-400" />
+        ) : (
+          <FolderClosed className="h-3.5 w-3.5 shrink-0 text-neutral-400" />
+        )}
+        {renaming ? (
+          <InlineRenameInput
+            initial={collection.name}
+            onCommit={(name) => { onRenameCollection(name); setRenaming(false); }}
+            onCancel={() => setRenaming(false)}
+          />
+        ) : (
+          <button
+            type="button"
+            onClick={() => setOpen(!open)}
+            onDoubleClick={() => setRenaming(true)}
+            className="flex-1 truncate text-left text-xs font-semibold text-neutral-100"
+          >
+            {collection.name}
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={() => setRenaming(true)}
+          className="rounded p-0.5 text-neutral-600 opacity-0 transition hover:bg-neutral-800 hover:text-neutral-200 group-hover:opacity-100"
+          title="Rename"
+        >
+          <Pencil className="h-3 w-3" />
         </button>
         <button
           type="button"
@@ -194,6 +261,7 @@ function CollectionNode({
           onNewFolder={onNewFolder}
           onDeleteFolder={onDeleteFolder}
           onDeleteRequest={onDeleteRequest}
+          onRenameItem={onRenameItem}
         />
       )}
       {open && collection.items.length === 0 && (
@@ -212,6 +280,7 @@ function ItemList({
   onNewFolder,
   onDeleteFolder,
   onDeleteRequest,
+  onRenameItem,
 }: {
   items: CollectionItem[];
   depth: number;
@@ -219,6 +288,7 @@ function ItemList({
   onNewFolder: (parentId: string | null) => void;
   onDeleteFolder: (id: string) => void;
   onDeleteRequest: (id: string) => void;
+  onRenameItem: (itemId: string, name: string) => void;
 }) {
   return (
     <>
@@ -232,6 +302,7 @@ function ItemList({
             onNewFolder={onNewFolder}
             onDeleteFolder={onDeleteFolder}
             onDeleteRequest={onDeleteRequest}
+            onRenameItem={onRenameItem}
           />
         ) : (
           <RequestRow
@@ -240,6 +311,7 @@ function ItemList({
             depth={depth}
             onOpen={() => onOpen(it)}
             onDelete={() => onDeleteRequest(it.id)}
+            onRename={(name) => onRenameItem(it.id, name)}
           />
         ),
       )}
@@ -254,6 +326,7 @@ function FolderNode({
   onNewFolder,
   onDeleteFolder,
   onDeleteRequest,
+  onRenameItem,
 }: {
   folder: CollectionItem;
   depth: number;
@@ -261,8 +334,10 @@ function FolderNode({
   onNewFolder: (parentId: string | null) => void;
   onDeleteFolder: (id: string) => void;
   onDeleteRequest: (id: string) => void;
+  onRenameItem: (itemId: string, name: string) => void;
 }) {
   const [open, setOpen] = useState(true);
+  const [renaming, setRenaming] = useState(false);
   const padLeft = `${0.5 + depth * 0.75}rem`;
   return (
     <div>
@@ -273,19 +348,38 @@ function FolderNode({
         <button
           type="button"
           onClick={() => setOpen(!open)}
-          className="flex flex-1 items-center gap-1 py-1 pr-2 text-left text-neutral-200"
+          className="shrink-0 py-1 text-neutral-500"
         >
-          {open ? (
-            <ChevronDown className="h-3 w-3 text-neutral-500" />
-          ) : (
-            <ChevronRight className="h-3 w-3 text-neutral-500" />
-          )}
-          {open ? (
-            <FolderOpen className="h-3 w-3 text-neutral-400" />
-          ) : (
-            <FolderClosed className="h-3 w-3 text-neutral-400" />
-          )}
-          <span className="truncate">{folder.name}</span>
+          {open ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+        </button>
+        {open ? (
+          <FolderOpen className="mx-1 h-3 w-3 shrink-0 text-neutral-400" />
+        ) : (
+          <FolderClosed className="mx-1 h-3 w-3 shrink-0 text-neutral-400" />
+        )}
+        {renaming ? (
+          <InlineRenameInput
+            initial={folder.name}
+            onCommit={(name) => { onRenameItem(folder.id, name); setRenaming(false); }}
+            onCancel={() => setRenaming(false)}
+          />
+        ) : (
+          <button
+            type="button"
+            onClick={() => setOpen(!open)}
+            onDoubleClick={() => setRenaming(true)}
+            className="flex-1 truncate py-1 pr-2 text-left text-neutral-200"
+          >
+            {folder.name}
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={() => setRenaming(true)}
+          className="rounded p-0.5 text-neutral-600 opacity-0 transition hover:bg-neutral-800 hover:text-neutral-200 group-hover:opacity-100"
+          title="Rename"
+        >
+          <Pencil className="h-3 w-3" />
         </button>
         <button
           type="button"
@@ -316,6 +410,7 @@ function FolderNode({
           onNewFolder={onNewFolder}
           onDeleteFolder={onDeleteFolder}
           onDeleteRequest={onDeleteRequest}
+          onRenameItem={onRenameItem}
         />
       )}
     </div>
@@ -327,30 +422,59 @@ function RequestRow({
   depth,
   onOpen,
   onDelete,
+  onRename,
 }: {
   request: CollectionItem;
   depth: number;
   onOpen: () => void;
   onDelete: () => void;
+  onRename: (name: string) => void;
 }) {
+  const [renaming, setRenaming] = useState(false);
   const padLeft = `${1.25 + depth * 0.75}rem`;
   return (
     <div className="group flex items-center rounded text-xs hover:bg-neutral-800/60">
+      {renaming ? (
+        <div className="flex flex-1 items-center gap-2 py-0.5" style={{ paddingLeft: padLeft }}>
+          <span
+            className={`w-9 shrink-0 font-mono text-[10px] font-bold tabular-nums ${
+              request.method ? HTTP_METHOD_COLOR[request.method] : "text-neutral-400"
+            }`}
+          >
+            {request.method ?? ""}
+          </span>
+          <InlineRenameInput
+            initial={request.name}
+            onCommit={(name) => { onRename(name); setRenaming(false); }}
+            onCancel={() => setRenaming(false)}
+          />
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={onOpen}
+          onDoubleClick={(e) => { e.stopPropagation(); setRenaming(true); }}
+          className="flex flex-1 items-center gap-2 py-1 pr-2 text-left text-neutral-300"
+          style={{ paddingLeft: padLeft }}
+          title={request.url}
+        >
+          <span
+            className={`w-9 shrink-0 font-mono text-[10px] font-bold tabular-nums ${
+              request.method ? HTTP_METHOD_COLOR[request.method] : "text-neutral-400"
+            }`}
+          >
+            {request.method ?? ""}
+          </span>
+          <span className="truncate">{request.name}</span>
+        </button>
+      )}
       <button
         type="button"
-        onClick={onOpen}
-        className="flex flex-1 items-center gap-2 py-1 pr-2 text-left text-neutral-300"
-        style={{ paddingLeft: padLeft }}
-        title={request.url}
+        onClick={() => setRenaming(true)}
+        className="rounded p-0.5 text-neutral-600 opacity-0 transition hover:bg-neutral-800 hover:text-neutral-200 group-hover:opacity-100"
+        title="Rename"
       >
-        <span
-          className={`w-9 shrink-0 font-mono text-[10px] font-bold tabular-nums ${
-            request.method ? HTTP_METHOD_COLOR[request.method] : "text-neutral-400"
-          }`}
-        >
-          {request.method ?? ""}
-        </span>
-        <span className="truncate">{request.name}</span>
+        <Pencil className="h-3 w-3" />
       </button>
       <button
         type="button"
