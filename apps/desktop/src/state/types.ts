@@ -1,11 +1,13 @@
 import type {
+  Assertion,
+  AssertionResult,
   AuthConfig,
   ExecuteResponse,
   ExecuteRequestInput,
   SavedRequest,
 } from "../lib/sidecar";
 
-export type { AuthConfig };
+export type { Assertion, AssertionResult, AuthConfig };
 export type Method = ExecuteRequestInput["method"];
 
 export const METHODS: Method[] = [
@@ -28,6 +30,8 @@ export interface RequestTab {
   headersRaw: string;
   body: string;
   auth: AuthConfig;
+  assertions: Assertion[];
+  assertionResults: AssertionResult[] | null;
   response: ExecuteResponse | null;
   error: string | null;
   busy: boolean;
@@ -56,6 +60,8 @@ export function newRequestTab(partial?: Partial<RequestTab>): RequestTab {
     headersRaw: "",
     body: "",
     auth: { type: "none" },
+    assertions: [],
+    assertionResults: null,
     response: null,
     error: null,
     busy: false,
@@ -75,6 +81,7 @@ export function signatureOf(t: Partial<RequestTab>): string {
     h: t.headersRaw,
     b: t.body,
     a: t.auth,
+    t: t.assertions,
   });
 }
 
@@ -124,5 +131,6 @@ export function tabFromSaved(
     headersRaw: headersToText(saved.headers ?? {}),
     body: saved.body ?? "",
     auth: saved.auth ?? { type: "none" },
+    assertions: saved.assertions ?? [],
   });
 }

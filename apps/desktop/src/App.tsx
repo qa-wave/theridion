@@ -189,6 +189,25 @@ export default function App() {
       };
       const response = await sidecar.execute(input);
       patchActive({ busy: false, response, error: null, lastRunAt: Date.now() });
+      // Evaluate assertions if any exist.
+      if (active.assertions.length > 0) {
+        try {
+          const evalResult = await sidecar.evaluateAssertions({
+            assertions: active.assertions,
+            response: {
+              status: response.status,
+              headers: response.headers,
+              body: response.body,
+              elapsed_ms: response.elapsed_ms,
+            },
+          });
+          patchActive({ assertionResults: evalResult.results });
+        } catch {
+          // Non-critical — don't fail the request over assertion errors.
+        }
+      } else {
+        patchActive({ assertionResults: null });
+      }
       setHistory((prev) => [
         {
           id: crypto.randomUUID(),
@@ -238,6 +257,7 @@ export default function App() {
       headers: parseHeadersText(active.headersRaw),
       body: active.body.length > 0 ? active.body : null,
       auth: active.auth.type !== "none" ? active.auth : null,
+      assertions: active.assertions,
     });
 
     // Find the saved record we just wrote. If we passed an id, look it up;
@@ -257,6 +277,7 @@ export default function App() {
         headersRaw: active.headersRaw,
         body: active.body,
         auth: active.auth,
+        assertions: active.assertions,
       }),
     });
 
@@ -470,10 +491,13 @@ export default function App() {
               headersRaw={active.headersRaw}
               body={active.body}
               auth={active.auth}
+              assertions={active.assertions}
+              assertionResults={active.assertionResults}
               onUrlChange={(url) => patchActive({ url })}
               onHeadersChange={(headersRaw) => patchActive({ headersRaw })}
               onBodyChange={(body) => patchActive({ body })}
               onAuthChange={(auth) => patchActive({ auth })}
+              onAssertionsChange={(assertions) => patchActive({ assertions, assertionResults: null })}
             />
           </div>
           <div className="min-h-0 overflow-hidden">

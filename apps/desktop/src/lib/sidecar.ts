@@ -165,6 +165,7 @@ export interface CollectionItem {
   headers?: Record<string, string>;
   body?: string | null;
   auth?: AuthConfig | null;
+  assertions?: Assertion[];
   // folder field (when is_folder=true)
   items?: CollectionItem[];
 }
@@ -193,6 +194,7 @@ export interface SaveRequestInput {
   headers?: Record<string, string>;
   body?: string | null;
   auth?: AuthConfig | null;
+  assertions?: Assertion[];
   parent_folder_id?: string | null;
 }
 
@@ -285,6 +287,15 @@ export const sidecar = {
     if (!r.ok && r.status !== 204) throw new Error(`delete env ${r.status}`);
   },
 
+  evaluateAssertions: (input: {
+    assertions: Assertion[];
+    response: { status: number; headers: Record<string, string>; body: string; elapsed_ms: number };
+  }) =>
+    call<AssertionEvalOutput>("/api/assertions/evaluate", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+
   parseCurl: (curl: string) =>
     call<ParsedCurl>("/api/curl/parse", {
       method: "POST",
@@ -313,6 +324,37 @@ export const sidecar = {
       body: JSON.stringify(input),
     }),
 };
+
+// ---- Assertion types ----------------------------------------------------
+
+export type AssertionType =
+  | "status"
+  | "response_time"
+  | "json_path"
+  | "header_exists"
+  | "header_equals"
+  | "body_contains"
+  | "body_regex";
+
+export interface Assertion {
+  type: AssertionType;
+  expected: string;
+  path: string;
+  operator: string;
+}
+
+export interface AssertionResult {
+  assertion: Assertion;
+  passed: boolean;
+  message: string;
+}
+
+export interface AssertionEvalOutput {
+  results: AssertionResult[];
+  passed: number;
+  failed: number;
+  total: number;
+}
 
 // ---- cURL types ---------------------------------------------------------
 
