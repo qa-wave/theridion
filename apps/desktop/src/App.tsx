@@ -5,6 +5,7 @@ import {
   type EnvironmentSummary,
   type ExecuteRequestInput,
   type HealthResponse,
+  type ParsedCurl,
   type StoredCollection,
 } from "./lib/sidecar";
 import {
@@ -23,6 +24,7 @@ import { ResponsePanel } from "./components/ResponsePanel";
 import { StatusBar } from "./components/StatusBar";
 import { SavePopover } from "./components/SavePopover";
 import { EnvManagerModal } from "./components/EnvManagerModal";
+import { CurlImportModal } from "./components/CurlImportModal";
 import { SoapModal } from "./components/SoapModal";
 
 const APP_VERSION = "0.0.1";
@@ -51,6 +53,7 @@ export default function App() {
   );
   const [envManagerOpen, setEnvManagerOpen] = useState(false);
   const [soapModalOpen, setSoapModalOpen] = useState(false);
+  const [curlImportOpen, setCurlImportOpen] = useState(false);
 
   // ---- sidecar health polling ---------------------------------------------
   useEffect(() => {
@@ -246,6 +249,34 @@ export default function App() {
     await refreshCollections();
   }
 
+  // ---- cURL import / export -----------------------------------------------
+  function importCurl(parsed: ParsedCurl) {
+    newTab({
+      method: parsed.method,
+      url: parsed.url,
+      headersRaw: Object.entries(parsed.headers)
+        .map(([k, v]) => `${k}: ${v}`)
+        .join("\n"),
+      body: parsed.body ?? "",
+      auth: parsed.auth ?? { type: "none" },
+    });
+  }
+
+  async function copyAsCurl() {
+    try {
+      const result = await sidecar.generateCurl({
+        method: active.method,
+        url: active.url,
+        headers: parseHeadersText(active.headersRaw),
+        body: active.body.length > 0 ? active.body : null,
+        auth: active.auth.type !== "none" ? active.auth : null,
+      });
+      await navigator.clipboard.writeText(result.curl);
+    } catch (e) {
+      console.error("failed to copy as cURL", e);
+    }
+  }
+
   // ---- collection ops -----------------------------------------------------
   async function newCollection() {
     const name = prompt("Collection name:", "New collection");
@@ -361,6 +392,7 @@ export default function App() {
           onSelect={setActiveId}
           onClose={closeTab}
           onNew={() => newTab()}
+          onImportCurl={() => setCurlImportOpen(true)}
           onOpenSoap={() => setSoapModalOpen(true)}
           environments={environments}
           activeEnvId={activeEnvId}
@@ -379,6 +411,7 @@ export default function App() {
             onSend={send}
             onSave={() => save()}
             onSaveAs={() => setSavePopoverOpen(true)}
+            onCopyAsCurl={copyAsCurl}
           />
           <SavePopover
             open={savePopoverOpen}
@@ -424,6 +457,11 @@ export default function App() {
         open={envManagerOpen}
         onClose={() => setEnvManagerOpen(false)}
         onChanged={refreshEnvironments}
+      />
+      <CurlImportModal
+        open={curlImportOpen}
+        onClose={() => setCurlImportOpen(false)}
+        onImport={importCurl}
       />
       <SoapModal open={soapModalOpen} onClose={() => setSoapModalOpen(false)} />
     </div>

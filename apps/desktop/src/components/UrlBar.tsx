@@ -1,4 +1,5 @@
-import { ChevronDown, Loader2, Save, Send } from "lucide-react";
+import { useState } from "react";
+import { ChevronDown, ClipboardCopy, Loader2, Save, Send } from "lucide-react";
 import { HTTP_METHOD_COLOR, METHODS } from "../state/types";
 import type { Method } from "../state/types";
 
@@ -13,6 +14,7 @@ interface Props {
   onSend: () => void;
   onSave: () => void;
   onSaveAs: () => void;
+  onCopyAsCurl: () => void;
 }
 
 export function UrlBar({
@@ -26,7 +28,9 @@ export function UrlBar({
   onSend,
   onSave,
   onSaveAs,
+  onCopyAsCurl,
 }: Props) {
+  const [copied, setCopied] = useState(false);
   function onKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === "Enter" && canSend) {
       e.preventDefault();
@@ -87,6 +91,20 @@ export function UrlBar({
           <ChevronDown className="h-3.5 w-3.5" />
         </button>
       </div>
+      <button
+        type="button"
+        onClick={() => {
+          onCopyAsCurl();
+          setCopied(true);
+          setTimeout(() => setCopied(false), 1500);
+        }}
+        disabled={url.length === 0}
+        title="Copy as cURL"
+        className="inline-flex items-center gap-1 rounded-md border border-neutral-800 px-2.5 py-1.5 text-xs text-neutral-400 transition hover:border-neutral-600 hover:text-neutral-200 disabled:cursor-not-allowed disabled:opacity-40"
+      >
+        <ClipboardCopy className="h-3.5 w-3.5" />
+        {copied ? "Copied!" : "cURL"}
+      </button>
       <button
         type="button"
         onClick={onSend}

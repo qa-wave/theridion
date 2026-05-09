@@ -1,4 +1,4 @@
-import { Globe, Plus, X } from "lucide-react";
+import { Globe, Plus, Terminal, X } from "lucide-react";
 import { HTTP_METHOD_COLOR, isDirty } from "../state/types";
 import type { RequestTab } from "../state/types";
 import type { EnvironmentSummary } from "../lib/sidecar";
@@ -11,6 +11,7 @@ interface Props {
   onClose: (id: string) => void;
   onNew: () => void;
   onOpenSoap: () => void;
+  onImportCurl: () => void;
   environments: EnvironmentSummary[];
   activeEnvId: string | null;
   onSelectEnv: (id: string | null) => void;
@@ -24,6 +25,7 @@ export function RequestTabBar({
   onClose,
   onNew,
   onOpenSoap,
+  onImportCurl,
   environments,
   activeEnvId,
   onSelectEnv,
@@ -82,6 +84,15 @@ export function RequestTabBar({
         title="New request"
       >
         <Plus className="h-3.5 w-3.5" />
+      </button>
+      <button
+        type="button"
+        onClick={onImportCurl}
+        title="Import cURL"
+        className="inline-flex items-center gap-1 px-2 text-[11px] text-neutral-500 transition hover:bg-neutral-900/50 hover:text-neutral-100"
+      >
+        <Terminal className="h-3.5 w-3.5" />
+        cURL
       </button>
       <button
         type="button"

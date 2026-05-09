@@ -260,6 +260,23 @@ export const sidecar = {
     if (!r.ok && r.status !== 204) throw new Error(`delete env ${r.status}`);
   },
 
+  parseCurl: (curl: string) =>
+    call<ParsedCurl>("/api/curl/parse", {
+      method: "POST",
+      body: JSON.stringify({ curl }),
+    }),
+  generateCurl: (input: {
+    method: string;
+    url: string;
+    headers?: Record<string, string>;
+    body?: string | null;
+    auth?: AuthConfig | null;
+  }) =>
+    call<{ curl: string }>("/api/curl/generate", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+
   inspectWsdl: (wsdl_url: string) =>
     call<WsdlSummary>("/api/soap/inspect", {
       method: "POST",
@@ -271,6 +288,16 @@ export const sidecar = {
       body: JSON.stringify(input),
     }),
 };
+
+// ---- cURL types ---------------------------------------------------------
+
+export interface ParsedCurl {
+  method: ExecuteRequestInput["method"];
+  url: string;
+  headers: Record<string, string>;
+  body: string | null;
+  auth: AuthConfig | null;
+}
 
 // ---- SOAP types ---------------------------------------------------------
 
