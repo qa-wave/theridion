@@ -102,6 +102,7 @@ export interface ExecuteResponse {
   elapsed_ms: number;
   final_url: string;
   resolved_url?: string | null;
+  cookies?: Record<string, string>;
 }
 
 export interface EnvVariable {
