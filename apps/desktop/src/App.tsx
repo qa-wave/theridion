@@ -20,10 +20,9 @@ import { UrlBar } from "./components/UrlBar";
 import { RequestPanel } from "./components/RequestPanel";
 import { ResponsePanel } from "./components/ResponsePanel";
 import { StatusBar } from "./components/StatusBar";
+import { SavePopover } from "./components/SavePopover";
 
 const APP_VERSION = "0.0.1";
-/** Auto-created on first save when the user hasn't picked a collection. */
-const DEFAULT_COLLECTION_NAME = "My requests";
 
 type SidecarStatus =
   | { state: "checking" }
@@ -38,6 +37,7 @@ export default function App() {
 
   const [tabs, setTabs] = useState<RequestTab[]>([newRequestTab()]);
   const [activeId, setActiveId] = useState<string>(tabs[0].id);
+  const [savePopoverOpen, setSavePopoverOpen] = useState(false);
 
   // ---- sidecar health polling ---------------------------------------------
   useEffect(() => {
@@ -151,29 +151,27 @@ export default function App() {
     }
   }
 
-  async function save() {
+  /**
+   * Persist the active tab. If `target` is given, save to that collection
+   * with that name (used by the popover). Otherwise: if the tab is already
+   * bound to a saved request, save in place; if not, open the popover so
+   * the user can pick.
+   */
+  async function save(target?: { collectionId: string; name: string }) {
     if (!active.url) return;
     if (sidecarStatus.state !== "ok") return;
 
-    // Pick (or create) a target collection. Right now: always use the first
-    // available collection, or auto-create "My requests" if none exists. The
-    // explicit "save to…" picker is a follow-up.
-    let collectionId = active.savedAs?.collectionId;
-    if (!collectionId) {
-      const existing = collections[0];
-      if (existing) {
-        collectionId = existing.id;
-      } else {
-        const created = await sidecar.createCollection(DEFAULT_COLLECTION_NAME);
-        collectionId = created.id;
-      }
+    if (!target && !active.savedAs) {
+      setSavePopoverOpen(true);
+      return;
     }
 
-    // Derive a sensible name from the URL when the user hasn't set one yet.
+    const collectionId = target?.collectionId ?? active.savedAs!.collectionId;
     const name =
-      active.name && active.name !== "Untitled"
+      target?.name ??
+      (active.name && active.name !== "Untitled"
         ? active.name
-        : deriveNameFromUrl(active.url);
+        : deriveNameFromUrl(active.url));
 
     const updated = await sidecar.saveRequest(collectionId, {
       id: active.savedAs?.requestId,
@@ -184,12 +182,13 @@ export default function App() {
       body: active.body.length > 0 ? active.body : null,
     });
 
-    // Record the new clean signature so the dirty bit clears, and remember
-    // which saved request this tab is bound to.
-    const savedItem = updated.items[updated.items.length - 1];
+    // Find the saved record we just wrote. If we passed an id, look it up;
+    // otherwise it's the newly-appended last item.
     const matched =
-      updated.items.find((r) => r.id === active.savedAs?.requestId) ??
-      savedItem;
+      (active.savedAs?.requestId &&
+        updated.items.find((r) => r.id === active.savedAs!.requestId)) ||
+      updated.items[updated.items.length - 1];
+
     patchActive({
       name: matched.name,
       savedAs: { collectionId, requestId: matched.id },
@@ -211,6 +210,14 @@ export default function App() {
     if (!name) return;
     await sidecar.createCollection(name);
     await refreshCollections();
+  }
+
+  /** Used by the save popover. Returns the freshly-created collection so
+   * the popover can immediately bind the save to it. */
+  async function newCollectionFromPopover(name: string) {
+    const created = await sidecar.createCollection(name);
+    await refreshCollections();
+    return created;
   }
 
   async function deleteCollection(id: string) {
@@ -243,7 +250,13 @@ export default function App() {
       const cmd = e.metaKey || e.ctrlKey;
       if (cmd && e.key === "s") {
         e.preventDefault();
-        void save();
+        // Cmd+Shift+S = always show picker (Save As); Cmd+S alone = save in
+        // place when bound, otherwise open picker.
+        if (e.shiftKey) {
+          setSavePopoverOpen(true);
+        } else {
+          void save();
+        }
       } else if (cmd && e.key === "t") {
         e.preventDefault();
         newTab();
@@ -282,17 +295,32 @@ export default function App() {
           onClose={closeTab}
           onNew={() => newTab()}
         />
-        <UrlBar
-          method={active.method}
-          url={active.url}
-          busy={active.busy}
-          canSend={active.url.length > 0 && !active.busy}
-          dirty={isDirty(active)}
-          onMethodChange={(method) => patchActive({ method })}
-          onUrlChange={(url) => patchActive({ url })}
-          onSend={send}
-          onSave={save}
-        />
+        <div className="relative">
+          <UrlBar
+            method={active.method}
+            url={active.url}
+            busy={active.busy}
+            canSend={active.url.length > 0 && !active.busy}
+            dirty={isDirty(active)}
+            onMethodChange={(method) => patchActive({ method })}
+            onUrlChange={(url) => patchActive({ url })}
+            onSend={send}
+            onSave={() => save()}
+            onSaveAs={() => setSavePopoverOpen(true)}
+          />
+          <SavePopover
+            open={savePopoverOpen}
+            collections={collections}
+            defaultName={
+              active.name && active.name !== "Untitled"
+                ? active.name
+                : deriveNameFromUrl(active.url)
+            }
+            onClose={() => setSavePopoverOpen(false)}
+            onSave={(t) => save(t)}
+            onCreateCollection={newCollectionFromPopover}
+          />
+        </div>
         <div className="grid min-h-0 flex-1 grid-cols-2">
           <div className="min-h-0 overflow-hidden border-r border-neutral-800">
             <RequestPanel

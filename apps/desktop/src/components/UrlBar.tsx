@@ -1,4 +1,4 @@
-import { Loader2, Save, Send } from "lucide-react";
+import { ChevronDown, Loader2, Save, Send } from "lucide-react";
 import { HTTP_METHOD_COLOR, METHODS } from "../state/types";
 import type { Method } from "../state/types";
 
@@ -12,6 +12,7 @@ interface Props {
   onUrlChange: (u: string) => void;
   onSend: () => void;
   onSave: () => void;
+  onSaveAs: () => void;
 }
 
 export function UrlBar({
@@ -24,6 +25,7 @@ export function UrlBar({
   onUrlChange,
   onSend,
   onSave,
+  onSaveAs,
 }: Props) {
   function onKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === "Enter" && canSend) {
@@ -59,21 +61,32 @@ export function UrlBar({
           spellCheck={false}
         />
       </div>
-      <button
-        type="button"
-        onClick={onSave}
-        disabled={!dirty || url.length === 0}
-        title={dirty ? "Save (⌘S)" : "Saved"}
-        className={`inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-medium transition disabled:cursor-not-allowed ${
-          dirty && url.length > 0
-            ? "border-neutral-700 bg-neutral-900 text-neutral-200 hover:border-neutral-600 hover:bg-neutral-800"
-            : "border-neutral-800 bg-neutral-900/50 text-neutral-600"
-        }`}
-      >
-        <Save className="h-3.5 w-3.5" />
-        Save
-        {dirty && url.length > 0 && <span className="ml-0.5 h-1.5 w-1.5 rounded-full bg-sky-400" aria-label="unsaved" />}
-      </button>
+      <div className="inline-flex items-stretch overflow-hidden rounded-md border border-neutral-700 bg-neutral-900 transition hover:border-neutral-600 disabled:cursor-not-allowed">
+        <button
+          type="button"
+          onClick={onSave}
+          disabled={url.length === 0}
+          title={dirty ? "Save (⌘S)" : "Saved"}
+          className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium transition hover:bg-neutral-800 disabled:cursor-not-allowed ${
+            dirty && url.length > 0
+              ? "text-neutral-200"
+              : "text-neutral-500"
+          }`}
+        >
+          <Save className="h-3.5 w-3.5" />
+          Save
+          {dirty && url.length > 0 && <span className="ml-0.5 h-1.5 w-1.5 rounded-full bg-sky-400" aria-label="unsaved" />}
+        </button>
+        <button
+          type="button"
+          onClick={onSaveAs}
+          disabled={url.length === 0}
+          title="Save to… (⌘⇧S)"
+          className="border-l border-neutral-800 px-1.5 text-neutral-500 transition hover:bg-neutral-800 hover:text-neutral-200 disabled:cursor-not-allowed"
+        >
+          <ChevronDown className="h-3.5 w-3.5" />
+        </button>
+      </div>
       <button
         type="button"
         onClick={onSend}
