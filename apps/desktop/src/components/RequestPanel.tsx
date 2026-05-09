@@ -1,4 +1,5 @@
 import { useState } from "react";
+import type { AuthConfig } from "../state/types";
 import { CodeEditor } from "./CodeEditor";
 
 type Tab = "params" | "headers" | "body" | "auth" | "tests";
@@ -7,7 +8,7 @@ const TABS: { id: Tab; label: string; comingSoon?: boolean }[] = [
   { id: "params", label: "Params" },
   { id: "headers", label: "Headers" },
   { id: "body", label: "Body" },
-  { id: "auth", label: "Auth", comingSoon: true },
+  { id: "auth", label: "Auth" },
   { id: "tests", label: "Tests", comingSoon: true },
 ];
 
@@ -15,18 +16,22 @@ interface Props {
   url: string;
   headersRaw: string;
   body: string;
+  auth: AuthConfig;
   onUrlChange: (u: string) => void;
   onHeadersChange: (h: string) => void;
   onBodyChange: (b: string) => void;
+  onAuthChange: (a: AuthConfig) => void;
 }
 
 export function RequestPanel({
   url,
   headersRaw,
   body,
+  auth,
   onUrlChange,
   onHeadersChange,
   onBodyChange,
+  onAuthChange,
 }: Props) {
   const [tab, setTab] = useState<Tab>("params");
 
@@ -36,6 +41,7 @@ export function RequestPanel({
         {TABS.map((t) => {
           const active = tab === t.id;
           const count = t.id === "headers" ? countHeaders(headersRaw) : undefined;
+          const badge = t.id === "auth" && auth.type !== "none";
           return (
             <button
               key={t.id}
@@ -54,6 +60,9 @@ export function RequestPanel({
               {typeof count === "number" && count > 0 && (
                 <span className="ml-1 text-neutral-500">{count}</span>
               )}
+              {badge && (
+                <span className="ml-1 inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              )}
               {active && (
                 <span className="absolute inset-x-2 bottom-0 h-0.5 rounded-full bg-emerald-500" aria-hidden />
               )}
@@ -68,6 +77,7 @@ export function RequestPanel({
           <HeadersView value={headersRaw} onChange={onHeadersChange} />
         )}
         {tab === "body" && <BodyView value={body} onChange={onBodyChange} />}
+        {tab === "auth" && <AuthView value={auth} onChange={onAuthChange} />}
       </div>
     </div>
   );
@@ -183,6 +193,143 @@ function BodyView({ value, onChange }: { value: string; onChange: (s: string) =>
           placeholder='{"hello":"world"}'
         />
       </div>
+    </div>
+  );
+}
+
+const AUTH_TYPES = [
+  { value: "none", label: "No Auth" },
+  { value: "bearer", label: "Bearer Token" },
+  { value: "basic", label: "Basic Auth" },
+  { value: "apikey", label: "API Key" },
+] as const;
+
+function AuthView({
+  value,
+  onChange,
+}: {
+  value: AuthConfig;
+  onChange: (a: AuthConfig) => void;
+}) {
+  const inputClass =
+    "w-full rounded border border-neutral-800 bg-neutral-900 px-3 py-1.5 font-mono text-xs text-neutral-100 placeholder-neutral-600 focus:border-neutral-600 focus:outline-none";
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <p className="mb-2 text-[11px] uppercase tracking-wider text-neutral-500">Type</p>
+        <select
+          value={value.type}
+          onChange={(e) =>
+            onChange({ type: e.target.value as AuthConfig["type"] })
+          }
+          className="rounded border border-neutral-800 bg-neutral-900 px-3 py-1.5 text-xs text-neutral-100 focus:border-neutral-600 focus:outline-none"
+        >
+          {AUTH_TYPES.map((a) => (
+            <option key={a.value} value={a.value}>
+              {a.label}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {value.type === "bearer" && (
+        <div>
+          <label className="mb-1 block text-[11px] uppercase tracking-wider text-neutral-500">
+            Token
+          </label>
+          <input
+            type="text"
+            value={value.token ?? ""}
+            onChange={(e) => onChange({ ...value, token: e.target.value })}
+            placeholder="{{token}}"
+            className={inputClass}
+            spellCheck={false}
+          />
+        </div>
+      )}
+
+      {value.type === "basic" && (
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="mb-1 block text-[11px] uppercase tracking-wider text-neutral-500">
+              Username
+            </label>
+            <input
+              type="text"
+              value={value.username ?? ""}
+              onChange={(e) => onChange({ ...value, username: e.target.value })}
+              placeholder="{{username}}"
+              className={inputClass}
+              spellCheck={false}
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-[11px] uppercase tracking-wider text-neutral-500">
+              Password
+            </label>
+            <input
+              type="password"
+              value={value.password ?? ""}
+              onChange={(e) => onChange({ ...value, password: e.target.value })}
+              placeholder="{{password}}"
+              className={inputClass}
+              spellCheck={false}
+            />
+          </div>
+        </div>
+      )}
+
+      {value.type === "apikey" && (
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="mb-1 block text-[11px] uppercase tracking-wider text-neutral-500">
+                Key
+              </label>
+              <input
+                type="text"
+                value={value.key ?? ""}
+                onChange={(e) => onChange({ ...value, key: e.target.value })}
+                placeholder="X-API-Key"
+                className={inputClass}
+                spellCheck={false}
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-[11px] uppercase tracking-wider text-neutral-500">
+                Value
+              </label>
+              <input
+                type="text"
+                value={value.value ?? ""}
+                onChange={(e) => onChange({ ...value, value: e.target.value })}
+                placeholder="{{api_key}}"
+                className={inputClass}
+                spellCheck={false}
+              />
+            </div>
+          </div>
+          <div>
+            <label className="mb-1 block text-[11px] uppercase tracking-wider text-neutral-500">
+              Add to
+            </label>
+            <select
+              value={value.add_to ?? "header"}
+              onChange={(e) =>
+                onChange({
+                  ...value,
+                  add_to: e.target.value as "header" | "query",
+                })
+              }
+              className="rounded border border-neutral-800 bg-neutral-900 px-3 py-1.5 text-xs text-neutral-100 focus:border-neutral-600 focus:outline-none"
+            >
+              <option value="header">Header</option>
+              <option value="query">Query Parameter</option>
+            </select>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

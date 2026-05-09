@@ -66,12 +66,28 @@ export interface HealthResponse {
   uptime_seconds: number;
 }
 
+export type AuthType = "none" | "bearer" | "basic" | "apikey";
+
+export interface AuthConfig {
+  type: AuthType;
+  // Bearer
+  token?: string;
+  // Basic
+  username?: string;
+  password?: string;
+  // API Key
+  key?: string;
+  value?: string;
+  add_to?: "header" | "query";
+}
+
 export interface ExecuteRequestInput {
   method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "HEAD" | "OPTIONS";
   url: string;
   headers?: Record<string, string>;
   query?: Record<string, string>;
   body?: string | null;
+  auth?: AuthConfig | null;
   timeout_seconds?: number;
   follow_redirects?: boolean;
   environment_id?: string | null;
@@ -138,6 +154,7 @@ export interface CollectionItem {
   url?: string;
   headers?: Record<string, string>;
   body?: string | null;
+  auth?: AuthConfig | null;
   // folder field (when is_folder=true)
   items?: CollectionItem[];
 }
@@ -165,6 +182,7 @@ export interface SaveRequestInput {
   url: string;
   headers?: Record<string, string>;
   body?: string | null;
+  auth?: AuthConfig | null;
   parent_folder_id?: string | null;
 }
 

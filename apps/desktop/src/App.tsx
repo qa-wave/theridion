@@ -178,6 +178,7 @@ export default function App() {
         url: active.url,
         headers: parseHeadersText(active.headersRaw),
         body: active.body.length > 0 ? active.body : null,
+        auth: active.auth.type !== "none" ? active.auth : null,
         environment_id: activeEnvId,
       };
       const response = await sidecar.execute(input);
@@ -219,6 +220,7 @@ export default function App() {
       url: active.url,
       headers: parseHeadersText(active.headersRaw),
       body: active.body.length > 0 ? active.body : null,
+      auth: active.auth.type !== "none" ? active.auth : null,
     });
 
     // Find the saved record we just wrote. If we passed an id, look it up;
@@ -237,6 +239,7 @@ export default function App() {
         url: active.url,
         headersRaw: active.headersRaw,
         body: active.body,
+        auth: active.auth,
       }),
     });
 
@@ -396,9 +399,11 @@ export default function App() {
               url={active.url}
               headersRaw={active.headersRaw}
               body={active.body}
+              auth={active.auth}
               onUrlChange={(url) => patchActive({ url })}
               onHeadersChange={(headersRaw) => patchActive({ headersRaw })}
               onBodyChange={(body) => patchActive({ body })}
+              onAuthChange={(auth) => patchActive({ auth })}
             />
           </div>
           <div className="min-h-0 overflow-hidden">

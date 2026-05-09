@@ -1,9 +1,11 @@
 import type {
+  AuthConfig,
   ExecuteResponse,
   ExecuteRequestInput,
   SavedRequest,
 } from "../lib/sidecar";
 
+export type { AuthConfig };
 export type Method = ExecuteRequestInput["method"];
 
 export const METHODS: Method[] = [
@@ -25,6 +27,7 @@ export interface RequestTab {
   url: string;
   headersRaw: string;
   body: string;
+  auth: AuthConfig;
   response: ExecuteResponse | null;
   error: string | null;
   busy: boolean;
@@ -52,6 +55,7 @@ export function newRequestTab(partial?: Partial<RequestTab>): RequestTab {
     url: "",
     headersRaw: "",
     body: "",
+    auth: { type: "none" },
     response: null,
     error: null,
     busy: false,
@@ -70,6 +74,7 @@ export function signatureOf(t: Partial<RequestTab>): string {
     u: t.url,
     h: t.headersRaw,
     b: t.body,
+    a: t.auth,
   });
 }
 
@@ -77,7 +82,7 @@ export function isDirty(t: RequestTab): boolean {
   // A never-saved tab is dirty as soon as the user puts anything in the URL —
   // but a fresh empty tab shouldn't show the unsaved indicator.
   if (t.savedAs === null) {
-    return Boolean(t.url || t.headersRaw || t.body);
+    return Boolean(t.url || t.headersRaw || t.body || t.auth.type !== "none");
   }
   return signatureOf(t) !== t.cleanSignature;
 }
@@ -118,5 +123,6 @@ export function tabFromSaved(
     url: saved.url ?? "",
     headersRaw: headersToText(saved.headers ?? {}),
     body: saved.body ?? "",
+    auth: saved.auth ?? { type: "none" },
   });
 }
