@@ -62,20 +62,28 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
   return (await res.json()) as T;
 }
 
-export interface SavedRequest {
+/** Tree node — either a folder (`is_folder=true`, has child items) or a request. */
+export interface CollectionItem {
   id: string;
   name: string;
-  method: ExecuteRequestInput["method"];
-  url: string;
-  headers: Record<string, string>;
-  body: string | null;
+  is_folder: boolean;
+  // request fields (when is_folder=false)
+  method?: ExecuteRequestInput["method"];
+  url?: string;
+  headers?: Record<string, string>;
+  body?: string | null;
+  // folder field (when is_folder=true)
+  items?: CollectionItem[];
 }
+
+/** Back-compat alias used in older code paths. */
+export type SavedRequest = CollectionItem;
 
 export interface StoredCollection {
   id: string;
   name: string;
   version: number;
-  items: SavedRequest[];
+  items: CollectionItem[];
 }
 
 export interface CollectionSummary {
@@ -85,13 +93,18 @@ export interface CollectionSummary {
 }
 
 export interface SaveRequestInput {
-  /** Server assigns when omitted, replaces in place when provided. */
   id?: string;
   name: string;
   method: ExecuteRequestInput["method"];
   url: string;
   headers?: Record<string, string>;
   body?: string | null;
+  parent_folder_id?: string | null;
+}
+
+export interface CreateFolderInput {
+  name: string;
+  parent_folder_id?: string | null;
 }
 
 export const sidecar = {
@@ -126,6 +139,16 @@ export const sidecar = {
   deleteRequest: (collectionId: string, requestId: string) =>
     call<StoredCollection>(
       `/api/collections/${collectionId}/requests/${requestId}`,
+      { method: "DELETE" },
+    ),
+  createFolder: (collectionId: string, body: CreateFolderInput) =>
+    call<StoredCollection>(`/api/collections/${collectionId}/folders`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  deleteFolder: (collectionId: string, folderId: string) =>
+    call<StoredCollection>(
+      `/api/collections/${collectionId}/folders/${folderId}`,
       { method: "DELETE" },
     ),
 };

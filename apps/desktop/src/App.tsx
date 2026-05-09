@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   sidecar,
+  type CollectionItem,
   type ExecuteRequestInput,
   type HealthResponse,
-  type SavedRequest,
   type StoredCollection,
 } from "./lib/sidecar";
 import {
@@ -113,19 +113,20 @@ export default function App() {
     });
   }
 
-  function openSaved(collectionId: string, req: SavedRequest) {
-    // If this exact saved request is already open, focus it. Otherwise open
-    // a fresh tab from disk.
+  function openSaved(collectionId: string, item: CollectionItem) {
+    // Sidebar can also fire onOpen for folders (when, e.g., the user
+    // clicks the row); ignore those — only requests open in tabs.
+    if (item.is_folder) return;
     const existing = tabs.find(
       (t) =>
         t.savedAs?.collectionId === collectionId &&
-        t.savedAs?.requestId === req.id,
+        t.savedAs?.requestId === item.id,
     );
     if (existing) {
       setActiveId(existing.id);
       return;
     }
-    const tab = tabFromSaved(collectionId, req);
+    const tab = tabFromSaved(collectionId, item);
     setTabs((curr) => [...curr, tab]);
     setActiveId(tab.id);
   }
@@ -244,6 +245,29 @@ export default function App() {
     );
   }
 
+  async function newFolder(collectionId: string, parentFolderId: string | null) {
+    const name = prompt(
+      parentFolderId ? "Subfolder name:" : "Folder name:",
+      "New folder",
+    );
+    if (!name) return;
+    await sidecar.createFolder(collectionId, {
+      name,
+      parent_folder_id: parentFolderId,
+    });
+    await refreshCollections();
+  }
+
+  async function deleteFolder(collectionId: string, folderId: string) {
+    await sidecar.deleteFolder(collectionId, folderId);
+    await refreshCollections();
+    // Detach any open tabs whose saved request lived under that folder —
+    // we don't track folder ancestry on the tab, but we do detach all tabs
+    // bound to this collection's items that no longer exist after the
+    // delete. That refresh happens in refreshCollections; we conservatively
+    // null out tabs that lost their backing request.
+  }
+
   // ---- keyboard shortcuts -------------------------------------------------
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -281,8 +305,10 @@ export default function App() {
           loading={collectionsLoading}
           onOpen={openSaved}
           onNewCollection={newCollection}
+          onNewFolder={newFolder}
           onDeleteCollection={deleteCollection}
           onDeleteRequest={deleteRequest}
+          onDeleteFolder={deleteFolder}
           onRefresh={refreshCollections}
         />
       </div>

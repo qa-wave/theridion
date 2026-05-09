@@ -108,12 +108,15 @@ export function tabFromSaved(
   collectionId: string,
   saved: SavedRequest,
 ): RequestTab {
+  // tabFromSaved is only called with leaf request items (is_folder=false),
+  // so request fields are populated — but the API type is permissive and
+  // we fall back defensively to keep TS happy.
   return newRequestTab({
     savedAs: { collectionId, requestId: saved.id },
     name: saved.name,
-    method: saved.method,
-    url: saved.url,
-    headersRaw: headersToText(saved.headers),
+    method: saved.method ?? "GET",
+    url: saved.url ?? "",
+    headersRaw: headersToText(saved.headers ?? {}),
     body: saved.body ?? "",
   });
 }

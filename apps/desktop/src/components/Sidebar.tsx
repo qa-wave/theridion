@@ -4,6 +4,7 @@ import {
   ChevronRight,
   FolderClosed,
   FolderOpen,
+  FolderPlus,
   Loader2,
   Plus,
   RefreshCw,
@@ -11,15 +12,17 @@ import {
   Trash2,
 } from "lucide-react";
 import { HTTP_METHOD_COLOR } from "../state/types";
-import type { StoredCollection, SavedRequest } from "../lib/sidecar";
+import type { CollectionItem, StoredCollection } from "../lib/sidecar";
 
 interface Props {
   collections: StoredCollection[];
   loading: boolean;
-  onOpen: (collectionId: string, item: SavedRequest) => void;
+  onOpen: (collectionId: string, item: CollectionItem) => void;
   onNewCollection: () => void;
+  onNewFolder: (collectionId: string, parentFolderId: string | null) => void;
   onDeleteCollection: (id: string) => void;
   onDeleteRequest: (collectionId: string, requestId: string) => void;
+  onDeleteFolder: (collectionId: string, folderId: string) => void;
   onRefresh: () => void;
 }
 
@@ -28,8 +31,10 @@ export function Sidebar({
   loading,
   onOpen,
   onNewCollection,
+  onNewFolder,
   onDeleteCollection,
   onDeleteRequest,
+  onDeleteFolder,
   onRefresh,
 }: Props) {
   const [query, setQuery] = useState("");
@@ -85,8 +90,10 @@ export function Sidebar({
               key={c.id}
               collection={c}
               filter={filter}
-              onOpen={(req) => onOpen(c.id, req)}
-              onDelete={() => onDeleteCollection(c.id)}
+              onOpen={(item) => onOpen(c.id, item)}
+              onNewFolder={(parentId) => onNewFolder(c.id, parentId)}
+              onDeleteCollection={() => onDeleteCollection(c.id)}
+              onDeleteFolder={(fid) => onDeleteFolder(c.id, fid)}
               onDeleteRequest={(rid) => onDeleteRequest(c.id, rid)}
             />
           ))
@@ -118,25 +125,25 @@ function CollectionNode({
   collection,
   filter,
   onOpen,
-  onDelete,
+  onNewFolder,
+  onDeleteCollection,
+  onDeleteFolder,
   onDeleteRequest,
 }: {
   collection: StoredCollection;
   filter: string;
-  onOpen: (req: SavedRequest) => void;
-  onDelete: () => void;
-  onDeleteRequest: (requestId: string) => void;
+  onOpen: (item: CollectionItem) => void;
+  onNewFolder: (parentId: string | null) => void;
+  onDeleteCollection: () => void;
+  onDeleteFolder: (id: string) => void;
+  onDeleteRequest: (id: string) => void;
 }) {
   const [open, setOpen] = useState(true);
-  const items = filter
-    ? collection.items.filter(
-        (r) =>
-          r.name.toLowerCase().includes(filter) ||
-          r.url.toLowerCase().includes(filter),
-      )
+  const visibleItems = filter
+    ? filterTree(collection.items, filter)
     : collection.items;
 
-  if (filter && items.length === 0) return null;
+  if (filter && visibleItems.length === 0) return null;
 
   return (
     <div className="select-none">
@@ -157,15 +164,20 @@ function CollectionNode({
             <FolderClosed className="h-3.5 w-3.5 text-neutral-400" />
           )}
           <span className="truncate">{collection.name}</span>
-          <span className="ml-1 text-[10px] font-normal text-neutral-600">
-            {collection.items.length}
-          </span>
+        </button>
+        <button
+          type="button"
+          onClick={() => onNewFolder(null)}
+          className="rounded p-0.5 text-neutral-600 opacity-0 transition hover:bg-neutral-800 hover:text-neutral-200 group-hover:opacity-100"
+          title="New folder at root"
+        >
+          <FolderPlus className="h-3 w-3" />
         </button>
         <button
           type="button"
           onClick={() => {
             if (confirm(`Delete collection "${collection.name}"? This cannot be undone.`)) {
-              onDelete();
+              onDeleteCollection();
             }
           }}
           className="rounded p-0.5 text-neutral-600 opacity-0 transition hover:bg-neutral-800 hover:text-rose-400 group-hover:opacity-100"
@@ -174,15 +186,16 @@ function CollectionNode({
           <Trash2 className="h-3 w-3" />
         </button>
       </div>
-      {open &&
-        items.map((req) => (
-          <RequestRow
-            key={req.id}
-            request={req}
-            onOpen={() => onOpen(req)}
-            onDelete={() => onDeleteRequest(req.id)}
-          />
-        ))}
+      {open && (
+        <ItemList
+          items={visibleItems}
+          depth={1}
+          onOpen={onOpen}
+          onNewFolder={onNewFolder}
+          onDeleteFolder={onDeleteFolder}
+          onDeleteRequest={onDeleteRequest}
+        />
+      )}
       {open && collection.items.length === 0 && (
         <p className="px-8 py-1 text-[11px] italic text-neutral-600">
           (empty)
@@ -192,27 +205,150 @@ function CollectionNode({
   );
 }
 
+function ItemList({
+  items,
+  depth,
+  onOpen,
+  onNewFolder,
+  onDeleteFolder,
+  onDeleteRequest,
+}: {
+  items: CollectionItem[];
+  depth: number;
+  onOpen: (item: CollectionItem) => void;
+  onNewFolder: (parentId: string | null) => void;
+  onDeleteFolder: (id: string) => void;
+  onDeleteRequest: (id: string) => void;
+}) {
+  return (
+    <>
+      {items.map((it) =>
+        it.is_folder ? (
+          <FolderNode
+            key={it.id}
+            folder={it}
+            depth={depth}
+            onOpen={onOpen}
+            onNewFolder={onNewFolder}
+            onDeleteFolder={onDeleteFolder}
+            onDeleteRequest={onDeleteRequest}
+          />
+        ) : (
+          <RequestRow
+            key={it.id}
+            request={it}
+            depth={depth}
+            onOpen={() => onOpen(it)}
+            onDelete={() => onDeleteRequest(it.id)}
+          />
+        ),
+      )}
+    </>
+  );
+}
+
+function FolderNode({
+  folder,
+  depth,
+  onOpen,
+  onNewFolder,
+  onDeleteFolder,
+  onDeleteRequest,
+}: {
+  folder: CollectionItem;
+  depth: number;
+  onOpen: (item: CollectionItem) => void;
+  onNewFolder: (parentId: string | null) => void;
+  onDeleteFolder: (id: string) => void;
+  onDeleteRequest: (id: string) => void;
+}) {
+  const [open, setOpen] = useState(true);
+  const padLeft = `${0.5 + depth * 0.75}rem`;
+  return (
+    <div>
+      <div
+        className="group flex items-center rounded text-xs hover:bg-neutral-800/60"
+        style={{ paddingLeft: padLeft }}
+      >
+        <button
+          type="button"
+          onClick={() => setOpen(!open)}
+          className="flex flex-1 items-center gap-1 py-1 pr-2 text-left text-neutral-200"
+        >
+          {open ? (
+            <ChevronDown className="h-3 w-3 text-neutral-500" />
+          ) : (
+            <ChevronRight className="h-3 w-3 text-neutral-500" />
+          )}
+          {open ? (
+            <FolderOpen className="h-3 w-3 text-neutral-400" />
+          ) : (
+            <FolderClosed className="h-3 w-3 text-neutral-400" />
+          )}
+          <span className="truncate">{folder.name}</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => onNewFolder(folder.id)}
+          className="rounded p-0.5 text-neutral-600 opacity-0 transition hover:bg-neutral-800 hover:text-neutral-200 group-hover:opacity-100"
+          title="New subfolder"
+        >
+          <FolderPlus className="h-3 w-3" />
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            if (confirm(`Delete folder "${folder.name}" and everything inside? This cannot be undone.`)) {
+              onDeleteFolder(folder.id);
+            }
+          }}
+          className="mr-1 rounded p-0.5 text-neutral-600 opacity-0 transition hover:bg-neutral-800 hover:text-rose-400 group-hover:opacity-100"
+          title="Delete folder"
+        >
+          <Trash2 className="h-3 w-3" />
+        </button>
+      </div>
+      {open && (folder.items?.length ?? 0) > 0 && (
+        <ItemList
+          items={folder.items ?? []}
+          depth={depth + 1}
+          onOpen={onOpen}
+          onNewFolder={onNewFolder}
+          onDeleteFolder={onDeleteFolder}
+          onDeleteRequest={onDeleteRequest}
+        />
+      )}
+    </div>
+  );
+}
+
 function RequestRow({
   request,
+  depth,
   onOpen,
   onDelete,
 }: {
-  request: SavedRequest;
+  request: CollectionItem;
+  depth: number;
   onOpen: () => void;
   onDelete: () => void;
 }) {
+  const padLeft = `${1.25 + depth * 0.75}rem`;
   return (
     <div className="group flex items-center rounded text-xs hover:bg-neutral-800/60">
       <button
         type="button"
         onClick={onOpen}
-        className="flex flex-1 items-center gap-2 px-2 py-1 pl-8 text-left text-neutral-300"
+        className="flex flex-1 items-center gap-2 py-1 pr-2 text-left text-neutral-300"
+        style={{ paddingLeft: padLeft }}
         title={request.url}
       >
         <span
-          className={`w-9 shrink-0 font-mono text-[10px] font-bold tabular-nums ${HTTP_METHOD_COLOR[request.method]}`}
+          className={`w-9 shrink-0 font-mono text-[10px] font-bold tabular-nums ${
+            request.method ? HTTP_METHOD_COLOR[request.method] : "text-neutral-400"
+          }`}
         >
-          {request.method}
+          {request.method ?? ""}
         </span>
         <span className="truncate">{request.name}</span>
       </button>
@@ -228,4 +364,26 @@ function RequestRow({
       </button>
     </div>
   );
+}
+
+/** Filter the tree, keeping any branch where some descendant matches. */
+function filterTree(items: CollectionItem[], q: string): CollectionItem[] {
+  const out: CollectionItem[] = [];
+  for (const it of items) {
+    if (it.is_folder) {
+      const subItems = filterTree(it.items ?? [], q);
+      const selfMatches = it.name.toLowerCase().includes(q);
+      if (subItems.length > 0 || selfMatches) {
+        out.push({ ...it, items: subItems });
+      }
+    } else {
+      if (
+        it.name.toLowerCase().includes(q) ||
+        (it.url ?? "").toLowerCase().includes(q)
+      ) {
+        out.push(it);
+      }
+    }
+  }
+  return out;
 }
