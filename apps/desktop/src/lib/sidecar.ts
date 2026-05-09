@@ -62,6 +62,38 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
   return (await res.json()) as T;
 }
 
+export interface SavedRequest {
+  id: string;
+  name: string;
+  method: ExecuteRequestInput["method"];
+  url: string;
+  headers: Record<string, string>;
+  body: string | null;
+}
+
+export interface StoredCollection {
+  id: string;
+  name: string;
+  version: number;
+  items: SavedRequest[];
+}
+
+export interface CollectionSummary {
+  id: string;
+  name: string;
+  request_count: number;
+}
+
+export interface SaveRequestInput {
+  /** Server assigns when omitted, replaces in place when provided. */
+  id?: string;
+  name: string;
+  method: ExecuteRequestInput["method"];
+  url: string;
+  headers?: Record<string, string>;
+  body?: string | null;
+}
+
 export const sidecar = {
   health: () => call<HealthResponse>("/api/health"),
   execute: (input: ExecuteRequestInput) =>
@@ -73,4 +105,27 @@ export const sidecar = {
         ...input,
       }),
     }),
+  listCollections: () => call<CollectionSummary[]>("/api/collections"),
+  getCollection: (id: string) => call<StoredCollection>(`/api/collections/${id}`),
+  createCollection: (name: string) =>
+    call<StoredCollection>("/api/collections", {
+      method: "POST",
+      body: JSON.stringify({ name }),
+    }),
+  deleteCollection: (id: string) =>
+    fetch(`${sidecarBaseUrl}/api/collections/${id}`, { method: "DELETE" }).then(
+      (r) => {
+        if (!r.ok && r.status !== 204) throw new Error(`delete ${r.status}`);
+      },
+    ),
+  saveRequest: (collectionId: string, body: SaveRequestInput) =>
+    call<StoredCollection>(`/api/collections/${collectionId}/requests`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  deleteRequest: (collectionId: string, requestId: string) =>
+    call<StoredCollection>(
+      `/api/collections/${collectionId}/requests/${requestId}`,
+      { method: "DELETE" },
+    ),
 };

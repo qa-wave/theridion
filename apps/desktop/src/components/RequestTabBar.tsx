@@ -1,5 +1,5 @@
 import { Plus, X } from "lucide-react";
-import { HTTP_METHOD_COLOR } from "../state/types";
+import { HTTP_METHOD_COLOR, isDirty } from "../state/types";
 import type { RequestTab } from "../state/types";
 
 interface Props {
@@ -33,6 +33,12 @@ export function RequestTabBar({ tabs, activeId, onSelect, onClose, onNew }: Prop
                 {t.method}
               </span>
               <span className="truncate">{t.name}</span>
+              {isDirty(t) && (
+                <span
+                  aria-label="unsaved"
+                  className="h-1.5 w-1.5 rounded-full bg-sky-400"
+                />
+              )}
               <span
                 role="button"
                 aria-label="Close tab"

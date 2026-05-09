@@ -1,15 +1,19 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   sidecar,
   type ExecuteRequestInput,
   type HealthResponse,
+  type SavedRequest,
+  type StoredCollection,
 } from "./lib/sidecar";
 import {
+  isDirty,
   newRequestTab,
-  type CollectionItem,
+  parseHeadersText,
+  signatureOf,
+  tabFromSaved,
   type RequestTab,
 } from "./state/types";
-import { MOCK_COLLECTIONS } from "./state/mock-collections";
 import { Sidebar } from "./components/Sidebar";
 import { RequestTabBar } from "./components/RequestTabBar";
 import { UrlBar } from "./components/UrlBar";
@@ -18,6 +22,8 @@ import { ResponsePanel } from "./components/ResponsePanel";
 import { StatusBar } from "./components/StatusBar";
 
 const APP_VERSION = "0.0.1";
+/** Auto-created on first save when the user hasn't picked a collection. */
+const DEFAULT_COLLECTION_NAME = "My requests";
 
 type SidecarStatus =
   | { state: "checking" }
@@ -26,17 +32,14 @@ type SidecarStatus =
 
 export default function App() {
   const [sidecarStatus, setSidecarStatus] = useState<SidecarStatus>({ state: "checking" });
-  const [tabs, setTabs] = useState<RequestTab[]>([
-    newRequestTab({
-      name: "Search repos",
-      method: "GET",
-      url: "https://api.github.com/search/repositories?q=tauri&sort=stars",
-    }),
-  ]);
+
+  const [collections, setCollections] = useState<StoredCollection[]>([]);
+  const [collectionsLoading, setCollectionsLoading] = useState(false);
+
+  const [tabs, setTabs] = useState<RequestTab[]>([newRequestTab()]);
   const [activeId, setActiveId] = useState<string>(tabs[0].id);
 
-  // Health-check the sidecar on mount; in production this'll re-fire on
-  // disconnect once the Tauri shell is doing supervised spawning.
+  // ---- sidecar health polling ---------------------------------------------
   useEffect(() => {
     let alive = true;
     const tick = () =>
@@ -58,6 +61,31 @@ export default function App() {
     };
   }, []);
 
+  // ---- load collections on mount and after sidecar comes back -------------
+  const refreshCollections = useCallback(async () => {
+    setCollectionsLoading(true);
+    try {
+      const summaries = await sidecar.listCollections();
+      const full = await Promise.all(
+        summaries.map((s) => sidecar.getCollection(s.id)),
+      );
+      // Sort newest-first by name for now; later we'll persist ordering.
+      full.sort((a, b) => a.name.localeCompare(b.name));
+      setCollections(full);
+    } catch (e) {
+      console.error("failed to load collections", e);
+    } finally {
+      setCollectionsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (sidecarStatus.state === "ok") {
+      void refreshCollections();
+    }
+  }, [sidecarStatus.state, refreshCollections]);
+
+  // ---- tab helpers --------------------------------------------------------
   const active = tabs.find((t) => t.id === activeId) ?? tabs[0];
 
   function patchActive(patch: Partial<RequestTab>) {
@@ -74,42 +102,43 @@ export default function App() {
 
   function closeTab(id: string) {
     setTabs((curr) => {
+      const idx = curr.findIndex((t) => t.id === id);
       const next = curr.filter((t) => t.id !== id);
-      // Always keep at least one tab open
       const ensured = next.length > 0 ? next : [newRequestTab()];
       if (id === activeId) {
-        const fallback = ensured[Math.max(0, curr.findIndex((t) => t.id === id) - 1)];
-        setActiveId((fallback ?? ensured[0]).id);
+        const fallback = ensured[Math.max(0, idx - 1)] ?? ensured[0];
+        setActiveId(fallback.id);
       }
       return ensured;
     });
   }
 
-  function openCollectionItem(item: CollectionItem) {
-    // If the same URL+method is already open, focus it; otherwise open new.
+  function openSaved(collectionId: string, req: SavedRequest) {
+    // If this exact saved request is already open, focus it. Otherwise open
+    // a fresh tab from disk.
     const existing = tabs.find(
-      (t) => t.url === item.url && t.method === item.method,
+      (t) =>
+        t.savedAs?.collectionId === collectionId &&
+        t.savedAs?.requestId === req.id,
     );
     if (existing) {
       setActiveId(existing.id);
       return;
     }
-    newTab({
-      name: item.name,
-      method: item.method,
-      url: item.url,
-    });
+    const tab = tabFromSaved(collectionId, req);
+    setTabs((curr) => [...curr, tab]);
+    setActiveId(tab.id);
   }
 
+  // ---- send + save --------------------------------------------------------
   async function send() {
     if (!active.url || active.busy) return;
     patchActive({ busy: true, error: null });
     try {
-      const headers = parseHeaders(active.headersRaw);
       const input: ExecuteRequestInput = {
         method: active.method,
         url: active.url,
-        headers,
+        headers: parseHeadersText(active.headersRaw),
         body: active.body.length > 0 ? active.body : null,
       };
       const response = await sidecar.execute(input);
@@ -122,10 +151,127 @@ export default function App() {
     }
   }
 
+  async function save() {
+    if (!active.url) return;
+    if (sidecarStatus.state !== "ok") return;
+
+    // Pick (or create) a target collection. Right now: always use the first
+    // available collection, or auto-create "My requests" if none exists. The
+    // explicit "save to…" picker is a follow-up.
+    let collectionId = active.savedAs?.collectionId;
+    if (!collectionId) {
+      const existing = collections[0];
+      if (existing) {
+        collectionId = existing.id;
+      } else {
+        const created = await sidecar.createCollection(DEFAULT_COLLECTION_NAME);
+        collectionId = created.id;
+      }
+    }
+
+    // Derive a sensible name from the URL when the user hasn't set one yet.
+    const name =
+      active.name && active.name !== "Untitled"
+        ? active.name
+        : deriveNameFromUrl(active.url);
+
+    const updated = await sidecar.saveRequest(collectionId, {
+      id: active.savedAs?.requestId,
+      name,
+      method: active.method,
+      url: active.url,
+      headers: parseHeadersText(active.headersRaw),
+      body: active.body.length > 0 ? active.body : null,
+    });
+
+    // Record the new clean signature so the dirty bit clears, and remember
+    // which saved request this tab is bound to.
+    const savedItem = updated.items[updated.items.length - 1];
+    const matched =
+      updated.items.find((r) => r.id === active.savedAs?.requestId) ??
+      savedItem;
+    patchActive({
+      name: matched.name,
+      savedAs: { collectionId, requestId: matched.id },
+      cleanSignature: signatureOf({
+        name: matched.name,
+        method: active.method,
+        url: active.url,
+        headersRaw: active.headersRaw,
+        body: active.body,
+      }),
+    });
+
+    await refreshCollections();
+  }
+
+  // ---- collection ops -----------------------------------------------------
+  async function newCollection() {
+    const name = prompt("Collection name:", "New collection");
+    if (!name) return;
+    await sidecar.createCollection(name);
+    await refreshCollections();
+  }
+
+  async function deleteCollection(id: string) {
+    await sidecar.deleteCollection(id);
+    await refreshCollections();
+    // Detach any open tabs that pointed at this collection.
+    setTabs((curr) =>
+      curr.map((t) =>
+        t.savedAs?.collectionId === id ? { ...t, savedAs: null } : t,
+      ),
+    );
+  }
+
+  async function deleteRequest(collectionId: string, requestId: string) {
+    await sidecar.deleteRequest(collectionId, requestId);
+    await refreshCollections();
+    setTabs((curr) =>
+      curr.map((t) =>
+        t.savedAs?.collectionId === collectionId &&
+        t.savedAs?.requestId === requestId
+          ? { ...t, savedAs: null }
+          : t,
+      ),
+    );
+  }
+
+  // ---- keyboard shortcuts -------------------------------------------------
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      const cmd = e.metaKey || e.ctrlKey;
+      if (cmd && e.key === "s") {
+        e.preventDefault();
+        void save();
+      } else if (cmd && e.key === "t") {
+        e.preventDefault();
+        newTab();
+      } else if (cmd && e.key === "w") {
+        e.preventDefault();
+        closeTab(activeId);
+      } else if (cmd && e.key === "Enter") {
+        e.preventDefault();
+        void send();
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active, activeId, collections, sidecarStatus.state]);
+
   return (
     <div className="grid h-full grid-cols-[260px_1fr] grid-rows-[1fr_auto] bg-neutral-950 text-neutral-100">
       <div className="row-span-1 overflow-hidden">
-        <Sidebar collections={MOCK_COLLECTIONS} onOpen={openCollectionItem} />
+        <Sidebar
+          collections={collections}
+          loading={collectionsLoading}
+          onOpen={openSaved}
+          onNewCollection={newCollection}
+          onDeleteCollection={deleteCollection}
+          onDeleteRequest={deleteRequest}
+          onRefresh={refreshCollections}
+        />
       </div>
 
       <main className="flex min-h-0 flex-col overflow-hidden">
@@ -141,9 +287,11 @@ export default function App() {
           url={active.url}
           busy={active.busy}
           canSend={active.url.length > 0 && !active.busy}
+          dirty={isDirty(active)}
           onMethodChange={(method) => patchActive({ method })}
           onUrlChange={(url) => patchActive({ url })}
           onSend={send}
+          onSave={save}
         />
         <div className="grid min-h-0 flex-1 grid-cols-2">
           <div className="min-h-0 overflow-hidden border-r border-neutral-800">
@@ -173,16 +321,13 @@ export default function App() {
   );
 }
 
-function parseHeaders(raw: string): Record<string, string> {
-  const out: Record<string, string> = {};
-  for (const line of raw.split(/\r?\n/)) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith("#")) continue;
-    const idx = trimmed.indexOf(":");
-    if (idx === -1) continue;
-    const name = trimmed.slice(0, idx).trim();
-    const value = trimmed.slice(idx + 1).trim();
-    if (name) out[name] = value;
+function deriveNameFromUrl(url: string): string {
+  try {
+    const u = new URL(url);
+    const last = u.pathname.split("/").filter(Boolean).pop();
+    if (last) return last;
+    return u.host;
+  } catch {
+    return url.slice(0, 40);
   }
-  return out;
 }

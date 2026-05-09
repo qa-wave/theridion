@@ -1,4 +1,4 @@
-import { Loader2, Send } from "lucide-react";
+import { Loader2, Save, Send } from "lucide-react";
 import { HTTP_METHOD_COLOR, METHODS } from "../state/types";
 import type { Method } from "../state/types";
 
@@ -7,9 +7,11 @@ interface Props {
   url: string;
   busy: boolean;
   canSend: boolean;
+  dirty: boolean;
   onMethodChange: (m: Method) => void;
   onUrlChange: (u: string) => void;
   onSend: () => void;
+  onSave: () => void;
 }
 
 export function UrlBar({
@@ -17,9 +19,11 @@ export function UrlBar({
   url,
   busy,
   canSend,
+  dirty,
   onMethodChange,
   onUrlChange,
   onSend,
+  onSave,
 }: Props) {
   function onKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === "Enter" && canSend) {
@@ -55,6 +59,21 @@ export function UrlBar({
           spellCheck={false}
         />
       </div>
+      <button
+        type="button"
+        onClick={onSave}
+        disabled={!dirty || url.length === 0}
+        title={dirty ? "Save (⌘S)" : "Saved"}
+        className={`inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-medium transition disabled:cursor-not-allowed ${
+          dirty && url.length > 0
+            ? "border-neutral-700 bg-neutral-900 text-neutral-200 hover:border-neutral-600 hover:bg-neutral-800"
+            : "border-neutral-800 bg-neutral-900/50 text-neutral-600"
+        }`}
+      >
+        <Save className="h-3.5 w-3.5" />
+        Save
+        {dirty && url.length > 0 && <span className="ml-0.5 h-1.5 w-1.5 rounded-full bg-sky-400" aria-label="unsaved" />}
+      </button>
       <button
         type="button"
         onClick={onSend}
