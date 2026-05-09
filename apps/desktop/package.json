@@ -13,7 +13,8 @@
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "typecheck": "tsc -b --noEmit",
     "test:e2e": "playwright test",
-    "test:e2e:ui": "playwright test --ui"
+    "test:e2e:ui": "playwright test --ui",
+    "sidecar:bundle": "bash ../sidecar/scripts/build-bundle.sh"
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",

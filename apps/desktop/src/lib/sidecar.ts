@@ -1,19 +1,64 @@
 /**
  * Sidecar client.
  *
- * In dev, the Python FastAPI server is started separately via
- *   THERIDION_PORT=8765 uv run python -m theridion_sidecar.main
- * and the frontend talks to it on localhost:8765 (override via
- * VITE_SIDECAR_URL if needed).
- *
- * In production we'll spawn the bundled Python via Tauri's sidecar feature
- * and read the port off stdout — that wiring lives in src-tauri.
+ * Resolution order for the sidecar URL:
+ *   1. `VITE_SIDECAR_URL` build-time env override — used by Playwright
+ *      tests (which spawn their own sidecar on a non-default port) and
+ *      by anyone running the app in a regular browser tab.
+ *   2. Tauri command `get_sidecar_port` — when the desktop shell spawned
+ *      the bundled sidecar binary, this is the source of truth. We poll
+ *      it on first call and also subscribe to the `sidecar://ready`
+ *      event so the resolution finishes the moment the binary is up
+ *      (cold start of the --onefile bundle is ~8 s).
+ *   3. Dev fallback `http://127.0.0.1:8765` — when neither of the above
+ *      is available (developer running `pnpm dev` without Tauri and
+ *      without VITE_SIDECAR_URL), assume a sidecar started by hand on
+ *      the default dev port.
  */
 
-const DEFAULT_DEV_URL = "http://127.0.0.1:8765";
+const DEV_FALLBACK_URL = "http://127.0.0.1:8765";
 
-export const sidecarBaseUrl: string =
-  (import.meta.env.VITE_SIDECAR_URL as string | undefined) ?? DEFAULT_DEV_URL;
+interface TauriWindow extends Window {
+  __TAURI_INTERNALS__?: unknown;
+}
+
+function isTauri(): boolean {
+  return typeof window !== "undefined" && "__TAURI_INTERNALS__" in (window as TauriWindow);
+}
+
+let _urlPromise: Promise<string> | null = null;
+
+/** Returns the sidecar's base URL, awaiting Tauri's port handshake when needed. */
+export function getSidecarBaseUrl(): Promise<string> {
+  if (_urlPromise) return _urlPromise;
+  _urlPromise = resolveSidecarBaseUrl();
+  return _urlPromise;
+}
+
+async function resolveSidecarBaseUrl(): Promise<string> {
+  const fromEnv = import.meta.env.VITE_SIDECAR_URL as string | undefined;
+  if (fromEnv) return fromEnv;
+
+  if (!isTauri()) return DEV_FALLBACK_URL;
+
+  const [{ invoke }, { listen }] = await Promise.all([
+    import("@tauri-apps/api/core"),
+    import("@tauri-apps/api/event"),
+  ]);
+
+  const port = await invoke<number | null>("get_sidecar_port").catch(() => null);
+  if (typeof port === "number") return `http://127.0.0.1:${port}`;
+
+  // Wait for the ready event. The sidecar's --onefile cold start can take
+  // up to ~10 s; we don't impose a timeout here so the UI's "connecting…"
+  // state simply lingers rather than throwing.
+  return new Promise<string>((resolve) => {
+    void listen<number>("sidecar://ready", (event) => {
+      resolve(`http://127.0.0.1:${event.payload}`);
+    });
+  });
+}
+
 
 export interface HealthResponse {
   status: string;
@@ -62,7 +107,8 @@ export interface EnvironmentSummary {
 }
 
 async function call<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${sidecarBaseUrl}${path}`, {
+  const baseUrl = await getSidecarBaseUrl();
+  const res = await fetch(`${baseUrl}${path}`, {
     ...init,
     headers: {
       "content-type": "application/json",
@@ -145,12 +191,11 @@ export const sidecar = {
       method: "POST",
       body: JSON.stringify({ name }),
     }),
-  deleteCollection: (id: string) =>
-    fetch(`${sidecarBaseUrl}/api/collections/${id}`, { method: "DELETE" }).then(
-      (r) => {
-        if (!r.ok && r.status !== 204) throw new Error(`delete ${r.status}`);
-      },
-    ),
+  deleteCollection: async (id: string) => {
+    const baseUrl = await getSidecarBaseUrl();
+    const r = await fetch(`${baseUrl}/api/collections/${id}`, { method: "DELETE" });
+    if (!r.ok && r.status !== 204) throw new Error(`delete ${r.status}`);
+  },
   saveRequest: (collectionId: string, body: SaveRequestInput) =>
     call<StoredCollection>(`/api/collections/${collectionId}/requests`, {
       method: "POST",
@@ -189,12 +234,13 @@ export const sidecar = {
       method: "PUT",
       body: JSON.stringify({ variables }),
     }),
-  deleteEnvironment: (id: string) =>
-    fetch(`${sidecarBaseUrl}/api/environments/${id}`, { method: "DELETE" }).then(
-      (r) => {
-        if (!r.ok && r.status !== 204) throw new Error(`delete env ${r.status}`);
-      },
-    ),
+  deleteEnvironment: async (id: string) => {
+    const baseUrl = await getSidecarBaseUrl();
+    const r = await fetch(`${baseUrl}/api/environments/${id}`, {
+      method: "DELETE",
+    });
+    if (!r.ok && r.status !== 204) throw new Error(`delete env ${r.status}`);
+  },
 
   inspectWsdl: (wsdl_url: string) =>
     call<WsdlSummary>("/api/soap/inspect", {

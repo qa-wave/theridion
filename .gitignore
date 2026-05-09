@@ -48,6 +48,14 @@ Thumbs.db
 *.deb
 *.rpm
 
+# PyInstaller output (regenerated per-platform, not vendored).
+/apps/sidecar/build/
+/apps/sidecar/dist/
+
+# Sidecar binaries staged into Tauri at build time. Built per-platform
+# in CI; locally via `pnpm sidecar:bundle`.
+/apps/desktop/src-tauri/binaries/
+
 # Logs
 *.log
 logs/
