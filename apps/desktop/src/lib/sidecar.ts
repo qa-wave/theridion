@@ -29,6 +29,7 @@ export interface ExecuteRequestInput {
   body?: string | null;
   timeout_seconds?: number;
   follow_redirects?: boolean;
+  environment_id?: string | null;
 }
 
 export interface ExecuteResponse {
@@ -39,6 +40,25 @@ export interface ExecuteResponse {
   body_size_bytes: number;
   elapsed_ms: number;
   final_url: string;
+  resolved_url?: string | null;
+}
+
+export interface EnvVariable {
+  name: string;
+  value: string;
+  enabled: boolean;
+}
+
+export interface Environment {
+  id: string;
+  name: string;
+  variables: EnvVariable[];
+}
+
+export interface EnvironmentSummary {
+  id: string;
+  name: string;
+  variable_count: number;
 }
 
 async function call<T>(path: string, init?: RequestInit): Promise<T> {
@@ -150,5 +170,29 @@ export const sidecar = {
     call<StoredCollection>(
       `/api/collections/${collectionId}/folders/${folderId}`,
       { method: "DELETE" },
+    ),
+
+  listEnvironments: () => call<EnvironmentSummary[]>("/api/environments"),
+  getEnvironment: (id: string) => call<Environment>(`/api/environments/${id}`),
+  createEnvironment: (name: string) =>
+    call<Environment>("/api/environments", {
+      method: "POST",
+      body: JSON.stringify({ name }),
+    }),
+  renameEnvironment: (id: string, name: string) =>
+    call<Environment>(`/api/environments/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ name }),
+    }),
+  replaceEnvironmentVariables: (id: string, variables: EnvVariable[]) =>
+    call<Environment>(`/api/environments/${id}/variables`, {
+      method: "PUT",
+      body: JSON.stringify({ variables }),
+    }),
+  deleteEnvironment: (id: string) =>
+    fetch(`${sidecarBaseUrl}/api/environments/${id}`, { method: "DELETE" }).then(
+      (r) => {
+        if (!r.ok && r.status !== 204) throw new Error(`delete env ${r.status}`);
+      },
     ),
 };

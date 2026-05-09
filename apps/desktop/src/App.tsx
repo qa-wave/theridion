@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import {
   sidecar,
   type CollectionItem,
+  type EnvironmentSummary,
   type ExecuteRequestInput,
   type HealthResponse,
   type StoredCollection,
@@ -21,8 +22,10 @@ import { RequestPanel } from "./components/RequestPanel";
 import { ResponsePanel } from "./components/ResponsePanel";
 import { StatusBar } from "./components/StatusBar";
 import { SavePopover } from "./components/SavePopover";
+import { EnvManagerModal } from "./components/EnvManagerModal";
 
 const APP_VERSION = "0.0.1";
+const ACTIVE_ENV_KEY = "theridion.activeEnvironmentId";
 
 type SidecarStatus =
   | { state: "checking" }
@@ -38,6 +41,14 @@ export default function App() {
   const [tabs, setTabs] = useState<RequestTab[]>([newRequestTab()]);
   const [activeId, setActiveId] = useState<string>(tabs[0].id);
   const [savePopoverOpen, setSavePopoverOpen] = useState(false);
+
+  const [environments, setEnvironments] = useState<EnvironmentSummary[]>([]);
+  const [activeEnvId, setActiveEnvId] = useState<string | null>(() =>
+    typeof window !== "undefined"
+      ? window.localStorage.getItem(ACTIVE_ENV_KEY)
+      : null,
+  );
+  const [envManagerOpen, setEnvManagerOpen] = useState(false);
 
   // ---- sidecar health polling ---------------------------------------------
   useEffect(() => {
@@ -82,8 +93,32 @@ export default function App() {
   useEffect(() => {
     if (sidecarStatus.state === "ok") {
       void refreshCollections();
+      void refreshEnvironments();
     }
   }, [sidecarStatus.state, refreshCollections]);
+
+  const refreshEnvironments = useCallback(async () => {
+    try {
+      const list = await sidecar.listEnvironments();
+      setEnvironments(list);
+      // If the persisted active env no longer exists, clear it.
+      setActiveEnvId((curr) =>
+        curr && list.some((e) => e.id === curr) ? curr : null,
+      );
+    } catch (e) {
+      console.error("failed to load environments", e);
+    }
+  }, []);
+
+  // Persist the active environment so it survives reloads.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (activeEnvId) {
+      window.localStorage.setItem(ACTIVE_ENV_KEY, activeEnvId);
+    } else {
+      window.localStorage.removeItem(ACTIVE_ENV_KEY);
+    }
+  }, [activeEnvId]);
 
   // ---- tab helpers --------------------------------------------------------
   const active = tabs.find((t) => t.id === activeId) ?? tabs[0];
@@ -141,6 +176,7 @@ export default function App() {
         url: active.url,
         headers: parseHeadersText(active.headersRaw),
         body: active.body.length > 0 ? active.body : null,
+        environment_id: activeEnvId,
       };
       const response = await sidecar.execute(input);
       patchActive({ busy: false, response, error: null, lastRunAt: Date.now() });
@@ -320,6 +356,10 @@ export default function App() {
           onSelect={setActiveId}
           onClose={closeTab}
           onNew={() => newTab()}
+          environments={environments}
+          activeEnvId={activeEnvId}
+          onSelectEnv={setActiveEnvId}
+          onManageEnv={() => setEnvManagerOpen(true)}
         />
         <div className="relative">
           <UrlBar
@@ -371,6 +411,12 @@ export default function App() {
       <div className="col-span-2">
         <StatusBar sidecarStatus={sidecarStatus} appVersion={APP_VERSION} />
       </div>
+
+      <EnvManagerModal
+        open={envManagerOpen}
+        onClose={() => setEnvManagerOpen(false)}
+        onChanged={refreshEnvironments}
+      />
     </div>
   );
 }

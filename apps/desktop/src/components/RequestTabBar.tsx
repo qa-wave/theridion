@@ -1,6 +1,8 @@
 import { Plus, X } from "lucide-react";
 import { HTTP_METHOD_COLOR, isDirty } from "../state/types";
 import type { RequestTab } from "../state/types";
+import type { EnvironmentSummary } from "../lib/sidecar";
+import { EnvDropdown } from "./EnvDropdown";
 
 interface Props {
   tabs: RequestTab[];
@@ -8,9 +10,23 @@ interface Props {
   onSelect: (id: string) => void;
   onClose: (id: string) => void;
   onNew: () => void;
+  environments: EnvironmentSummary[];
+  activeEnvId: string | null;
+  onSelectEnv: (id: string | null) => void;
+  onManageEnv: () => void;
 }
 
-export function RequestTabBar({ tabs, activeId, onSelect, onClose, onNew }: Props) {
+export function RequestTabBar({
+  tabs,
+  activeId,
+  onSelect,
+  onClose,
+  onNew,
+  environments,
+  activeEnvId,
+  onSelectEnv,
+  onManageEnv,
+}: Props) {
   return (
     <div className="flex items-stretch gap-px border-b border-neutral-800 bg-neutral-925 pl-2">
       <div className="flex flex-1 items-stretch gap-px overflow-x-auto">
@@ -65,6 +81,14 @@ export function RequestTabBar({ tabs, activeId, onSelect, onClose, onNew }: Prop
       >
         <Plus className="h-3.5 w-3.5" />
       </button>
+      <div className="flex items-center pr-2">
+        <EnvDropdown
+          environments={environments}
+          activeId={activeEnvId}
+          onSelect={onSelectEnv}
+          onManage={onManageEnv}
+        />
+      </div>
     </div>
   );
 }
