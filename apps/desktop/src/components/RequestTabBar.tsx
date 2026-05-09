@@ -1,4 +1,4 @@
-import { Globe, Plus, Terminal, X } from "lucide-react";
+import { Clock, Globe, Plus, Terminal, X } from "lucide-react";
 import { HTTP_METHOD_COLOR, isDirty } from "../state/types";
 import type { RequestTab } from "../state/types";
 import type { EnvironmentSummary } from "../lib/sidecar";
@@ -12,6 +12,9 @@ interface Props {
   onNew: () => void;
   onOpenSoap: () => void;
   onImportCurl: () => void;
+  onToggleHistory: () => void;
+  historyOpen: boolean;
+  historyCount: number;
   environments: EnvironmentSummary[];
   activeEnvId: string | null;
   onSelectEnv: (id: string | null) => void;
@@ -26,6 +29,9 @@ export function RequestTabBar({
   onNew,
   onOpenSoap,
   onImportCurl,
+  onToggleHistory,
+  historyOpen,
+  historyCount,
   environments,
   activeEnvId,
   onSelectEnv,
@@ -102,6 +108,20 @@ export function RequestTabBar({
       >
         <Globe className="h-3.5 w-3.5" />
         SOAP
+      </button>
+      <button
+        type="button"
+        onClick={onToggleHistory}
+        title="Toggle history"
+        className={`inline-flex items-center gap-1 px-2 text-[11px] transition hover:bg-neutral-900/50 hover:text-neutral-100 ${
+          historyOpen ? "text-emerald-400" : "text-neutral-500"
+        }`}
+      >
+        <Clock className="h-3.5 w-3.5" />
+        History
+        {historyCount > 0 && (
+          <span className="text-neutral-600">{historyCount}</span>
+        )}
       </button>
       <div className="flex items-center pr-2">
         <EnvDropdown

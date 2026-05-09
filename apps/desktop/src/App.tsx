@@ -25,6 +25,7 @@ import { StatusBar } from "./components/StatusBar";
 import { SavePopover } from "./components/SavePopover";
 import { EnvManagerModal } from "./components/EnvManagerModal";
 import { CurlImportModal } from "./components/CurlImportModal";
+import { HistoryPanel, type HistoryEntry } from "./components/HistoryPanel";
 import { SoapModal } from "./components/SoapModal";
 
 const APP_VERSION = "0.0.1";
@@ -54,6 +55,8 @@ export default function App() {
   const [envManagerOpen, setEnvManagerOpen] = useState(false);
   const [soapModalOpen, setSoapModalOpen] = useState(false);
   const [curlImportOpen, setCurlImportOpen] = useState(false);
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   // ---- sidecar health polling ---------------------------------------------
   useEffect(() => {
@@ -186,6 +189,17 @@ export default function App() {
       };
       const response = await sidecar.execute(input);
       patchActive({ busy: false, response, error: null, lastRunAt: Date.now() });
+      setHistory((prev) => [
+        {
+          id: crypto.randomUUID(),
+          method: active.method,
+          url: active.url,
+          status: response.status,
+          elapsed_ms: response.elapsed_ms,
+          timestamp: Date.now(),
+        },
+        ...prev,
+      ].slice(0, 100));
     } catch (e: unknown) {
       patchActive({
         busy: false,
@@ -413,6 +427,9 @@ export default function App() {
           onClose={closeTab}
           onNew={() => newTab()}
           onImportCurl={() => setCurlImportOpen(true)}
+          onToggleHistory={() => setHistoryOpen((o) => !o)}
+          historyOpen={historyOpen}
+          historyCount={history.length}
           onOpenSoap={() => setSoapModalOpen(true)}
           environments={environments}
           activeEnvId={activeEnvId}
@@ -446,7 +463,7 @@ export default function App() {
             onCreateCollection={newCollectionFromPopover}
           />
         </div>
-        <div className="grid min-h-0 flex-1 grid-cols-2">
+        <div className={`grid min-h-0 flex-1 ${historyOpen ? "grid-cols-[1fr_1fr_240px]" : "grid-cols-2"}`}>
           <div className="min-h-0 overflow-hidden border-r border-neutral-800">
             <RequestPanel
               url={active.url}
@@ -466,6 +483,17 @@ export default function App() {
               error={active.error}
             />
           </div>
+          {historyOpen && (
+            <div className="min-h-0 overflow-hidden border-l border-neutral-800 bg-neutral-925">
+              <HistoryPanel
+                entries={history}
+                onSelect={(entry) => {
+                  newTab({ method: entry.method, url: entry.url });
+                }}
+                onClear={() => setHistory([])}
+              />
+            </div>
+          )}
         </div>
       </main>
 
