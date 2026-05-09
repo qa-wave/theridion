@@ -313,6 +313,17 @@ export const sidecar = {
       body: JSON.stringify(input),
     }),
 
+  executeGraphQL: (input: GraphQLExecuteInput) =>
+    call<GraphQLResponse>("/api/graphql/execute", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  introspectGraphQL: (url: string, headers?: Record<string, string>, environment_id?: string | null) =>
+    call<IntrospectOutput>("/api/graphql/introspect", {
+      method: "POST",
+      body: JSON.stringify({ url, headers: headers ?? {}, environment_id }),
+    }),
+
   inspectWsdl: (wsdl_url: string) =>
     call<WsdlSummary>("/api/soap/inspect", {
       method: "POST",
@@ -354,6 +365,39 @@ export interface AssertionEvalOutput {
   passed: number;
   failed: number;
   total: number;
+}
+
+// ---- GraphQL types ------------------------------------------------------
+
+export interface GraphQLExecuteInput {
+  url: string;
+  query: string;
+  variables?: Record<string, unknown>;
+  operation_name?: string;
+  headers?: Record<string, string>;
+  environment_id?: string | null;
+}
+
+export interface GraphQLResponse {
+  data: unknown;
+  errors: Array<{ message: string; [key: string]: unknown }> | null;
+  status: number;
+  elapsed_ms: number;
+  raw_body: string;
+}
+
+export interface GraphQLType {
+  name: string;
+  kind: string;
+  description: string | null;
+  fields: Array<Record<string, unknown>>;
+}
+
+export interface IntrospectOutput {
+  types: GraphQLType[];
+  query_type: string | null;
+  mutation_type: string | null;
+  subscription_type: string | null;
 }
 
 // ---- cURL types ---------------------------------------------------------
