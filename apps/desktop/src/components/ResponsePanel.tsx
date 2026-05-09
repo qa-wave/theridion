@@ -1,9 +1,9 @@
 import { useMemo, useState } from "react";
 import { AlertTriangle, Copy, Inbox } from "lucide-react";
-import type { ExecuteResponse } from "../lib/sidecar";
+import type { ExecuteResponse, TimingBreakdown } from "../lib/sidecar";
 import { CodeEditor } from "./CodeEditor";
 
-type Tab = "body" | "headers";
+type Tab = "body" | "headers" | "cookies" | "timing";
 
 interface Props {
   busy: boolean;
@@ -26,9 +26,20 @@ export function ResponsePanel({ busy, response, error }: Props) {
         <TabButton active={tab === "headers"} onClick={() => setTab("headers")}>
           Headers <span className="ml-1 text-neutral-500">{Object.keys(response.headers).length}</span>
         </TabButton>
+        {response.cookies && Object.keys(response.cookies).length > 0 && (
+          <TabButton active={tab === "cookies"} onClick={() => setTab("cookies")}>
+            Cookies <span className="ml-1 text-neutral-500">{Object.keys(response.cookies).length}</span>
+          </TabButton>
+        )}
+        <TabButton active={tab === "timing"} onClick={() => setTab("timing")}>
+          Timing
+        </TabButton>
       </div>
       <div className="min-h-0 flex-1 overflow-hidden">
-        {tab === "body" ? <BodyView res={response} /> : <HeadersView res={response} />}
+        {tab === "body" && <BodyView res={response} />}
+        {tab === "headers" && <HeadersView res={response} />}
+        {tab === "cookies" && <CookiesView res={response} />}
+        {tab === "timing" && <TimingView res={response} />}
       </div>
     </div>
   );
@@ -137,6 +148,90 @@ function HeadersView({ res }: { res: ExecuteResponse }) {
           ))}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+function CookiesView({ res }: { res: ExecuteResponse }) {
+  const entries = Object.entries(res.cookies ?? {});
+  if (entries.length === 0) {
+    return (
+      <div className="flex h-full items-center justify-center text-xs text-neutral-500">
+        No cookies in this response
+      </div>
+    );
+  }
+  return (
+    <div className="overflow-auto">
+      <table className="w-full text-xs">
+        <thead className="sticky top-0 bg-neutral-925 text-[11px] uppercase tracking-wider text-neutral-500">
+          <tr>
+            <th className="px-4 py-1.5 text-left font-medium">Name</th>
+            <th className="px-4 py-1.5 text-left font-medium">Value</th>
+          </tr>
+        </thead>
+        <tbody>
+          {entries.map(([k, v]) => (
+            <tr key={k} className="border-t border-neutral-800/60 hover:bg-neutral-900/40">
+              <td className="px-4 py-1.5 font-mono text-neutral-400">{k}</td>
+              <td className="px-4 py-1.5 font-mono text-neutral-100 break-all">{v}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+const TIMING_PHASES: { key: keyof TimingBreakdown; label: string; color: string }[] = [
+  { key: "dns_ms", label: "DNS Lookup", color: "bg-cyan-500" },
+  { key: "connect_ms", label: "TCP Connect", color: "bg-emerald-500" },
+  { key: "tls_ms", label: "TLS Handshake", color: "bg-amber-500" },
+  { key: "transfer_ms", label: "Transfer", color: "bg-violet-500" },
+];
+
+function TimingView({ res }: { res: ExecuteResponse }) {
+  const t = res.timing;
+  if (!t) {
+    return (
+      <div className="flex h-full items-center justify-center text-xs text-neutral-500">
+        No timing data available
+      </div>
+    );
+  }
+  const total = t.total_ms || 1;
+  return (
+    <div className="p-4">
+      <p className="mb-3 text-[11px] uppercase tracking-wider text-neutral-500">
+        Request timing — {formatMs(t.total_ms)} total
+      </p>
+      <div className="space-y-2">
+        {TIMING_PHASES.map((phase) => {
+          const val = t[phase.key];
+          if (!val) return null;
+          const pct = Math.max(2, (val / total) * 100);
+          return (
+            <div key={phase.key}>
+              <div className="mb-0.5 flex items-baseline justify-between text-xs">
+                <span className="text-neutral-400">{phase.label}</span>
+                <span className="font-mono text-neutral-200">{formatMs(val)}</span>
+              </div>
+              <div className="h-2 w-full overflow-hidden rounded-full bg-neutral-800">
+                <div
+                  className={`h-full rounded-full ${phase.color}`}
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <div className="mt-4 border-t border-neutral-800 pt-3">
+        <div className="flex items-baseline justify-between text-xs">
+          <span className="font-medium text-neutral-300">Total</span>
+          <span className="font-mono font-bold text-neutral-100">{formatMs(t.total_ms)}</span>
+        </div>
+      </div>
     </div>
   );
 }

@@ -93,6 +93,14 @@ export interface ExecuteRequestInput {
   environment_id?: string | null;
 }
 
+export interface TimingBreakdown {
+  dns_ms: number;
+  connect_ms: number;
+  tls_ms: number;
+  transfer_ms: number;
+  total_ms: number;
+}
+
 export interface ExecuteResponse {
   status: number;
   status_text: string;
@@ -100,6 +108,7 @@ export interface ExecuteResponse {
   body: string;
   body_size_bytes: number;
   elapsed_ms: number;
+  timing?: TimingBreakdown | null;
   final_url: string;
   resolved_url?: string | null;
   cookies?: Record<string, string>;
