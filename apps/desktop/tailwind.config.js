@@ -1,23 +1,29 @@
 /** @type {import('tailwindcss').Config} */
+
+function withOpacity(varName) {
+  return `rgb(var(${varName}) / <alpha-value>)`;
+}
+
 export default {
   content: ["./index.html", "./src/**/*.{ts,tsx}"],
   theme: {
     extend: {
       colors: {
         "neutral-925": "#121214",
-        // Theridion branded cobweb palette — teal-cyan spine.
+        // Dynamic cobweb palette — driven by CSS variables so themes
+        // can swap the entire accent spine by changing --accent-* vars.
         cobweb: {
-          50: "#ecfeff",
-          100: "#cffafe",
-          200: "#a5f3fc",
-          300: "#67e8f9",
-          400: "#22d3ee",
-          500: "#06b6d4",
-          600: "#0891b2",
-          700: "#0e7490",
-          800: "#155e75",
-          900: "#164e63",
-          950: "#083344",
+          50:  withOpacity("--accent-50"),
+          100: withOpacity("--accent-100"),
+          200: withOpacity("--accent-200"),
+          300: withOpacity("--accent-300"),
+          400: withOpacity("--accent-400"),
+          500: withOpacity("--accent-500"),
+          600: withOpacity("--accent-600"),
+          700: withOpacity("--accent-700"),
+          800: withOpacity("--accent-800"),
+          900: withOpacity("--accent-900"),
+          950: withOpacity("--accent-950"),
         },
       },
       fontFamily: {
@@ -39,14 +45,14 @@ export default {
         ],
       },
       boxShadow: {
-        glow: "0 0 20px -4px rgba(6, 182, 212, 0.25)",
-        "glow-sm": "0 0 10px -2px rgba(6, 182, 212, 0.2)",
-        "glow-emerald": "0 0 20px -4px rgba(16, 185, 129, 0.25)",
+        glow: "0 0 20px -4px rgb(var(--accent-glow) / 0.25)",
+        "glow-sm": "0 0 10px -2px rgb(var(--accent-glow) / 0.2)",
+        "glow-emerald": "0 0 20px -4px rgb(var(--accent-glow) / 0.25)",
         "inner-glow": "inset 0 1px 0 0 rgba(255,255,255,0.03)",
       },
       backgroundImage: {
         "mesh-gradient":
-          "radial-gradient(at 20% 80%, rgba(6,182,212,0.04) 0%, transparent 50%), radial-gradient(at 80% 20%, rgba(16,185,129,0.03) 0%, transparent 50%)",
+          "radial-gradient(at 20% 80%, var(--mesh-a) 0%, transparent 50%), radial-gradient(at 80% 20%, var(--mesh-b) 0%, transparent 50%)",
       },
       animation: {
         "pulse-slow": "pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite",

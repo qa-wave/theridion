@@ -181,7 +181,7 @@ export function SavePopover({
             type="button"
             onClick={handleSave}
             disabled={busy}
-            className="rounded-md bg-gradient-to-r from-cobweb-600 to-emerald-600 px-4 py-1.5 text-xs font-medium text-white shadow-glow-sm transition hover:from-cobweb-500 hover:to-emerald-500 disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
+            className="rounded-md bg-accent-gradient px-4 py-1.5 text-xs font-medium text-white shadow-glow-sm transition disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
           >
             {busy ? "Saving\u2026" : "Save"}
           </button>

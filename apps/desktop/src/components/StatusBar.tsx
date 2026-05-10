@@ -1,4 +1,7 @@
+import { useEffect, useRef, useState } from "react";
+import { Palette } from "lucide-react";
 import type { HealthResponse } from "../lib/sidecar";
+import { THEMES, applyTheme, loadTheme, type ThemeId } from "../state/theme";
 
 interface Props {
   sidecarStatus:
@@ -43,10 +46,80 @@ export function StatusBar({ sidecarStatus, appVersion }: Props) {
           </span>
         )}
       </span>
-      <span className="ml-auto font-mono text-[10px] text-neutral-600">
-        Theridion v{appVersion}
+
+      <span className="ml-auto flex items-center gap-3">
+        <ThemePicker />
+        <span className="font-mono text-[10px] text-neutral-600">
+          Theridion v{appVersion}
+        </span>
       </span>
     </footer>
+  );
+}
+
+function ThemePicker() {
+  const [open, setOpen] = useState(false);
+  const [current, setCurrent] = useState<ThemeId>(loadTheme);
+  const ref = useRef<HTMLDivElement>(null);
+
+  // Apply theme on mount.
+  useEffect(() => { applyTheme(current); }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    function onClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    window.addEventListener("mousedown", onClick);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("mousedown", onClick);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  function pick(id: ThemeId) {
+    setCurrent(id);
+    applyTheme(id);
+    setOpen(false);
+  }
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-neutral-500 transition hover:bg-white/[0.05] hover:text-neutral-300"
+        title="Theme"
+      >
+        <Palette className="h-3 w-3" />
+      </button>
+      {open && (
+        <div className="glass absolute bottom-full right-0 z-50 mb-1.5 w-44 animate-fade-in rounded-lg border border-glass-light p-1 shadow-xl shadow-black/50">
+          {THEMES.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => pick(t.id)}
+              className={`flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-[11px] transition ${
+                current === t.id
+                  ? "bg-white/[0.06] text-neutral-100"
+                  : "text-neutral-400 hover:bg-white/[0.03] hover:text-neutral-200"
+              }`}
+            >
+              <span className={`inline-block h-2.5 w-2.5 rounded-full ${t.dot}`} />
+              {t.label}
+              {current === t.id && (
+                <span className="ml-auto text-cobweb-400">&#x2713;</span>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 

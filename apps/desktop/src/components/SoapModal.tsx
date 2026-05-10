@@ -211,7 +211,7 @@ export function SoapModal({ open, onClose }: Props) {
                         type="button"
                         onClick={execute}
                         disabled={busy === "execute"}
-                        className="inline-flex items-center gap-1.5 rounded bg-gradient-to-r from-cobweb-600 to-emerald-600 px-3 py-1 text-xs font-medium text-white transition hover:from-cobweb-500 hover:to-emerald-500 disabled:cursor-not-allowed disabled:bg-neutral-700"
+                        className="inline-flex items-center gap-1.5 rounded bg-accent-gradient px-3 py-1 text-xs font-medium text-white transition disabled:cursor-not-allowed disabled:bg-neutral-700"
                       >
                         {busy === "execute" ? (
                           <Loader2 className="h-3 w-3 animate-spin" />

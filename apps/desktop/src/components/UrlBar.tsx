@@ -122,7 +122,7 @@ export function UrlBar({
         disabled={!canSend}
         className={`inline-flex items-center gap-2 rounded-lg px-5 py-1.5 text-sm font-semibold tracking-wide text-white transition-all duration-200 disabled:cursor-not-allowed disabled:bg-neutral-800 disabled:text-neutral-500 disabled:shadow-none ${
           canSend
-            ? "bg-gradient-to-r from-emerald-600 to-cobweb-600 shadow-glow-emerald hover:from-emerald-500 hover:to-cobweb-500 hover:shadow-glow active:scale-[0.97]"
+            ? "bg-accent-gradient shadow-glow-emerald hover:shadow-glow active:scale-[0.97]"
             : ""
         }`}
       >

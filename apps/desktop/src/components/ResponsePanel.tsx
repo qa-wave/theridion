@@ -64,7 +64,7 @@ function TabButton({
     >
       {children}
       {active && (
-        <span className="absolute inset-x-2 bottom-0 h-0.5 rounded-full bg-gradient-to-r from-cobweb-500 to-emerald-500" aria-hidden />
+        <span className="absolute inset-x-2 bottom-0 h-0.5 rounded-full bg-accent-gradient-bar" aria-hidden />
       )}
     </button>
   );
@@ -257,7 +257,7 @@ function Loading() {
   return (
     <div className="flex h-full flex-col items-center justify-center text-center text-xs text-neutral-500">
       <div className="mb-4 h-1 w-40 overflow-hidden rounded-full bg-neutral-900">
-        <div className="h-full w-1/3 animate-[loading_1.4s_ease-in-out_infinite] rounded-full bg-gradient-to-r from-cobweb-500 to-emerald-500" />
+        <div className="h-full w-1/3 animate-[loading_1.4s_ease-in-out_infinite] rounded-full bg-accent-gradient-bar" />
       </div>
       <span className="tracking-wide">Sending request&hellip;</span>
       <style>{`@keyframes loading{0%{transform:translateX(-100%)}100%{transform:translateX(400%)}}`}</style>

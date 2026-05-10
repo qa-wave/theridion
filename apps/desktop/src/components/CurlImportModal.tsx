@@ -104,7 +104,7 @@ export function CurlImportModal({ open, onClose, onImport }: Props) {
             type="button"
             onClick={handleImport}
             disabled={busy || !curlText.trim()}
-            className="rounded-md bg-gradient-to-r from-cobweb-600 to-emerald-600 px-4 py-1.5 text-xs font-medium text-white shadow-glow-sm transition hover:from-cobweb-500 hover:to-emerald-500 disabled:opacity-40 disabled:shadow-none"
+            className="rounded-md bg-accent-gradient px-4 py-1.5 text-xs font-medium text-white shadow-glow-sm transition disabled:opacity-40 disabled:shadow-none"
           >
             {busy ? "Parsing\u2026" : "Import"}
           </button>

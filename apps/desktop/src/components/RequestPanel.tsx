@@ -71,10 +71,10 @@ export function RequestPanel({
                 <span className="ml-1 text-neutral-500">{testCount}</span>
               )}
               {badge && (
-                <span className="ml-1 inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                <span className="ml-1 inline-block h-1.5 w-1.5 rounded-full bg-cobweb-500" />
               )}
               {active && (
-                <span className="absolute inset-x-2 bottom-0 h-0.5 rounded-full bg-gradient-to-r from-cobweb-500 to-emerald-500" aria-hidden />
+                <span className="absolute inset-x-2 bottom-0 h-0.5 rounded-full bg-accent-gradient-bar" aria-hidden />
               )}
             </button>
           );

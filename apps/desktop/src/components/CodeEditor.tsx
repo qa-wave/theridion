@@ -53,46 +53,61 @@ export function CodeEditor({
   const lang = language ?? guessLanguage(value, contentTypeHint);
 
   const handleMount: OnMount = (editor, monaco) => {
-    // Define a theme that matches our UI chrome — slightly lifted background
-    // so the editor reads as a panel, not a hole.
-    monaco.editor.defineTheme("theridion-dark", {
-      base: "vs-dark",
-      inherit: true,
-      rules: [
-        { token: "comment", foreground: "525252", fontStyle: "italic" },
-        { token: "string.key.json", foreground: "67e8f9" },
-        { token: "string.value.json", foreground: "6ee7b7" },
-        { token: "number", foreground: "fcd34d" },
-        { token: "keyword.json", foreground: "c4b5fd" },
-        { token: "keyword", foreground: "c4b5fd" },
-        { token: "tag", foreground: "f472b6" },
-        { token: "attribute.name", foreground: "67e8f9" },
-        { token: "attribute.value", foreground: "6ee7b7" },
-        { token: "string", foreground: "6ee7b7" },
-        { token: "delimiter", foreground: "525252" },
-      ],
-      colors: {
-        "editor.background": "#0c0c0e",
-        "editor.foreground": "#d4d4d8",
-        "editorLineNumber.foreground": "#3f3f46",
-        "editorLineNumber.activeForeground": "#71717a",
-        "editor.lineHighlightBackground": "#18181b",
-        "editor.lineHighlightBorder": "#00000000",
-        "editorCursor.foreground": "#06b6d4",
-        "editor.selectionBackground": "#06b6d430",
-        "editorBracketMatch.background": "#06b6d420",
-        "editorBracketMatch.border": "#06b6d460",
-        "editorGutter.background": "#0c0c0e",
-        "editor.inactiveSelectionBackground": "#06b6d415",
-        "editorIndentGuide.background1": "#27272a",
-        "editorWidget.background": "#18181b",
-        "editorWidget.border": "#27272a",
-      },
-    });
-    monaco.editor.setTheme("theridion-dark");
+    function applyTheme() {
+      const s = getComputedStyle(document.documentElement);
+      const accent = (shade: string) => {
+        const raw = s.getPropertyValue(`--accent-${shade}`).trim();
+        // CSS var is "R G B" space-separated — convert to hex.
+        const parts = raw.split(/\s+/).map(Number);
+        if (parts.length === 3) return parts.map((n) => n.toString(16).padStart(2, "0")).join("");
+        return "06b6d4"; // fallback
+      };
+      const a500 = accent("500");
+      const a300 = accent("300");
+
+      monaco.editor.defineTheme("theridion-dark", {
+        base: "vs-dark",
+        inherit: true,
+        rules: [
+          { token: "comment", foreground: "525252", fontStyle: "italic" },
+          { token: "string.key.json", foreground: a300 },
+          { token: "string.value.json", foreground: "6ee7b7" },
+          { token: "number", foreground: "fcd34d" },
+          { token: "keyword.json", foreground: "c4b5fd" },
+          { token: "keyword", foreground: "c4b5fd" },
+          { token: "tag", foreground: "f472b6" },
+          { token: "attribute.name", foreground: a300 },
+          { token: "attribute.value", foreground: "6ee7b7" },
+          { token: "string", foreground: "6ee7b7" },
+          { token: "delimiter", foreground: "525252" },
+        ],
+        colors: {
+          "editor.background": "#0c0c0e",
+          "editor.foreground": "#d4d4d8",
+          "editorLineNumber.foreground": "#3f3f46",
+          "editorLineNumber.activeForeground": "#71717a",
+          "editor.lineHighlightBackground": "#18181b",
+          "editor.lineHighlightBorder": "#00000000",
+          "editorCursor.foreground": `#${a500}`,
+          "editor.selectionBackground": `#${a500}30`,
+          "editorBracketMatch.background": `#${a500}20`,
+          "editorBracketMatch.border": `#${a500}60`,
+          "editorGutter.background": "#0c0c0e",
+          "editor.inactiveSelectionBackground": `#${a500}15`,
+          "editorIndentGuide.background1": "#27272a",
+          "editorWidget.background": "#18181b",
+          "editorWidget.border": "#27272a",
+        },
+      });
+      monaco.editor.setTheme("theridion-dark");
+    }
+
+    applyTheme();
+    // Re-apply when theme changes (class on <html> switches CSS vars).
+    const obs = new MutationObserver(() => applyTheme());
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+
     setReady(true);
-    // Re-layout after mount so the editor measures the container correctly
-    // when it pops in inside a freshly-shown tab.
     requestAnimationFrame(() => editor.layout());
   };
 

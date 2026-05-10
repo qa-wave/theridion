@@ -202,7 +202,7 @@ export function EnvManagerModal({ open, onClose, onChanged }: Props) {
                     type="button"
                     onClick={saveActive}
                     disabled={!dirty || busy}
-                    className="inline-flex items-center gap-1.5 rounded-md bg-gradient-to-r from-cobweb-600 to-emerald-600 px-3 py-1 text-[11px] font-medium text-white shadow-glow-sm transition hover:from-cobweb-500 hover:to-emerald-500 disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
+                    className="inline-flex items-center gap-1.5 rounded-md bg-accent-gradient px-3 py-1 text-[11px] font-medium text-white shadow-glow-sm transition disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
                   >
                     <Save className="h-3 w-3" />
                     {busy ? "Saving\u2026" : "Save"}
