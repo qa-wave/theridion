@@ -113,11 +113,11 @@ export function SoapModal({ open, onClose }: Props) {
       <div
         role="dialog"
         aria-label="SOAP / WSDL"
-        className="flex h-[760px] w-[1080px] max-w-[95vw] flex-col overflow-hidden rounded-xl border border-neutral-700 bg-neutral-950 shadow-2xl"
+        className="flex h-[760px] w-[1080px] max-w-[95vw] flex-col overflow-hidden rounded-xl border border-glass-light glass shadow-2xl"
       >
-        <header className="flex items-center justify-between border-b border-neutral-800 px-4 py-3">
+        <header className="flex items-center justify-between border-b border-glass px-4 py-3">
           <h2 className="inline-flex items-center gap-2 text-sm font-semibold text-neutral-100">
-            <Globe className="h-4 w-4 text-emerald-400" /> SOAP / WSDL
+            <Globe className="h-4 w-4 text-cobweb-400" /> SOAP / WSDL
           </h2>
           <button
             type="button"
@@ -128,7 +128,7 @@ export function SoapModal({ open, onClose }: Props) {
           </button>
         </header>
 
-        <div className="flex items-center gap-2 border-b border-neutral-800 px-4 py-3">
+        <div className="flex items-center gap-2 border-b border-glass px-4 py-3">
           <input
             value={wsdlUrl}
             onChange={(e) => setWsdlUrl(e.target.value)}
@@ -181,8 +181,8 @@ export function SoapModal({ open, onClose }: Props) {
               </div>
             ) : (
               <>
-                <div className="border-b border-neutral-800 bg-neutral-925 px-4 py-2.5 text-xs">
-                  <div className="font-mono text-emerald-300">
+                <div className="border-b border-glass bg-neutral-950/40 px-4 py-2.5 text-xs">
+                  <div className="font-mono text-cobweb-300">
                     {picked.operation.name}
                   </div>
                   <div className="mt-0.5 text-neutral-500">
@@ -201,7 +201,7 @@ export function SoapModal({ open, onClose }: Props) {
                   )}
                 </div>
 
-                <div className="grid min-h-0 flex-1 grid-rows-2 divide-y divide-neutral-800">
+                <div className="grid min-h-0 flex-1 grid-rows-2 divide-y divide-glass">
                   <div className="flex min-h-0 flex-col">
                     <div className="flex items-center justify-between px-4 pt-3 pb-2">
                       <span className="text-[10px] font-semibold uppercase tracking-wider text-neutral-500">
@@ -211,7 +211,7 @@ export function SoapModal({ open, onClose }: Props) {
                         type="button"
                         onClick={execute}
                         disabled={busy === "execute"}
-                        className="inline-flex items-center gap-1.5 rounded bg-emerald-600 px-3 py-1 text-xs font-medium text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:bg-neutral-700"
+                        className="inline-flex items-center gap-1.5 rounded bg-gradient-to-r from-cobweb-600 to-emerald-600 px-3 py-1 text-xs font-medium text-white transition hover:from-cobweb-500 hover:to-emerald-500 disabled:cursor-not-allowed disabled:bg-neutral-700"
                       >
                         {busy === "execute" ? (
                           <Loader2 className="h-3 w-3 animate-spin" />
@@ -239,7 +239,7 @@ export function SoapModal({ open, onClose }: Props) {
                         <span
                           className={`rounded border px-2 py-0.5 font-mono text-[10px] ${
                             result.ok
-                              ? "border-emerald-700 bg-emerald-950/40 text-emerald-300"
+                              ? "border-emerald-700 bg-emerald-950/40 text-cobweb-300"
                               : "border-rose-700 bg-rose-950/40 text-rose-300"
                           }`}
                         >
@@ -287,7 +287,7 @@ function OperationsList({
   busy: boolean;
 }) {
   return (
-    <div className="flex w-72 shrink-0 flex-col overflow-y-auto border-r border-neutral-800 bg-neutral-925 py-2">
+    <div className="flex w-72 shrink-0 flex-col overflow-y-auto border-r border-glass bg-neutral-950/40 py-2">
       {busy && (
         <p className="px-4 py-3 text-xs text-neutral-500">Inspecting WSDL…</p>
       )}
@@ -324,7 +324,7 @@ function OperationsList({
                     }
                     className={`flex w-full items-center gap-2 px-4 py-1 text-left text-xs transition ${
                       isActive
-                        ? "bg-emerald-950/40 text-emerald-200"
+                        ? "bg-cobweb-950/30 text-cobweb-200"
                         : "text-neutral-300 hover:bg-neutral-800/60"
                     }`}
                   >

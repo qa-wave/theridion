@@ -118,7 +118,7 @@ function ParamsView({ url, onUrlChange }: { url: string; onUrlChange: (u: string
   return (
     <div>
       <p className="mb-2 text-[11px] uppercase tracking-wider text-neutral-500">Query parameters</p>
-      <div className="overflow-hidden rounded border border-neutral-800">
+      <div className="overflow-hidden rounded border border-glass">
         <table className="w-full text-xs">
           <thead className="bg-neutral-900/60 text-neutral-500">
             <tr>
@@ -136,7 +136,7 @@ function ParamsView({ url, onUrlChange }: { url: string; onUrlChange: (u: string
               </tr>
             )}
             {parsed.params.map((p, idx) => (
-              <tr key={idx} className="border-t border-neutral-800">
+              <tr key={idx} className="border-t border-glass">
                 <td>
                   <input
                     value={p.key}
@@ -173,7 +173,7 @@ function ParamsView({ url, onUrlChange }: { url: string; onUrlChange: (u: string
       <button
         type="button"
         onClick={addParam}
-        className="mt-2 text-xs text-emerald-500 hover:text-emerald-400"
+        className="mt-2 text-xs text-cobweb-400 hover:text-cobweb-300"
       >
         + Add parameter
       </button>
@@ -192,7 +192,7 @@ function HeadersView({ value, onChange }: { value: string; onChange: (s: string)
         onChange={(e) => onChange(e.target.value)}
         placeholder="Accept: application/json&#10;Authorization: Bearer …"
         rows={14}
-        className="w-full resize-y rounded border border-neutral-800 bg-neutral-900 px-3 py-2 font-mono text-xs text-neutral-100 placeholder-neutral-600 focus:border-neutral-600 focus:outline-none"
+        className="w-full resize-y rounded border border-glass bg-neutral-900/50 px-3 py-2 font-mono text-xs text-neutral-100 placeholder-neutral-600 focus:border-cobweb-500/40 focus:outline-none"
         spellCheck={false}
       />
     </div>
@@ -203,7 +203,7 @@ function BodyView({ value, onChange }: { value: string; onChange: (s: string) =>
   return (
     <div className="flex h-full min-h-0 flex-col">
       <p className="mb-2 text-[11px] uppercase tracking-wider text-neutral-500">Body</p>
-      <div className="min-h-[280px] flex-1 overflow-hidden rounded border border-neutral-800 bg-neutral-900">
+      <div className="min-h-[280px] flex-1 overflow-hidden rounded border border-glass bg-neutral-900/50">
         <CodeEditor
           value={value}
           onChange={onChange}
@@ -229,7 +229,7 @@ function AuthView({
   onChange: (a: AuthConfig) => void;
 }) {
   const inputClass =
-    "w-full rounded border border-neutral-800 bg-neutral-900 px-3 py-1.5 font-mono text-xs text-neutral-100 placeholder-neutral-600 focus:border-neutral-600 focus:outline-none";
+    "w-full rounded border border-glass bg-neutral-900/50 px-3 py-1.5 font-mono text-xs text-neutral-100 placeholder-neutral-600 focus:border-cobweb-500/40 focus:outline-none";
 
   return (
     <div className="space-y-4">
@@ -240,7 +240,7 @@ function AuthView({
           onChange={(e) =>
             onChange({ type: e.target.value as AuthConfig["type"] })
           }
-          className="rounded border border-neutral-800 bg-neutral-900 px-3 py-1.5 text-xs text-neutral-100 focus:border-neutral-600 focus:outline-none"
+          className="rounded border border-glass bg-neutral-900/50 px-3 py-1.5 text-xs text-neutral-100 focus:border-cobweb-500/40 focus:outline-none"
         >
           {AUTH_TYPES.map((a) => (
             <option key={a.value} value={a.value}>
@@ -339,7 +339,7 @@ function AuthView({
                   add_to: e.target.value as "header" | "query",
                 })
               }
-              className="rounded border border-neutral-800 bg-neutral-900 px-3 py-1.5 text-xs text-neutral-100 focus:border-neutral-600 focus:outline-none"
+              className="rounded border border-glass bg-neutral-900/50 px-3 py-1.5 text-xs text-neutral-100 focus:border-cobweb-500/40 focus:outline-none"
             >
               <option value="header">Header</option>
               <option value="query">Query Parameter</option>
@@ -371,7 +371,7 @@ function TestsView({
   onChange: (a: Assertion[]) => void;
 }) {
   const inputClass =
-    "w-full rounded border border-neutral-800 bg-neutral-900 px-2 py-1 font-mono text-xs text-neutral-100 placeholder-neutral-600 focus:border-neutral-600 focus:outline-none";
+    "w-full rounded border border-glass bg-neutral-900/50 px-2 py-1 font-mono text-xs text-neutral-100 placeholder-neutral-600 focus:border-cobweb-500/40 focus:outline-none";
 
   function addAssertion() {
     onChange([
@@ -410,7 +410,7 @@ function TestsView({
         <button
           type="button"
           onClick={addAssertion}
-          className="text-xs text-emerald-500 hover:text-emerald-400"
+          className="text-xs text-cobweb-400 hover:text-cobweb-300"
         >
           + Add assertion
         </button>
@@ -432,7 +432,7 @@ function TestsView({
                 ? result.passed
                   ? "border-emerald-800/50 bg-emerald-950/20"
                   : "border-rose-800/50 bg-rose-950/20"
-                : "border-neutral-800"
+                : "border-glass"
             }`}
           >
             <div className="flex items-start gap-2">
@@ -441,7 +441,7 @@ function TestsView({
                 onChange={(e) =>
                   updateAssertion(idx, { type: e.target.value as Assertion["type"] })
                 }
-                className="shrink-0 rounded border border-neutral-800 bg-neutral-900 px-2 py-1 text-xs text-neutral-100 focus:outline-none"
+                className="shrink-0 rounded border border-glass bg-neutral-900/50 px-2 py-1 text-xs text-neutral-100 focus:outline-none"
               >
                 {ASSERTION_TYPES.map((t) => (
                   <option key={t.value} value={t.value}>
@@ -464,7 +464,7 @@ function TestsView({
                 <select
                   value={a.operator}
                   onChange={(e) => updateAssertion(idx, { operator: e.target.value })}
-                  className="shrink-0 rounded border border-neutral-800 bg-neutral-900 px-2 py-1 text-xs text-neutral-100 focus:outline-none"
+                  className="shrink-0 rounded border border-glass bg-neutral-900/50 px-2 py-1 text-xs text-neutral-100 focus:outline-none"
                 >
                   <option value="eq">equals</option>
                   <option value="neq">not equals</option>

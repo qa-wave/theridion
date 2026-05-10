@@ -9,7 +9,6 @@ interface Props {
   onManage: () => void;
 }
 
-/** Chip-style env selector, designed to live on the right of the tab bar. */
 export function EnvDropdown({ environments, activeId, onSelect, onManage }: Props) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -40,10 +39,10 @@ export function EnvDropdown({ environments, activeId, onSelect, onManage }: Prop
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className={`inline-flex items-center gap-1.5 rounded border px-2 py-1 text-[11px] transition ${
+        className={`inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-[11px] transition ${
           active
-            ? "border-emerald-700/60 bg-emerald-950/40 text-emerald-300 hover:border-emerald-700"
-            : "border-neutral-800 bg-neutral-900 text-neutral-400 hover:border-neutral-700 hover:text-neutral-200"
+            ? "border-cobweb-700/40 bg-cobweb-950/30 text-cobweb-300 hover:border-cobweb-600/50"
+            : "border-glass bg-neutral-900/40 text-neutral-400 hover:border-neutral-700/60 hover:text-neutral-200"
         }`}
         title={active ? `Active environment: ${active.name}` : "No environment"}
       >
@@ -51,49 +50,43 @@ export function EnvDropdown({ environments, activeId, onSelect, onManage }: Prop
         <span className="max-w-[110px] truncate">
           {active ? active.name : "No env"}
         </span>
-        <ChevronDown className="h-3 w-3 opacity-70" />
+        <ChevronDown className="h-3 w-3 opacity-60" />
       </button>
       {open && (
         <div
           role="menu"
-          className="absolute right-0 top-full z-30 mt-1 w-56 rounded-lg border border-neutral-700 bg-neutral-925 shadow-xl shadow-black/40"
+          className="glass absolute right-0 top-full z-30 mt-1.5 w-56 animate-fade-in rounded-lg border border-glass-light shadow-xl shadow-black/50"
         >
-          <div className="border-b border-neutral-800 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-neutral-500">
+          <div className="border-b border-glass px-3 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-neutral-500">
             Environment
           </div>
           <button
             type="button"
-            onClick={() => {
-              onSelect(null);
-              setOpen(false);
-            }}
+            onClick={() => { onSelect(null); setOpen(false); }}
             className={`flex w-full items-center justify-between px-3 py-1.5 text-left text-xs transition ${
               activeId === null
-                ? "bg-neutral-800/60 text-neutral-100"
-                : "text-neutral-300 hover:bg-neutral-800/60"
+                ? "bg-white/[0.04] text-neutral-100"
+                : "text-neutral-400 hover:bg-white/[0.03] hover:text-neutral-200"
             }`}
           >
             <span>None</span>
-            {activeId === null && <span className="text-emerald-400">●</span>}
+            {activeId === null && <span className="text-cobweb-400">&#x25CF;</span>}
           </button>
           {environments.length > 0 && (
-            <div className="max-h-56 overflow-y-auto border-t border-neutral-800/60">
+            <div className="max-h-56 overflow-y-auto border-t border-glass">
               {environments.map((e) => (
                 <button
                   key={e.id}
                   type="button"
-                  onClick={() => {
-                    onSelect(e.id);
-                    setOpen(false);
-                  }}
+                  onClick={() => { onSelect(e.id); setOpen(false); }}
                   className={`flex w-full items-center justify-between px-3 py-1.5 text-left text-xs transition ${
                     activeId === e.id
-                      ? "bg-emerald-950/40 text-emerald-200"
-                      : "text-neutral-300 hover:bg-neutral-800/60"
+                      ? "bg-cobweb-950/30 text-cobweb-200"
+                      : "text-neutral-400 hover:bg-white/[0.03] hover:text-neutral-200"
                   }`}
                 >
                   <span className="truncate">{e.name}</span>
-                  <span className="ml-2 shrink-0 text-[10px] text-neutral-500">
+                  <span className="ml-2 shrink-0 text-[10px] text-neutral-600">
                     {e.variable_count} vars
                   </span>
                 </button>
@@ -102,14 +95,11 @@ export function EnvDropdown({ environments, activeId, onSelect, onManage }: Prop
           )}
           <button
             type="button"
-            onClick={() => {
-              onManage();
-              setOpen(false);
-            }}
-            className="flex w-full items-center gap-2 border-t border-neutral-800 px-3 py-2 text-left text-xs text-neutral-300 transition hover:bg-neutral-800/60"
+            onClick={() => { onManage(); setOpen(false); }}
+            className="flex w-full items-center gap-2 border-t border-glass px-3 py-2 text-left text-xs text-neutral-400 transition hover:bg-white/[0.03] hover:text-neutral-200"
           >
             <Settings2 className="h-3 w-3" />
-            Manage environments…
+            Manage environments&hellip;
           </button>
         </div>
       )}

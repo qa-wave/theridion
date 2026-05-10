@@ -109,7 +109,7 @@ function BodyView({ res }: { res: ExecuteResponse }) {
       <button
         type="button"
         onClick={() => navigator.clipboard?.writeText(res.body)}
-        className="absolute right-3 top-2 z-10 inline-flex items-center gap-1 rounded border border-neutral-800 bg-neutral-900/80 px-2 py-0.5 text-[11px] text-neutral-400 backdrop-blur transition hover:border-neutral-700 hover:text-neutral-200"
+        className="absolute right-3 top-2 z-10 inline-flex items-center gap-1 rounded border border-glass bg-neutral-900/80 px-2 py-0.5 text-[11px] text-neutral-400 backdrop-blur transition hover:border-neutral-700 hover:text-neutral-200"
         title="Copy body"
       >
         <Copy className="h-3 w-3" /> Copy
@@ -137,7 +137,7 @@ function HeadersView({ res }: { res: ExecuteResponse }) {
         </thead>
         <tbody>
           {Object.entries(res.headers).map(([k, v]) => (
-            <tr key={k} className="border-t border-neutral-800/60 hover:bg-neutral-900/40">
+            <tr key={k} className="border-t border-glass/60 hover:bg-neutral-900/40">
               <td className="px-4 py-1.5 font-mono text-neutral-400">{k}</td>
               <td className="px-4 py-1.5 font-mono text-neutral-100 break-all">{v}</td>
             </tr>
@@ -168,7 +168,7 @@ function CookiesView({ res }: { res: ExecuteResponse }) {
         </thead>
         <tbody>
           {entries.map(([k, v]) => (
-            <tr key={k} className="border-t border-neutral-800/60 hover:bg-neutral-900/40">
+            <tr key={k} className="border-t border-glass/60 hover:bg-neutral-900/40">
               <td className="px-4 py-1.5 font-mono text-neutral-400">{k}</td>
               <td className="px-4 py-1.5 font-mono text-neutral-100 break-all">{v}</td>
             </tr>
@@ -222,7 +222,7 @@ function TimingView({ res }: { res: ExecuteResponse }) {
           );
         })}
       </div>
-      <div className="mt-4 border-t border-neutral-800 pt-3">
+      <div className="mt-4 border-t border-glass pt-3">
         <div className="flex items-baseline justify-between text-xs">
           <span className="font-medium text-neutral-300">Total</span>
           <span className="font-mono font-bold text-neutral-100">{formatMs(t.total_ms)}</span>
@@ -241,11 +241,11 @@ function Empty() {
       <p className="text-sm font-medium text-neutral-400">No response yet</p>
       <p className="mt-2 text-xs text-neutral-600">
         Hit{" "}
-        <kbd className="rounded-md border border-neutral-800 bg-neutral-900/80 px-1.5 py-0.5 font-mono text-[10px] text-neutral-400 shadow-inner-glow">
+        <kbd className="rounded-md border border-glass bg-neutral-900/80 px-1.5 py-0.5 font-mono text-[10px] text-neutral-400 shadow-inner-glow">
           Send
         </kbd>{" "}
         or press{" "}
-        <kbd className="rounded-md border border-neutral-800 bg-neutral-900/80 px-1.5 py-0.5 font-mono text-[10px] text-neutral-400 shadow-inner-glow">
+        <kbd className="rounded-md border border-glass bg-neutral-900/80 px-1.5 py-0.5 font-mono text-[10px] text-neutral-400 shadow-inner-glow">
           &#x2318;&#x23CE;
         </kbd>
       </p>

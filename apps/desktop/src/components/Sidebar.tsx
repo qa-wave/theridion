@@ -81,7 +81,7 @@ export function Sidebar({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Filter…"
-            className="w-full rounded border border-neutral-800 bg-neutral-900 py-1.5 pl-7 pr-2 text-xs placeholder-neutral-600 focus:border-neutral-600 focus:outline-none"
+            className="w-full rounded-md border border-glass bg-neutral-900/50 py-1.5 pl-7 pr-2 text-xs placeholder-neutral-600 focus:border-cobweb-500/40 focus:outline-none"
           />
         </div>
       </div>
@@ -164,7 +164,7 @@ function InlineRenameInput({
           onCancel();
         }
       }}
-      className="w-full rounded border border-emerald-600 bg-neutral-900 px-1 py-0 text-xs text-neutral-100 focus:outline-none"
+      className="w-full rounded-md border border-cobweb-500/50 bg-neutral-900/60 px-1 py-0 text-xs text-neutral-100 focus:outline-none"
       spellCheck={false}
     />
   );

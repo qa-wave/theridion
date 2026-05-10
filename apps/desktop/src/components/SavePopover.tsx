@@ -11,7 +11,6 @@ interface Props {
   onCreateCollection: (name: string) => Promise<StoredCollection>;
 }
 
-/** Floating popover anchored under the URL bar's Save button. */
 export function SavePopover({
   open,
   collections,
@@ -30,7 +29,6 @@ export function SavePopover({
   const [error, setError] = useState<string | null>(null);
   const ref = useRef<HTMLDivElement>(null);
 
-  // Reset state whenever the popover opens.
   useEffect(() => {
     if (!open) return;
     setName(defaultName);
@@ -40,25 +38,16 @@ export function SavePopover({
     setError(null);
   }, [open, defaultName, collections]);
 
-  // Close on Escape and outside-click.
   useEffect(() => {
     if (!open) return;
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        onClose();
-      }
+      if (e.key === "Escape") { e.preventDefault(); onClose(); }
     }
     function onClick(e: MouseEvent) {
       if (ref.current && !ref.current.contains(e.target as Node)) onClose();
     }
     window.addEventListener("keydown", onKey);
-    // Defer the click-listener attach by a tick so the same click that
-    // opened the popover doesn't immediately close it.
-    const t = window.setTimeout(
-      () => window.addEventListener("mousedown", onClick),
-      0,
-    );
+    const t = window.setTimeout(() => window.addEventListener("mousedown", onClick), 0);
     return () => {
       window.removeEventListener("keydown", onKey);
       window.removeEventListener("mousedown", onClick);
@@ -75,19 +64,11 @@ export function SavePopover({
       let collectionId = pickedId;
       if (creatingNew) {
         const trimmed = newCollectionName.trim();
-        if (!trimmed) {
-          setError("Collection name can't be empty.");
-          setBusy(false);
-          return;
-        }
+        if (!trimmed) { setError("Collection name can\u2019t be empty."); setBusy(false); return; }
         const created = await onCreateCollection(trimmed);
         collectionId = created.id;
       }
-      if (!collectionId) {
-        setError("Pick a collection or create one.");
-        setBusy(false);
-        return;
-      }
+      if (!collectionId) { setError("Pick a collection or create one."); setBusy(false); return; }
       await onSave({ collectionId, name: name.trim() || defaultName });
       onClose();
     } catch (e) {
@@ -102,16 +83,16 @@ export function SavePopover({
       ref={ref}
       role="dialog"
       aria-label="Save request"
-      className="absolute right-4 top-full z-30 mt-1 w-80 rounded-lg border border-neutral-700 bg-neutral-925 shadow-xl shadow-black/40"
+      className="glass absolute right-4 top-full z-30 mt-1.5 w-80 animate-slide-in rounded-xl border border-glass-light shadow-xl shadow-black/50"
     >
-      <div className="flex items-center justify-between border-b border-neutral-800 px-3 py-2">
-        <span className="text-xs font-semibold uppercase tracking-wider text-neutral-400">
+      <div className="flex items-center justify-between border-b border-glass px-3 py-2">
+        <span className="text-xs font-semibold uppercase tracking-widest text-neutral-400">
           Save request
         </span>
         <button
           type="button"
           onClick={onClose}
-          className="rounded p-0.5 text-neutral-500 hover:bg-neutral-800 hover:text-neutral-200"
+          className="rounded-md p-0.5 text-neutral-500 hover:bg-white/[0.05] hover:text-neutral-200"
         >
           <X className="h-3.5 w-3.5" />
         </button>
@@ -123,44 +104,39 @@ export function SavePopover({
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="e.g. Search repos"
-            className="w-full rounded border border-neutral-800 bg-neutral-900 px-2 py-1.5 text-sm text-neutral-100 placeholder-neutral-600 focus:border-neutral-600 focus:outline-none"
+            className="w-full rounded-md border border-glass bg-neutral-900/50 px-2 py-1.5 text-sm text-neutral-100 placeholder-neutral-600 focus:border-cobweb-500/40 focus:outline-none"
             autoFocus
           />
         </Field>
 
         <Field label="Collection">
-          <div className="max-h-44 overflow-y-auto rounded border border-neutral-800">
+          <div className="max-h-44 overflow-y-auto rounded-md border border-glass">
             {collections.map((c) => (
               <label
                 key={c.id}
                 className={`flex cursor-pointer items-center gap-2 px-2 py-1.5 text-sm transition ${
                   pickedId === c.id && !creatingNew
-                    ? "bg-emerald-950/30 text-emerald-200"
-                    : "text-neutral-200 hover:bg-neutral-800/60"
+                    ? "bg-cobweb-950/30 text-cobweb-200"
+                    : "text-neutral-300 hover:bg-white/[0.03]"
                 }`}
               >
                 <input
                   type="radio"
                   name="collection"
                   checked={pickedId === c.id && !creatingNew}
-                  onChange={() => {
-                    setPickedId(c.id);
-                    setCreatingNew(false);
-                  }}
-                  className="h-3 w-3 cursor-pointer accent-emerald-500"
+                  onChange={() => { setPickedId(c.id); setCreatingNew(false); }}
+                  className="h-3 w-3 cursor-pointer accent-cobweb-500"
                 />
-                <FolderClosed className="h-3.5 w-3.5 text-neutral-400" />
+                <FolderClosed className="h-3.5 w-3.5 text-neutral-500" />
                 <span className="flex-1 truncate">{c.name}</span>
-                <span className="text-[10px] text-neutral-500">
-                  {c.items.length}
-                </span>
+                <span className="text-[10px] text-neutral-600">{c.items.length}</span>
               </label>
             ))}
             <label
-              className={`flex cursor-pointer items-center gap-2 border-t border-neutral-800 px-2 py-1.5 text-sm transition ${
+              className={`flex cursor-pointer items-center gap-2 border-t border-glass px-2 py-1.5 text-sm transition ${
                 creatingNew
-                  ? "bg-emerald-950/30 text-emerald-200"
-                  : "text-neutral-300 hover:bg-neutral-800/60"
+                  ? "bg-cobweb-950/30 text-cobweb-200"
+                  : "text-neutral-400 hover:bg-white/[0.03]"
               }`}
             >
               <input
@@ -168,10 +144,10 @@ export function SavePopover({
                 name="collection"
                 checked={creatingNew}
                 onChange={() => setCreatingNew(true)}
-                className="h-3 w-3 cursor-pointer accent-emerald-500"
+                className="h-3 w-3 cursor-pointer accent-cobweb-500"
               />
-              <FolderPlus className="h-3.5 w-3.5 text-neutral-400" />
-              <span>New collection…</span>
+              <FolderPlus className="h-3.5 w-3.5 text-neutral-500" />
+              <span>New collection&hellip;</span>
             </label>
           </div>
         </Field>
@@ -182,13 +158,13 @@ export function SavePopover({
               value={newCollectionName}
               onChange={(e) => setNewCollectionName(e.target.value)}
               placeholder="e.g. Onboarding"
-              className="w-full rounded border border-neutral-800 bg-neutral-900 px-2 py-1.5 text-sm text-neutral-100 placeholder-neutral-600 focus:border-neutral-600 focus:outline-none"
+              className="w-full rounded-md border border-glass bg-neutral-900/50 px-2 py-1.5 text-sm text-neutral-100 placeholder-neutral-600 focus:border-cobweb-500/40 focus:outline-none"
             />
           </Field>
         )}
 
         {error && (
-          <p className="rounded border border-rose-900/60 bg-rose-950/30 px-2 py-1 text-xs text-rose-300">
+          <p className="rounded-md border border-rose-800/30 bg-rose-950/20 px-2 py-1 text-xs text-rose-300">
             {error}
           </p>
         )}
@@ -197,7 +173,7 @@ export function SavePopover({
           <button
             type="button"
             onClick={onClose}
-            className="rounded border border-neutral-700 bg-neutral-900 px-3 py-1.5 text-xs text-neutral-300 transition hover:border-neutral-600 hover:bg-neutral-800"
+            className="rounded-md border border-glass px-3 py-1.5 text-xs text-neutral-400 transition hover:bg-white/[0.04] hover:text-neutral-200"
           >
             Cancel
           </button>
@@ -205,9 +181,9 @@ export function SavePopover({
             type="button"
             onClick={handleSave}
             disabled={busy}
-            className="rounded bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:bg-neutral-700"
+            className="rounded-md bg-gradient-to-r from-cobweb-600 to-emerald-600 px-4 py-1.5 text-xs font-medium text-white shadow-glow-sm transition hover:from-cobweb-500 hover:to-emerald-500 disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
           >
-            {busy ? "Saving…" : "Save"}
+            {busy ? "Saving\u2026" : "Save"}
           </button>
         </div>
       </div>
@@ -218,7 +194,7 @@ export function SavePopover({
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="flex flex-col gap-1 text-xs">
-      <span className="font-medium uppercase tracking-wider text-neutral-500">
+      <span className="font-medium uppercase tracking-widest text-neutral-500">
         {label}
       </span>
       {children}

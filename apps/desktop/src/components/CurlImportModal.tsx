@@ -40,29 +40,29 @@ export function CurlImportModal({ open, onClose, onImport }: Props) {
       const text = await navigator.clipboard.readText();
       setCurlText(text);
     } catch {
-      // Clipboard permission denied — user can paste manually.
+      // Clipboard permission denied.
     }
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-      <div className="w-full max-w-lg rounded-lg border border-neutral-800 bg-neutral-925 shadow-2xl">
-        <div className="flex items-center justify-between border-b border-neutral-800 px-4 py-3">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+      <div className="glass w-full max-w-lg animate-slide-in rounded-xl border border-glass-light shadow-2xl shadow-black/60">
+        <div className="flex items-center justify-between border-b border-glass px-4 py-3">
           <div className="flex items-center gap-2 text-sm font-medium text-neutral-100">
-            <Terminal className="h-4 w-4 text-emerald-500" />
+            <Terminal className="h-4 w-4 text-cobweb-400" />
             Import cURL
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="rounded p-1 text-neutral-400 transition hover:bg-neutral-800 hover:text-neutral-200"
+            className="rounded-md p-1 text-neutral-500 transition hover:bg-white/[0.05] hover:text-neutral-200"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
 
         <div className="p-4">
-          <p className="mb-2 text-[11px] uppercase tracking-wider text-neutral-500">
+          <p className="mb-2 text-[11px] uppercase tracking-widest text-neutral-500">
             Paste a cURL command
           </p>
           <div className="relative">
@@ -71,7 +71,7 @@ export function CurlImportModal({ open, onClose, onImport }: Props) {
               onChange={(e) => setCurlText(e.target.value)}
               placeholder={'curl -X POST -H \'Content-Type: application/json\' \\\n  -d \'{"key":"value"}\' \\\n  https://api.example.com'}
               rows={8}
-              className="w-full resize-y rounded border border-neutral-800 bg-neutral-900 px-3 py-2 font-mono text-xs text-neutral-100 placeholder-neutral-600 focus:border-neutral-600 focus:outline-none"
+              className="w-full resize-y rounded-lg border border-glass bg-neutral-900/50 px-3 py-2 font-mono text-xs text-neutral-100 placeholder-neutral-600 focus:border-cobweb-500/40 focus:outline-none"
               spellCheck={false}
               autoFocus
             />
@@ -79,22 +79,24 @@ export function CurlImportModal({ open, onClose, onImport }: Props) {
               type="button"
               onClick={handlePaste}
               title="Paste from clipboard"
-              className="absolute right-2 top-2 rounded p-1 text-neutral-500 transition hover:bg-neutral-800 hover:text-neutral-300"
+              className="absolute right-2 top-2 rounded-md p-1.5 text-neutral-500 transition hover:bg-white/[0.06] hover:text-neutral-300"
             >
               <ClipboardPaste className="h-3.5 w-3.5" />
             </button>
           </div>
 
           {error && (
-            <p className="mt-2 text-xs text-rose-400">{error}</p>
+            <p className="mt-2 rounded-md border border-rose-800/30 bg-rose-950/20 px-2 py-1 text-xs text-rose-400">
+              {error}
+            </p>
           )}
         </div>
 
-        <div className="flex justify-end gap-2 border-t border-neutral-800 px-4 py-3">
+        <div className="flex justify-end gap-2 border-t border-glass px-4 py-3">
           <button
             type="button"
             onClick={onClose}
-            className="rounded px-3 py-1.5 text-xs text-neutral-400 transition hover:text-neutral-200"
+            className="rounded-md px-3 py-1.5 text-xs text-neutral-400 transition hover:bg-white/[0.04] hover:text-neutral-200"
           >
             Cancel
           </button>
@@ -102,9 +104,9 @@ export function CurlImportModal({ open, onClose, onImport }: Props) {
             type="button"
             onClick={handleImport}
             disabled={busy || !curlText.trim()}
-            className="rounded bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-emerald-500 disabled:opacity-50"
+            className="rounded-md bg-gradient-to-r from-cobweb-600 to-emerald-600 px-4 py-1.5 text-xs font-medium text-white shadow-glow-sm transition hover:from-cobweb-500 hover:to-emerald-500 disabled:opacity-40 disabled:shadow-none"
           >
-            {busy ? "Parsing…" : "Import"}
+            {busy ? "Parsing\u2026" : "Import"}
           </button>
         </div>
       </div>

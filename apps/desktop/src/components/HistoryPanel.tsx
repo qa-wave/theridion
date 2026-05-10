@@ -30,7 +30,7 @@ export function HistoryPanel({ entries, onSelect, onClear }: Props) {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center gap-1 border-b border-neutral-800 px-3 py-2">
+      <div className="flex items-center gap-1 border-b border-glass px-3 py-2">
         <Clock className="h-3.5 w-3.5 text-neutral-500" />
         <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500">
           History
@@ -53,7 +53,7 @@ export function HistoryPanel({ entries, onSelect, onClear }: Props) {
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
             placeholder="Filter…"
-            className="w-full rounded border border-neutral-800 bg-neutral-900 px-2 py-1 text-xs placeholder-neutral-600 focus:border-neutral-600 focus:outline-none"
+            className="w-full rounded-md border border-glass bg-neutral-900/50 px-2 py-1 text-xs placeholder-neutral-600 focus:border-cobweb-500/40 focus:outline-none"
           />
         </div>
       )}
