@@ -403,6 +403,13 @@ export const sidecar = {
       method: "POST",
       body: JSON.stringify(input),
     }),
+
+  // ---- OAuth2 -------------------------------------------------------------
+  oauth2Token: (input: OAuth2TokenInput) =>
+    call<OAuth2TokenOutput>("/api/auth/oauth2/token", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
 };
 
 // ---- Assertion types ----------------------------------------------------
@@ -536,4 +543,25 @@ export interface ExecuteMultipartInput {
   timeout_seconds?: number;
   follow_redirects?: boolean;
   environment_id?: string | null;
+}
+
+// ---- OAuth2 types ---------------------------------------------------------
+
+export interface OAuth2TokenInput {
+  token_url: string;
+  client_id: string;
+  client_secret?: string;
+  code: string;
+  redirect_uri?: string;
+  scope?: string;
+  grant_type?: string;
+}
+
+export interface OAuth2TokenOutput {
+  access_token: string;
+  token_type: string;
+  expires_in: number | null;
+  refresh_token: string | null;
+  scope: string | null;
+  raw: Record<string, unknown>;
 }
