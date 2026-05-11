@@ -71,108 +71,193 @@ html.theme-arctic {
    STYLE THEMES — each overrides accent + structural look
    ═══════════════════════════════════════════════════════════════════ */
 
-/* ---- 5. Midnight Noir ------------------------------------------------ */
+/* ════════════════════════════════════════════════════════════════════
+   5. MIDNIGHT NOIR — no borders, only shadow. Cinematic.
+   ════════════════════════════════════════════════════════════════════ */
 html.theme-noir {
   --accent-50: 254 226 226; --accent-100: 254 202 202; --accent-200: 252 165 165;
   --accent-300: 248 113 113; --accent-400: 239 68 68; --accent-500: 220 38 38;
   --accent-600: 185 28 28; --accent-700: 153 27 27; --accent-800: 127 29 29;
   --accent-900: 100 23 23; --accent-950: 60 10 10;
   --accent-glow: 220 38 38; --gradient-end: 239 68 68;
-  --canvas-bg: #000; --panel-bg: #080808;
+  --canvas-bg: #000; --panel-bg: #050505;
   --mesh-a: transparent; --mesh-b: transparent;
-  --border-alpha: 0.03;
-  --status-dot: #f87171;
+  --border-alpha: 0; --status-dot: #f87171;
 }
-html.theme-noir .border-glass { border-color: rgba(255,255,255,0.03) !important; }
-html.theme-noir aside { box-shadow: 4px 0 24px -4px rgba(0,0,0,0.6); }
-html.theme-noir footer { box-shadow: 0 -4px 24px -4px rgba(0,0,0,0.5); }
-html.theme-noir .glass { background: #080808; backdrop-filter: none; -webkit-backdrop-filter: none; }
+/* NO borders — everything separated by shadow & negative space */
+html.theme-noir .border-glass,
+html.theme-noir .border-glass-light { border-color: transparent !important; }
+html.theme-noir .border-r { border-right-color: transparent !important; }
+html.theme-noir .border-b { border-bottom-color: transparent !important; }
+html.theme-noir .border-t { border-top-color: transparent !important; }
+html.theme-noir .border-l { border-left-color: transparent !important; }
+html.theme-noir aside {
+  background: #050505 !important;
+  box-shadow: 6px 0 40px -8px rgba(0,0,0,0.8), 1px 0 0 rgba(220,38,38,0.06);
+}
+html.theme-noir footer {
+  background: #050505 !important;
+  box-shadow: 0 -6px 40px -8px rgba(0,0,0,0.8), 0 -1px 0 rgba(220,38,38,0.06);
+}
+html.theme-noir .glass { background: #050505; backdrop-filter: none; -webkit-backdrop-filter: none; }
 html.theme-noir .bg-mesh-gradient { background-image: none !important; }
 html.theme-noir .shadow-inner-glow { box-shadow: none; }
+html.theme-noir input, html.theme-noir textarea, html.theme-noir select {
+  background: #0a0a0a !important; border: 1px solid rgba(255,255,255,0.04) !important;
+}
+html.theme-noir input:focus, html.theme-noir textarea:focus {
+  border-color: rgba(220,38,38,0.4) !important;
+  box-shadow: 0 0 20px -4px rgba(220,38,38,0.15) !important;
+}
+/* Wide cinematic letter spacing */
+html.theme-noir .uppercase { letter-spacing: 0.18em; font-weight: 300; }
+html.theme-noir .font-semibold { font-weight: 400; }
+html.theme-noir .text-xs { font-size: 11px; }
+/* Soft text */
+html.theme-noir .text-neutral-100 { color: #c0c0c0; }
 
-/* ---- 6. Neon Terminal ------------------------------------------------ */
+/* ════════════════════════════════════════════════════════════════════
+   6. NEON TERMINAL — CRT monitor, green phosphor, scanlines, mono
+   ════════════════════════════════════════════════════════════════════ */
 html.theme-neon {
   --accent-50: 220 255 230; --accent-100: 187 255 204; --accent-200: 136 255 170;
   --accent-300: 68 255 119; --accent-400: 0 255 65; --accent-500: 0 220 55;
   --accent-600: 0 180 45; --accent-700: 0 140 35; --accent-800: 0 100 25;
   --accent-900: 0 70 18; --accent-950: 0 40 10;
   --accent-glow: 0 255 65; --gradient-end: 0 255 65;
-  --canvas-bg: #0a0a0a; --panel-bg: rgba(0,10,2,0.85);
-  --mesh-a: rgba(0,255,65,0.015); --mesh-b: transparent;
-  --border-alpha: 0.08;
-  --font-ui: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
-  --text-primary: #b8e6c0; --text-secondary: rgba(0,255,65,0.45);
-  --text-muted: rgba(0,255,65,0.3); --text-faint: rgba(0,255,65,0.18);
-  --status-dot: #00ff41;
+  --canvas-bg: #020804; --panel-bg: rgba(0,10,2,0.9);
+  --mesh-a: transparent; --mesh-b: transparent;
+  --border-alpha: 0.08; --status-dot: #00ff41;
 }
-html.theme-neon .border-glass { border-color: rgba(0,255,65,0.1) !important; }
-html.theme-neon .border-glass-light { border-color: rgba(0,255,65,0.15) !important; }
-html.theme-neon .glass { background: rgba(0,10,2,0.85); }
+/* ALL fonts monospace */
+html.theme-neon, html.theme-neon * {
+  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace !important;
+}
+/* Scanline overlay on entire app */
 html.theme-neon .bg-mesh-gradient {
   background-image:
-    repeating-linear-gradient(0deg, rgba(0,255,65,0.012) 0px, transparent 2px, transparent 4px),
-    radial-gradient(at 50% 50%, rgba(0,255,65,0.03) 0%, transparent 70%) !important;
+    repeating-linear-gradient(0deg, rgba(0,255,65,0.03) 0px, transparent 1px, transparent 3px),
+    radial-gradient(ellipse at 50% 50%, rgba(0,255,65,0.06) 0%, transparent 70%) !important;
 }
-html.theme-neon .text-neutral-100 { color: #b8e6c0; }
-html.theme-neon .text-neutral-400 { color: rgba(0,255,65,0.45); }
-html.theme-neon .text-neutral-500 { color: rgba(0,255,65,0.3); }
-html.theme-neon .text-neutral-600 { color: rgba(0,255,65,0.18); }
-html.theme-neon .text-sky-400 { color: #00ff41; }
-html.theme-neon .text-emerald-400 { color: #66ff88; }
-html.theme-neon .text-amber-400 { color: #88ff44; }
-html.theme-neon .text-violet-400 { color: #44ffaa; }
+/* Glow borders */
+html.theme-neon .border-glass { border-color: rgba(0,255,65,0.12) !important; }
+html.theme-neon .border-glass-light { border-color: rgba(0,255,65,0.18) !important; }
+html.theme-neon aside {
+  background: rgba(0,8,2,0.95) !important;
+  border-right: 1px solid rgba(0,255,65,0.15) !important;
+  box-shadow: inset -1px 0 12px -4px rgba(0,255,65,0.08);
+}
+html.theme-neon footer {
+  border-top: 1px solid rgba(0,255,65,0.15) !important;
+  text-shadow: 0 0 6px rgba(0,255,65,0.3);
+}
+html.theme-neon .glass { background: rgba(0,8,2,0.92) !important; }
+/* ALL text green-tinted */
+html.theme-neon .text-neutral-100 { color: #a0f0b0 !important; }
+html.theme-neon .text-neutral-200 { color: #80d090 !important; }
+html.theme-neon .text-neutral-300 { color: #60b070 !important; }
+html.theme-neon .text-neutral-400 { color: rgba(0,255,65,0.5) !important; }
+html.theme-neon .text-neutral-500 { color: rgba(0,255,65,0.35) !important; }
+html.theme-neon .text-neutral-600 { color: rgba(0,255,65,0.2) !important; }
+html.theme-neon .text-neutral-700 { color: rgba(0,255,65,0.12) !important; }
+/* HTTP method badges all green spectrum */
+html.theme-neon .text-sky-400 { color: #00ff41 !important; }
+html.theme-neon .text-emerald-400 { color: #44ff77 !important; }
+html.theme-neon .text-amber-400 { color: #88ff22 !important; }
+html.theme-neon .text-violet-400 { color: #22ffaa !important; }
+html.theme-neon .text-rose-400 { color: #ff3333 !important; }
+/* Inputs — terminal style */
 html.theme-neon input, html.theme-neon textarea, html.theme-neon select {
-  background: rgba(0,255,65,0.03); color: #00ff41;
-  border-color: rgba(0,255,65,0.12);
+  background: rgba(0,255,65,0.03) !important; color: #00ff41 !important;
+  border: 1px solid rgba(0,255,65,0.15) !important;
+  text-shadow: 0 0 4px rgba(0,255,65,0.2);
 }
 html.theme-neon input::placeholder, html.theme-neon textarea::placeholder {
-  color: rgba(0,255,65,0.2);
+  color: rgba(0,255,65,0.2) !important;
 }
-html.theme-neon .bg-accent-gradient { color: #000; }
+html.theme-neon input:focus, html.theme-neon textarea:focus {
+  border-color: rgba(0,255,65,0.5) !important;
+  box-shadow: 0 0 12px -2px rgba(0,255,65,0.2), inset 0 0 12px -4px rgba(0,255,65,0.05) !important;
+}
+/* Buttons — invert on primary */
+html.theme-neon .bg-accent-gradient { color: #000 !important; text-shadow: none; }
 html.theme-neon .bg-accent-gradient span,
 html.theme-neon .bg-accent-gradient svg { color: #000 !important; }
-html.theme-neon ::-webkit-scrollbar-thumb { background: rgba(0,255,65,0.1); }
+html.theme-neon ::-webkit-scrollbar-thumb { background: rgba(0,255,65,0.12); }
+html.theme-neon ::selection { background: rgba(0,255,65,0.25) !important; }
+/* Glow on status bar text */
+html.theme-neon footer span { text-shadow: 0 0 6px rgba(0,255,65,0.25); }
 
-/* ---- 7. Frosted Aurora ----------------------------------------------- */
+/* ════════════════════════════════════════════════════════════════════
+   7. FROSTED AURORA — heavy blur, floating panels, animated glow
+   ════════════════════════════════════════════════════════════════════ */
 html.theme-frosted {
   --accent-50: 238 242 255; --accent-100: 224 231 255; --accent-200: 199 210 254;
   --accent-300: 196 181 253; --accent-400: 167 139 250; --accent-500: 129 140 248;
   --accent-600: 99 102 241; --accent-700: 79 70 229; --accent-800: 67 56 202;
   --accent-900: 49 46 129; --accent-950: 30 27 75;
   --accent-glow: 129 140 248; --gradient-end: 244 114 182;
-  --canvas-bg: #0c0c14; --panel-bg: rgba(15,15,25,0.55);
-  --mesh-a: rgba(99,102,241,0.08); --mesh-b: rgba(244,114,182,0.06);
-  --border-alpha: 0.07;
-  --status-dot: #a78bfa;
+  --canvas-bg: #08081a; --panel-bg: rgba(15,15,30,0.45);
+  --mesh-a: rgba(99,102,241,0.1); --mesh-b: rgba(244,114,182,0.07);
+  --border-alpha: 0.08; --status-dot: #a78bfa;
 }
-html.theme-frosted .glass {
-  background: rgba(15,15,25,0.55);
-  backdrop-filter: blur(24px) saturate(1.6);
-  -webkit-backdrop-filter: blur(24px) saturate(1.6);
-}
+/* Triple aurora mesh — more vivid */
 html.theme-frosted .bg-mesh-gradient {
   background-image:
-    radial-gradient(ellipse at 15% 85%, rgba(99,102,241,0.08) 0%, transparent 50%),
-    radial-gradient(ellipse at 85% 15%, rgba(244,114,182,0.06) 0%, transparent 50%),
-    radial-gradient(ellipse at 50% 50%, rgba(34,211,238,0.04) 0%, transparent 60%) !important;
+    radial-gradient(ellipse at 10% 90%, rgba(99,102,241,0.12) 0%, transparent 50%),
+    radial-gradient(ellipse at 90% 10%, rgba(244,114,182,0.09) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 50%, rgba(34,211,238,0.06) 0%, transparent 60%) !important;
 }
+/* Extra heavy glass */
+html.theme-frosted .glass {
+  background: rgba(15,15,30,0.4) !important;
+  backdrop-filter: blur(32px) saturate(1.8) !important;
+  -webkit-backdrop-filter: blur(32px) saturate(1.8) !important;
+}
+html.theme-frosted aside {
+  background: rgba(12,12,28,0.5) !important;
+  backdrop-filter: blur(32px) saturate(1.8) !important;
+  -webkit-backdrop-filter: blur(32px) saturate(1.8) !important;
+  border-right: 1px solid rgba(129,140,248,0.08) !important;
+}
+html.theme-frosted footer {
+  backdrop-filter: blur(32px) saturate(1.8) !important;
+  -webkit-backdrop-filter: blur(32px) saturate(1.8) !important;
+}
+/* Animated aurora gradient button */
 html.theme-frosted .bg-accent-gradient {
   background: linear-gradient(135deg, #818cf8, #f472b6, #22d3ee) !important;
-  background-size: 200% 200%;
-  animation: aurora 4s ease infinite;
+  background-size: 200% 200% !important;
+  animation: aurora 4s ease infinite !important;
 }
-html.theme-frosted .bg-accent-gradient:hover { filter: brightness(1.15); }
+html.theme-frosted .bg-accent-gradient:hover { filter: brightness(1.15) !important; }
 html.theme-frosted .bg-accent-gradient-bar {
   background: linear-gradient(to right, #818cf8, #f472b6, #22d3ee) !important;
 }
 @keyframes aurora { 0%,100%{background-position:0% 50%} 50%{background-position:100% 50%} }
-html.theme-frosted .rounded-lg, html.theme-frosted .rounded-md { border-radius: 12px; }
-html.theme-frosted .rounded-xl { border-radius: 16px; }
-html.theme-frosted input:focus, html.theme-frosted textarea:focus {
-  box-shadow: 0 0 12px -2px rgba(129,140,248,0.2);
+/* Very rounded */
+html.theme-frosted .rounded-lg, html.theme-frosted .rounded-md { border-radius: 14px; }
+html.theme-frosted .rounded-xl { border-radius: 20px; }
+/* Dreamy borders */
+html.theme-frosted .border-glass { border-color: rgba(129,140,248,0.08) !important; }
+html.theme-frosted .border-glass-light { border-color: rgba(129,140,248,0.12) !important; }
+/* Inputs — frosted glass inset */
+html.theme-frosted input, html.theme-frosted textarea, html.theme-frosted select {
+  background: rgba(129,140,248,0.04) !important;
+  border: 1px solid rgba(129,140,248,0.1) !important;
+  border-radius: 14px !important;
 }
+html.theme-frosted input:focus, html.theme-frosted textarea:focus {
+  border-color: rgba(129,140,248,0.3) !important;
+  box-shadow: 0 0 20px -4px rgba(129,140,248,0.2), 0 0 20px -4px rgba(244,114,182,0.1) !important;
+}
+/* Softer font weight */
+html.theme-frosted .font-semibold { font-weight: 500; }
+html.theme-frosted .font-bold { font-weight: 600; }
 
-/* ---- 8. Brutalist ---------------------------------------------------- */
+/* ════════════════════════════════════════════════════════════════════
+   8. BRUTALIST — zero curves, thick lines, industrial grid, Swiss
+   ════════════════════════════════════════════════════════════════════ */
 html.theme-brutalist {
   --accent-50: 255 255 255; --accent-100: 245 245 245; --accent-200: 229 229 229;
   --accent-300: 212 212 212; --accent-400: 163 163 163; --accent-500: 255 255 255;
@@ -181,67 +266,112 @@ html.theme-brutalist {
   --accent-glow: 255 255 255; --gradient-end: 255 255 255;
   --canvas-bg: #000; --panel-bg: #000;
   --mesh-a: transparent; --mesh-b: transparent;
-  --border-alpha: 0.15;
-  --radius-base: 0px; --radius-lg: 0px;
-  --status-dot: #fff;
+  --border-alpha: 0.2; --status-dot: #fff;
 }
-html.theme-brutalist * { border-radius: 0 !important; }
-html.theme-brutalist .border-glass { border-color: #333 !important; }
-html.theme-brutalist .border-glass-light { border-color: #444 !important; }
-html.theme-brutalist aside { border-right: 2px solid #333 !important; }
-html.theme-brutalist footer { border-top: 2px solid #333 !important; }
-html.theme-brutalist .glass {
-  background: #000; backdrop-filter: none; -webkit-backdrop-filter: none;
+/* ZERO radius everywhere */
+html.theme-brutalist, html.theme-brutalist * { border-radius: 0 !important; }
+/* Thick structural borders */
+html.theme-brutalist .border-glass { border-color: #444 !important; }
+html.theme-brutalist .border-glass-light { border-color: #555 !important; }
+html.theme-brutalist aside {
+  border-right: 3px solid #fff !important;
+  background: #000 !important;
 }
+html.theme-brutalist footer {
+  border-top: 3px solid #fff !important;
+  background: #000 !important;
+}
+/* No glass, no blur, no effects */
+html.theme-brutalist .glass { background: #000 !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
 html.theme-brutalist .bg-mesh-gradient { background-image: none !important; }
+html.theme-brutalist .shadow-glow, html.theme-brutalist .shadow-glow-sm,
+html.theme-brutalist .shadow-glow-emerald, html.theme-brutalist .shadow-inner-glow { box-shadow: none !important; }
+html.theme-brutalist span.animate-ping { display: none; }
+/* Inverted primary button */
 html.theme-brutalist .bg-accent-gradient { background: #fff !important; color: #000 !important; }
-html.theme-brutalist .bg-accent-gradient:hover { background: #e5e5e5 !important; }
+html.theme-brutalist .bg-accent-gradient:hover { background: #ccc !important; }
 html.theme-brutalist .bg-accent-gradient span,
 html.theme-brutalist .bg-accent-gradient svg { color: #000 !important; }
-html.theme-brutalist .bg-accent-gradient-bar { background: #fff !important; height: 3px; }
-html.theme-brutalist .shadow-glow, html.theme-brutalist .shadow-glow-sm,
-html.theme-brutalist .shadow-glow-emerald, html.theme-brutalist .shadow-inner-glow {
-  box-shadow: none !important;
-}
+html.theme-brutalist .bg-accent-gradient-bar { background: #fff !important; height: 4px !important; }
+/* Inputs — thick border, no bg */
 html.theme-brutalist input, html.theme-brutalist textarea, html.theme-brutalist select {
-  background: #000; border: 2px solid #333;
+  background: #000 !important; border: 2px solid #555 !important; color: #fff !important;
 }
 html.theme-brutalist input:focus, html.theme-brutalist textarea:focus {
-  border-color: #fff;
+  border-color: #fff !important; box-shadow: none !important;
 }
-html.theme-brutalist .uppercase { font-weight: 700; letter-spacing: 0.2em; }
-html.theme-brutalist span.animate-ping { display: none; }
+html.theme-brutalist input::placeholder, html.theme-brutalist textarea::placeholder {
+  color: #555 !important; text-transform: uppercase; letter-spacing: 0.05em;
+}
+/* BOLD uppercase labels — Swiss poster style */
+html.theme-brutalist .uppercase { font-weight: 800 !important; letter-spacing: 0.25em !important; }
+html.theme-brutalist .text-xs { font-size: 10px !important; text-transform: uppercase; letter-spacing: 0.08em; }
+html.theme-brutalist .font-semibold { font-weight: 800 !important; }
+html.theme-brutalist .font-mono { letter-spacing: 0 !important; }
+/* Status bar — uppercase, tight */
+html.theme-brutalist footer { text-transform: uppercase; letter-spacing: 0.1em; font-size: 10px; }
 
-/* ---- 9. Warm Parchment ---------------------------------------------- */
+/* ════════════════════════════════════════════════════════════════════
+   9. WARM PARCHMENT — sepia canvas, soft shapes, editorial spacing
+   ════════════════════════════════════════════════════════════════════ */
 html.theme-warm {
   --accent-50: 255 243 230; --accent-100: 255 228 200; --accent-200: 240 195 150;
   --accent-300: 224 176 144; --accent-400: 212 149 106; --accent-500: 194 114 78;
   --accent-600: 170 90 58; --accent-700: 140 70 45; --accent-800: 110 55 35;
   --accent-900: 85 42 25; --accent-950: 55 25 12;
   --accent-glow: 194 114 78; --gradient-end: 212 149 106;
-  --canvas-bg: #12110f; --panel-bg: rgba(16,15,13,0.75);
-  --mesh-a: rgba(180,130,80,0.04); --mesh-b: rgba(160,100,60,0.03);
-  --border-alpha: 0.06;
-  --text-primary: #e8e0d4; --text-secondary: #a09080;
-  --text-muted: #807060; --text-faint: #605040;
-  --status-dot: #d4956a;
+  --canvas-bg: #151310; --panel-bg: rgba(20,18,15,0.8);
+  --mesh-a: rgba(180,130,80,0.05); --mesh-b: rgba(160,100,60,0.04);
+  --border-alpha: 0.06; --status-dot: #d4956a;
 }
-html.theme-warm .border-glass { border-color: rgba(180,150,110,0.08) !important; }
-html.theme-warm .border-glass-light { border-color: rgba(180,150,110,0.12) !important; }
-html.theme-warm .glass { background: rgba(16,15,13,0.75); }
-html.theme-warm .text-neutral-100 { color: #e8e0d4; }
-html.theme-warm .text-neutral-400 { color: #a09080; }
-html.theme-warm .text-neutral-500 { color: #807060; }
-html.theme-warm .text-neutral-600 { color: #605040; }
+/* Warm-tinted canvas */
+html.theme-warm body, html.theme-warm .bg-neutral-950 { background: #151310 !important; }
+/* Warm borders — dotted style for editorial feel */
+html.theme-warm .border-glass { border-color: rgba(180,150,110,0.1) !important; }
+html.theme-warm .border-glass-light { border-color: rgba(180,150,110,0.15) !important; }
+html.theme-warm aside {
+  background: #131110 !important;
+  border-right: 1px solid rgba(180,150,110,0.1) !important;
+}
+html.theme-warm footer { background: #131110 !important; }
+html.theme-warm .glass { background: rgba(20,18,15,0.85) !important; }
+/* ALL text warm-shifted */
+html.theme-warm .text-neutral-100 { color: #ece4d4 !important; }
+html.theme-warm .text-neutral-200 { color: #d4cbb8 !important; }
+html.theme-warm .text-neutral-300 { color: #b8a890 !important; }
+html.theme-warm .text-neutral-400 { color: #9a8a70 !important; }
+html.theme-warm .text-neutral-500 { color: #7a6a50 !important; }
+html.theme-warm .text-neutral-600 { color: #5a4a35 !important; }
+html.theme-warm .text-neutral-700 { color: #3a3025 !important; }
+/* HTTP methods — warm tones */
+html.theme-warm .text-sky-400 { color: #8ab4d0 !important; }
+html.theme-warm .text-emerald-400 { color: #8ac0a0 !important; }
+html.theme-warm .text-amber-400 { color: #d4a060 !important; }
+html.theme-warm .text-violet-400 { color: #b09ac0 !important; }
+html.theme-warm .text-rose-400 { color: #c08070 !important; }
+/* Warm inputs */
 html.theme-warm input, html.theme-warm textarea, html.theme-warm select {
-  background: rgba(180,150,110,0.04);
-  border-color: rgba(180,150,110,0.1);
+  background: rgba(180,150,110,0.04) !important;
+  border: 1px solid rgba(180,150,110,0.1) !important;
+  color: #ece4d4 !important;
 }
 html.theme-warm input::placeholder, html.theme-warm textarea::placeholder {
-  color: rgba(180,150,110,0.3);
+  color: rgba(180,150,110,0.3) !important;
 }
-html.theme-warm ::-webkit-scrollbar-thumb { background: rgba(180,150,110,0.12); }
-html.theme-warm ::-webkit-scrollbar-thumb:hover { background: rgba(180,150,110,0.2); }
+html.theme-warm input:focus, html.theme-warm textarea:focus {
+  border-color: rgba(194,114,78,0.4) !important;
+  box-shadow: 0 0 16px -4px rgba(194,114,78,0.15) !important;
+}
+/* Wider rounded — soft editorial */
+html.theme-warm .rounded-lg { border-radius: 10px; }
+html.theme-warm .rounded-xl { border-radius: 14px; }
+/* Elegant label styling */
+html.theme-warm .uppercase { letter-spacing: 0.14em; font-weight: 400; }
+html.theme-warm .font-semibold { font-weight: 500; }
+/* Scrollbars */
+html.theme-warm ::-webkit-scrollbar-thumb { background: rgba(180,150,110,0.12) !important; }
+html.theme-warm ::-webkit-scrollbar-thumb:hover { background: rgba(180,150,110,0.22) !important; }
+html.theme-warm ::selection { background: rgba(194,114,78,0.25) !important; }
 
 /* ═══════════════════════════════════════════════════════════════════ */
 
