@@ -326,6 +326,12 @@ export const sidecar = {
       body: JSON.stringify({ url, headers: headers ?? {}, environment_id }),
     }),
 
+  importCollection: (content: string, format?: string) =>
+    call<{ collection_id: string; collection_name: string; request_count: number }>(
+      "/api/import",
+      { method: "POST", body: JSON.stringify({ content, format: format ?? "auto" }) },
+    ),
+
   generateCode: (input: {
     method: string; url: string; headers: Record<string, string>;
     body: string | null; language: string;
