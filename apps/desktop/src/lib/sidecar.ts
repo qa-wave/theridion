@@ -324,6 +324,35 @@ export const sidecar = {
       body: JSON.stringify({ url, headers: headers ?? {}, environment_id }),
     }),
 
+  kafkaTopics: (bootstrap_servers: string) =>
+    call<{ topics: Array<{ name: string; partitions: number }> }>("/api/kafka/topics", {
+      method: "POST",
+      body: JSON.stringify({ bootstrap_servers }),
+    }),
+  kafkaProduce: (input: {
+    bootstrap_servers: string; topic: string;
+    key: string | null; value: string; headers: Record<string, string>;
+  }) =>
+    call<{ topic: string; partition: number; offset: number; timestamp: number }>("/api/kafka/produce", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  kafkaConsume: (input: {
+    bootstrap_servers: string; topic: string;
+    max_messages?: number; timeout_seconds?: number; group_id?: string;
+  }) =>
+    call<{
+      messages: Array<{
+        topic: string; partition: number; offset: number;
+        key: string | null; value: string; timestamp: number;
+        headers: Record<string, string>;
+      }>;
+      count: number;
+    }>("/api/kafka/consume", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+
   inspectWsdl: (wsdl_url: string) =>
     call<WsdlSummary>("/api/soap/inspect", {
       method: "POST",

@@ -26,6 +26,7 @@ import { SavePopover } from "./components/SavePopover";
 import { EnvManagerModal } from "./components/EnvManagerModal";
 import { CurlImportModal } from "./components/CurlImportModal";
 import { GraphQLModal } from "./components/GraphQLModal";
+import { KafkaModal } from "./components/KafkaModal";
 import { WebSocketModal } from "./components/WebSocketModal";
 import { HistoryPanel, type HistoryEntry } from "./components/HistoryPanel";
 import { SoapModal } from "./components/SoapModal";
@@ -59,6 +60,7 @@ export default function App() {
   const [curlImportOpen, setCurlImportOpen] = useState(false);
   const [graphqlOpen, setGraphqlOpen] = useState(false);
   const [wsOpen, setWsOpen] = useState(false);
+  const [kafkaOpen, setKafkaOpen] = useState(false);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
 
@@ -454,6 +456,7 @@ export default function App() {
           onImportCurl={() => setCurlImportOpen(true)}
           onOpenGraphQL={() => setGraphqlOpen(true)}
           onOpenWebSocket={() => setWsOpen(true)}
+          onOpenKafka={() => setKafkaOpen(true)}
           onToggleHistory={() => setHistoryOpen((o) => !o)}
           historyOpen={historyOpen}
           historyCount={history.length}
@@ -543,6 +546,7 @@ export default function App() {
       />
       <GraphQLModal open={graphqlOpen} onClose={() => setGraphqlOpen(false)} activeEnvId={activeEnvId} />
       <WebSocketModal open={wsOpen} onClose={() => setWsOpen(false)} />
+      <KafkaModal open={kafkaOpen} onClose={() => setKafkaOpen(false)} />
       <SoapModal open={soapModalOpen} onClose={() => setSoapModalOpen(false)} />
     </div>
   );
