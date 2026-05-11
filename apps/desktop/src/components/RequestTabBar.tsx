@@ -1,4 +1,4 @@
-import { Braces, Clock, Globe, Plus, Terminal, X } from "lucide-react";
+import { Braces, Clock, Globe, Plus, Terminal, Wifi, X } from "lucide-react";
 import { HTTP_METHOD_COLOR, isDirty } from "../state/types";
 import type { RequestTab } from "../state/types";
 import type { EnvironmentSummary } from "../lib/sidecar";
@@ -13,6 +13,7 @@ interface Props {
   onOpenSoap: () => void;
   onImportCurl: () => void;
   onOpenGraphQL: () => void;
+  onOpenWebSocket: () => void;
   onToggleHistory: () => void;
   historyOpen: boolean;
   historyCount: number;
@@ -31,6 +32,7 @@ export function RequestTabBar({
   onOpenSoap,
   onImportCurl,
   onOpenGraphQL,
+  onOpenWebSocket,
   onToggleHistory,
   historyOpen,
   historyCount,
@@ -95,6 +97,10 @@ export function RequestTabBar({
         <BarButton onClick={onOpenGraphQL} title="GraphQL">
           <Braces className="h-3.5 w-3.5" />
           <span className="text-[11px]">GraphQL</span>
+        </BarButton>
+        <BarButton onClick={onOpenWebSocket} title="WebSocket">
+          <Wifi className="h-3.5 w-3.5" />
+          <span className="text-[11px]">WS</span>
         </BarButton>
         <BarButton onClick={onOpenSoap} title="SOAP / WSDL">
           <Globe className="h-3.5 w-3.5" />

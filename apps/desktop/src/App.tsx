@@ -26,6 +26,7 @@ import { SavePopover } from "./components/SavePopover";
 import { EnvManagerModal } from "./components/EnvManagerModal";
 import { CurlImportModal } from "./components/CurlImportModal";
 import { GraphQLModal } from "./components/GraphQLModal";
+import { WebSocketModal } from "./components/WebSocketModal";
 import { HistoryPanel, type HistoryEntry } from "./components/HistoryPanel";
 import { SoapModal } from "./components/SoapModal";
 
@@ -57,6 +58,7 @@ export default function App() {
   const [soapModalOpen, setSoapModalOpen] = useState(false);
   const [curlImportOpen, setCurlImportOpen] = useState(false);
   const [graphqlOpen, setGraphqlOpen] = useState(false);
+  const [wsOpen, setWsOpen] = useState(false);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
 
@@ -451,6 +453,7 @@ export default function App() {
           onNew={() => newTab()}
           onImportCurl={() => setCurlImportOpen(true)}
           onOpenGraphQL={() => setGraphqlOpen(true)}
+          onOpenWebSocket={() => setWsOpen(true)}
           onToggleHistory={() => setHistoryOpen((o) => !o)}
           historyOpen={historyOpen}
           historyCount={history.length}
@@ -539,6 +542,7 @@ export default function App() {
         onImport={importCurl}
       />
       <GraphQLModal open={graphqlOpen} onClose={() => setGraphqlOpen(false)} activeEnvId={activeEnvId} />
+      <WebSocketModal open={wsOpen} onClose={() => setWsOpen(false)} />
       <SoapModal open={soapModalOpen} onClose={() => setSoapModalOpen(false)} />
     </div>
   );
