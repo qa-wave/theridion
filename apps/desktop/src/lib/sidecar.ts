@@ -422,6 +422,19 @@ export const sidecar = {
       method: "POST",
       body: JSON.stringify(input),
     }),
+
+  // ---- Mock server --------------------------------------------------------
+  mockStart: (input: MockStartInput) =>
+    call<MockStartOutput>("/api/mock/start", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  mockStop: (port: number) =>
+    call<{ status: string; port: string }>("/api/mock/stop", {
+      method: "POST",
+      body: JSON.stringify({ port }),
+    }),
+  mockStatus: () => call<MockStatusOutput>("/api/mock/status"),
 };
 
 // ---- Assertion types ----------------------------------------------------
@@ -603,4 +616,34 @@ export interface GrpcInvokeOutput {
   result: unknown;
   error: string | null;
   elapsed_ms: number;
+}
+
+// ---- Mock server types ----------------------------------------------------
+
+export interface MockRoute {
+  path: string;
+  method?: string;
+  status?: number;
+  headers?: Record<string, string>;
+  body?: string;
+  content_type?: string;
+}
+
+export interface MockStartInput {
+  routes: MockRoute[];
+  port?: number;
+}
+
+export interface MockStartOutput {
+  port: number;
+  route_count: number;
+}
+
+export interface MockServerInfo {
+  port: number;
+  route_count: number;
+}
+
+export interface MockStatusOutput {
+  servers: MockServerInfo[];
 }
