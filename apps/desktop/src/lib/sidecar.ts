@@ -410,6 +410,18 @@ export const sidecar = {
       method: "POST",
       body: JSON.stringify(input),
     }),
+
+  // ---- gRPC ---------------------------------------------------------------
+  grpcReflect: (host: string) =>
+    call<GrpcReflectOutput>("/api/grpc/reflect", {
+      method: "POST",
+      body: JSON.stringify({ host }),
+    }),
+  grpcInvoke: (input: GrpcInvokeInput) =>
+    call<GrpcInvokeOutput>("/api/grpc/invoke", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
 };
 
 // ---- Assertion types ----------------------------------------------------
@@ -564,4 +576,31 @@ export interface OAuth2TokenOutput {
   refresh_token: string | null;
   scope: string | null;
   raw: Record<string, unknown>;
+}
+
+// ---- gRPC types -----------------------------------------------------------
+
+export interface GrpcService {
+  name: string;
+  methods: string[];
+}
+
+export interface GrpcReflectOutput {
+  services: GrpcService[];
+}
+
+export interface GrpcInvokeInput {
+  host: string;
+  service: string;
+  method: string;
+  payload?: Record<string, unknown>;
+  metadata?: Record<string, string>;
+  timeout_seconds?: number;
+}
+
+export interface GrpcInvokeOutput {
+  ok: boolean;
+  result: unknown;
+  error: string | null;
+  elapsed_ms: number;
 }
