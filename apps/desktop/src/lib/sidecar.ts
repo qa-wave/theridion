@@ -442,6 +442,13 @@ export const sidecar = {
       method: "POST",
       body: JSON.stringify(input),
     }),
+
+  // ---- Load testing -------------------------------------------------------
+  loadTest: (input: LoadTestInput) =>
+    call<LoadTestResult>("/api/loadtest/run", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
 };
 
 // ---- Assertion types ----------------------------------------------------
@@ -687,4 +694,32 @@ export interface ExecuteWithCapturesResponse {
   final_url: string;
   resolved_url?: string | null;
   captured_values: Record<string, string>;
+}
+
+// ---- Load test types ------------------------------------------------------
+
+export interface LoadTestInput {
+  url: string;
+  method?: ExecuteRequestInput["method"];
+  headers?: Record<string, string>;
+  body?: string | null;
+  concurrency?: number;
+  duration_seconds?: number;
+  rps_limit?: number | null;
+}
+
+export interface LoadTestResult {
+  total_requests: number;
+  successful: number;
+  failed: number;
+  error_count: number;
+  avg_latency_ms: number;
+  min_latency_ms: number;
+  max_latency_ms: number;
+  p50_ms: number;
+  p95_ms: number;
+  p99_ms: number;
+  actual_rps: number;
+  duration_seconds: number;
+  errors: Record<string, number>;
 }
