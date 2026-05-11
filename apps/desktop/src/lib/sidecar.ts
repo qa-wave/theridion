@@ -435,6 +435,13 @@ export const sidecar = {
       body: JSON.stringify({ port }),
     }),
   mockStatus: () => call<MockStatusOutput>("/api/mock/status"),
+
+  // ---- Request chaining ---------------------------------------------------
+  executeChain: (input: ExecuteWithCapturesInput) =>
+    call<ExecuteWithCapturesResponse>("/api/requests/execute-chain", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
 };
 
 // ---- Assertion types ----------------------------------------------------
@@ -646,4 +653,38 @@ export interface MockServerInfo {
 
 export interface MockStatusOutput {
   servers: MockServerInfo[];
+}
+
+// ---- Request chaining types -----------------------------------------------
+
+export interface CaptureRule {
+  name: string;
+  source: "body" | "header" | "status";
+  path?: string;
+}
+
+export interface ExecuteWithCapturesInput {
+  method: ExecuteRequestInput["method"];
+  url: string;
+  headers?: Record<string, string>;
+  query?: Record<string, string>;
+  body?: string | null;
+  auth?: AuthConfig | null;
+  timeout_seconds?: number;
+  follow_redirects?: boolean;
+  environment_id?: string | null;
+  captures: CaptureRule[];
+}
+
+export interface ExecuteWithCapturesResponse {
+  status: number;
+  status_text: string;
+  headers: Record<string, string>;
+  body: string;
+  body_size_bytes: number;
+  elapsed_ms: number;
+  timing?: TimingBreakdown | null;
+  final_url: string;
+  resolved_url?: string | null;
+  captured_values: Record<string, string>;
 }
