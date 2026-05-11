@@ -3,125 +3,270 @@
 @tailwind utilities;
 
 /* ═══════════════════════════════════════════════════════════════════
-   Theme system — 4 accent palettes switchable via class on <html>.
-   Default is "cobweb" (teal). Other themes override --accent-* vars.
+   Theme system — 9 themes switchable via class on <html>.
+   4 color themes (accent swap only) + 5 style themes (accent + look).
    ═══════════════════════════════════════════════════════════════════ */
 
 :root,
 html.theme-cobweb {
   color-scheme: dark;
-  --accent-50:  236 254 255;   /* #ecfeff */
-  --accent-100: 207 250 254;   /* #cffafe */
-  --accent-200: 165 243 252;   /* #a5f3fc */
-  --accent-300: 103 232 249;   /* #67e8f9 */
-  --accent-400: 34 211 238;    /* #22d3ee */
-  --accent-500: 6 182 212;     /* #06b6d4 */
-  --accent-600: 8 145 178;     /* #0891b2 */
-  --accent-700: 14 116 144;    /* #0e7490 */
-  --accent-800: 21 94 117;     /* #155e75 */
-  --accent-900: 22 78 99;      /* #164e63 */
-  --accent-950: 8 51 68;       /* #083344 */
+  --accent-50:  236 254 255;
+  --accent-100: 207 250 254;
+  --accent-200: 165 243 252;
+  --accent-300: 103 232 249;
+  --accent-400: 34 211 238;
+  --accent-500: 6 182 212;
+  --accent-600: 8 145 178;
+  --accent-700: 14 116 144;
+  --accent-800: 21 94 117;
+  --accent-900: 22 78 99;
+  --accent-950: 8 51 68;
   --accent-glow: 6 182 212;
-  --gradient-end: 16 185 129;  /* emerald-500 for gradient pair */
+  --gradient-end: 16 185 129;
   --canvas-tint: 10 10 10;
   --mesh-a: rgba(6,182,212,0.04);
   --mesh-b: rgba(16,185,129,0.03);
+  --border-alpha: 0.06;
+  --canvas-bg: #0a0a0a;
+  --panel-bg: rgba(18,18,20,0.75);
+  --radius-base: 8px;
+  --radius-lg: 12px;
+  --font-ui: "Inter", ui-sans-serif, -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --font-code: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --text-primary: #e5e5e5;
+  --text-secondary: #a3a3a3;
+  --text-muted: #737373;
+  --text-faint: #525252;
+  --status-dot: #34d399;
 }
 
 html.theme-violet {
-  --accent-50:  245 243 255;
-  --accent-100: 237 233 254;
-  --accent-200: 221 214 254;
-  --accent-300: 196 181 253;
-  --accent-400: 167 139 250;
-  --accent-500: 139 92 246;
-  --accent-600: 124 58 237;
-  --accent-700: 109 40 217;
-  --accent-800: 91 33 182;
-  --accent-900: 76 29 149;
-  --accent-950: 46 16 101;
-  --accent-glow: 139 92 246;
-  --gradient-end: 244 114 182; /* pink-400 */
-  --canvas-tint: 10 8 14;
-  --mesh-a: rgba(139,92,246,0.05);
-  --mesh-b: rgba(244,114,182,0.03);
+  --accent-50: 245 243 255; --accent-100: 237 233 254; --accent-200: 221 214 254;
+  --accent-300: 196 181 253; --accent-400: 167 139 250; --accent-500: 139 92 246;
+  --accent-600: 124 58 237; --accent-700: 109 40 217; --accent-800: 91 33 182;
+  --accent-900: 76 29 149; --accent-950: 46 16 101;
+  --accent-glow: 139 92 246; --gradient-end: 244 114 182;
+  --mesh-a: rgba(139,92,246,0.05); --mesh-b: rgba(244,114,182,0.03);
 }
 
 html.theme-amber {
-  --accent-50:  255 251 235;
-  --accent-100: 254 243 199;
-  --accent-200: 253 230 138;
-  --accent-300: 252 211 77;
-  --accent-400: 251 191 36;
-  --accent-500: 245 158 11;
-  --accent-600: 217 119 6;
-  --accent-700: 180 83 9;
-  --accent-800: 146 64 14;
-  --accent-900: 120 53 15;
-  --accent-950: 69 26 3;
-  --accent-glow: 245 158 11;
-  --gradient-end: 251 191 36;  /* amber-400 */
-  --canvas-tint: 12 10 8;
-  --mesh-a: rgba(245,158,11,0.04);
-  --mesh-b: rgba(217,119,6,0.03);
+  --accent-50: 255 251 235; --accent-100: 254 243 199; --accent-200: 253 230 138;
+  --accent-300: 252 211 77; --accent-400: 251 191 36; --accent-500: 245 158 11;
+  --accent-600: 217 119 6; --accent-700: 180 83 9; --accent-800: 146 64 14;
+  --accent-900: 120 53 15; --accent-950: 69 26 3;
+  --accent-glow: 245 158 11; --gradient-end: 251 191 36;
+  --mesh-a: rgba(245,158,11,0.04); --mesh-b: rgba(217,119,6,0.03);
 }
 
 html.theme-arctic {
-  --accent-50:  238 242 255;
-  --accent-100: 224 231 255;
-  --accent-200: 199 210 254;
-  --accent-300: 165 180 252;
-  --accent-400: 129 140 248;
-  --accent-500: 99 102 241;
-  --accent-600: 79 70 229;
-  --accent-700: 67 56 202;
-  --accent-800: 55 48 163;
-  --accent-900: 49 46 129;
-  --accent-950: 30 27 75;
-  --accent-glow: 99 102 241;
-  --gradient-end: 56 189 248;  /* sky-400 */
-  --canvas-tint: 8 8 16;
-  --mesh-a: rgba(99,102,241,0.05);
-  --mesh-b: rgba(56,189,248,0.03);
+  --accent-50: 238 242 255; --accent-100: 224 231 255; --accent-200: 199 210 254;
+  --accent-300: 165 180 252; --accent-400: 129 140 248; --accent-500: 99 102 241;
+  --accent-600: 79 70 229; --accent-700: 67 56 202; --accent-800: 55 48 163;
+  --accent-900: 49 46 129; --accent-950: 30 27 75;
+  --accent-glow: 99 102 241; --gradient-end: 56 189 248;
+  --mesh-a: rgba(99,102,241,0.05); --mesh-b: rgba(56,189,248,0.03);
 }
 
-html,
-body,
-#root {
-  height: 100%;
-  margin: 0;
+/* ═══════════════════════════════════════════════════════════════════
+   STYLE THEMES — each overrides accent + structural look
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ---- 5. Midnight Noir ------------------------------------------------ */
+html.theme-noir {
+  --accent-50: 254 226 226; --accent-100: 254 202 202; --accent-200: 252 165 165;
+  --accent-300: 248 113 113; --accent-400: 239 68 68; --accent-500: 220 38 38;
+  --accent-600: 185 28 28; --accent-700: 153 27 27; --accent-800: 127 29 29;
+  --accent-900: 100 23 23; --accent-950: 60 10 10;
+  --accent-glow: 220 38 38; --gradient-end: 239 68 68;
+  --canvas-bg: #000; --panel-bg: #080808;
+  --mesh-a: transparent; --mesh-b: transparent;
+  --border-alpha: 0.03;
+  --status-dot: #f87171;
+}
+html.theme-noir .border-glass { border-color: rgba(255,255,255,0.03) !important; }
+html.theme-noir aside { box-shadow: 4px 0 24px -4px rgba(0,0,0,0.6); }
+html.theme-noir footer { box-shadow: 0 -4px 24px -4px rgba(0,0,0,0.5); }
+html.theme-noir .glass { background: #080808; backdrop-filter: none; -webkit-backdrop-filter: none; }
+html.theme-noir .bg-mesh-gradient { background-image: none !important; }
+html.theme-noir .shadow-inner-glow { box-shadow: none; }
+
+/* ---- 6. Neon Terminal ------------------------------------------------ */
+html.theme-neon {
+  --accent-50: 220 255 230; --accent-100: 187 255 204; --accent-200: 136 255 170;
+  --accent-300: 68 255 119; --accent-400: 0 255 65; --accent-500: 0 220 55;
+  --accent-600: 0 180 45; --accent-700: 0 140 35; --accent-800: 0 100 25;
+  --accent-900: 0 70 18; --accent-950: 0 40 10;
+  --accent-glow: 0 255 65; --gradient-end: 0 255 65;
+  --canvas-bg: #0a0a0a; --panel-bg: rgba(0,10,2,0.85);
+  --mesh-a: rgba(0,255,65,0.015); --mesh-b: transparent;
+  --border-alpha: 0.08;
+  --font-ui: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
+  --text-primary: #b8e6c0; --text-secondary: rgba(0,255,65,0.45);
+  --text-muted: rgba(0,255,65,0.3); --text-faint: rgba(0,255,65,0.18);
+  --status-dot: #00ff41;
+}
+html.theme-neon .border-glass { border-color: rgba(0,255,65,0.1) !important; }
+html.theme-neon .border-glass-light { border-color: rgba(0,255,65,0.15) !important; }
+html.theme-neon .glass { background: rgba(0,10,2,0.85); }
+html.theme-neon .bg-mesh-gradient {
+  background-image:
+    repeating-linear-gradient(0deg, rgba(0,255,65,0.012) 0px, transparent 2px, transparent 4px),
+    radial-gradient(at 50% 50%, rgba(0,255,65,0.03) 0%, transparent 70%) !important;
+}
+html.theme-neon .text-neutral-100 { color: #b8e6c0; }
+html.theme-neon .text-neutral-400 { color: rgba(0,255,65,0.45); }
+html.theme-neon .text-neutral-500 { color: rgba(0,255,65,0.3); }
+html.theme-neon .text-neutral-600 { color: rgba(0,255,65,0.18); }
+html.theme-neon .text-sky-400 { color: #00ff41; }
+html.theme-neon .text-emerald-400 { color: #66ff88; }
+html.theme-neon .text-amber-400 { color: #88ff44; }
+html.theme-neon .text-violet-400 { color: #44ffaa; }
+html.theme-neon input, html.theme-neon textarea, html.theme-neon select {
+  background: rgba(0,255,65,0.03); color: #00ff41;
+  border-color: rgba(0,255,65,0.12);
+}
+html.theme-neon input::placeholder, html.theme-neon textarea::placeholder {
+  color: rgba(0,255,65,0.2);
+}
+html.theme-neon .bg-accent-gradient { color: #000; }
+html.theme-neon .bg-accent-gradient span,
+html.theme-neon .bg-accent-gradient svg { color: #000 !important; }
+html.theme-neon ::-webkit-scrollbar-thumb { background: rgba(0,255,65,0.1); }
+
+/* ---- 7. Frosted Aurora ----------------------------------------------- */
+html.theme-frosted {
+  --accent-50: 238 242 255; --accent-100: 224 231 255; --accent-200: 199 210 254;
+  --accent-300: 196 181 253; --accent-400: 167 139 250; --accent-500: 129 140 248;
+  --accent-600: 99 102 241; --accent-700: 79 70 229; --accent-800: 67 56 202;
+  --accent-900: 49 46 129; --accent-950: 30 27 75;
+  --accent-glow: 129 140 248; --gradient-end: 244 114 182;
+  --canvas-bg: #0c0c14; --panel-bg: rgba(15,15,25,0.55);
+  --mesh-a: rgba(99,102,241,0.08); --mesh-b: rgba(244,114,182,0.06);
+  --border-alpha: 0.07;
+  --status-dot: #a78bfa;
+}
+html.theme-frosted .glass {
+  background: rgba(15,15,25,0.55);
+  backdrop-filter: blur(24px) saturate(1.6);
+  -webkit-backdrop-filter: blur(24px) saturate(1.6);
+}
+html.theme-frosted .bg-mesh-gradient {
+  background-image:
+    radial-gradient(ellipse at 15% 85%, rgba(99,102,241,0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 85% 15%, rgba(244,114,182,0.06) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 50%, rgba(34,211,238,0.04) 0%, transparent 60%) !important;
+}
+html.theme-frosted .bg-accent-gradient {
+  background: linear-gradient(135deg, #818cf8, #f472b6, #22d3ee) !important;
+  background-size: 200% 200%;
+  animation: aurora 4s ease infinite;
+}
+html.theme-frosted .bg-accent-gradient:hover { filter: brightness(1.15); }
+html.theme-frosted .bg-accent-gradient-bar {
+  background: linear-gradient(to right, #818cf8, #f472b6, #22d3ee) !important;
+}
+@keyframes aurora { 0%,100%{background-position:0% 50%} 50%{background-position:100% 50%} }
+html.theme-frosted .rounded-lg, html.theme-frosted .rounded-md { border-radius: 12px; }
+html.theme-frosted .rounded-xl { border-radius: 16px; }
+html.theme-frosted input:focus, html.theme-frosted textarea:focus {
+  box-shadow: 0 0 12px -2px rgba(129,140,248,0.2);
 }
 
-/* ---- Selection — uses accent color ---- */
+/* ---- 8. Brutalist ---------------------------------------------------- */
+html.theme-brutalist {
+  --accent-50: 255 255 255; --accent-100: 245 245 245; --accent-200: 229 229 229;
+  --accent-300: 212 212 212; --accent-400: 163 163 163; --accent-500: 255 255 255;
+  --accent-600: 229 229 229; --accent-700: 163 163 163; --accent-800: 115 115 115;
+  --accent-900: 82 82 82; --accent-950: 38 38 38;
+  --accent-glow: 255 255 255; --gradient-end: 255 255 255;
+  --canvas-bg: #000; --panel-bg: #000;
+  --mesh-a: transparent; --mesh-b: transparent;
+  --border-alpha: 0.15;
+  --radius-base: 0px; --radius-lg: 0px;
+  --status-dot: #fff;
+}
+html.theme-brutalist * { border-radius: 0 !important; }
+html.theme-brutalist .border-glass { border-color: #333 !important; }
+html.theme-brutalist .border-glass-light { border-color: #444 !important; }
+html.theme-brutalist aside { border-right: 2px solid #333 !important; }
+html.theme-brutalist footer { border-top: 2px solid #333 !important; }
+html.theme-brutalist .glass {
+  background: #000; backdrop-filter: none; -webkit-backdrop-filter: none;
+}
+html.theme-brutalist .bg-mesh-gradient { background-image: none !important; }
+html.theme-brutalist .bg-accent-gradient { background: #fff !important; color: #000 !important; }
+html.theme-brutalist .bg-accent-gradient:hover { background: #e5e5e5 !important; }
+html.theme-brutalist .bg-accent-gradient span,
+html.theme-brutalist .bg-accent-gradient svg { color: #000 !important; }
+html.theme-brutalist .bg-accent-gradient-bar { background: #fff !important; height: 3px; }
+html.theme-brutalist .shadow-glow, html.theme-brutalist .shadow-glow-sm,
+html.theme-brutalist .shadow-glow-emerald, html.theme-brutalist .shadow-inner-glow {
+  box-shadow: none !important;
+}
+html.theme-brutalist input, html.theme-brutalist textarea, html.theme-brutalist select {
+  background: #000; border: 2px solid #333;
+}
+html.theme-brutalist input:focus, html.theme-brutalist textarea:focus {
+  border-color: #fff;
+}
+html.theme-brutalist .uppercase { font-weight: 700; letter-spacing: 0.2em; }
+html.theme-brutalist span.animate-ping { display: none; }
+
+/* ---- 9. Warm Parchment ---------------------------------------------- */
+html.theme-warm {
+  --accent-50: 255 243 230; --accent-100: 255 228 200; --accent-200: 240 195 150;
+  --accent-300: 224 176 144; --accent-400: 212 149 106; --accent-500: 194 114 78;
+  --accent-600: 170 90 58; --accent-700: 140 70 45; --accent-800: 110 55 35;
+  --accent-900: 85 42 25; --accent-950: 55 25 12;
+  --accent-glow: 194 114 78; --gradient-end: 212 149 106;
+  --canvas-bg: #12110f; --panel-bg: rgba(16,15,13,0.75);
+  --mesh-a: rgba(180,130,80,0.04); --mesh-b: rgba(160,100,60,0.03);
+  --border-alpha: 0.06;
+  --text-primary: #e8e0d4; --text-secondary: #a09080;
+  --text-muted: #807060; --text-faint: #605040;
+  --status-dot: #d4956a;
+}
+html.theme-warm .border-glass { border-color: rgba(180,150,110,0.08) !important; }
+html.theme-warm .border-glass-light { border-color: rgba(180,150,110,0.12) !important; }
+html.theme-warm .glass { background: rgba(16,15,13,0.75); }
+html.theme-warm .text-neutral-100 { color: #e8e0d4; }
+html.theme-warm .text-neutral-400 { color: #a09080; }
+html.theme-warm .text-neutral-500 { color: #807060; }
+html.theme-warm .text-neutral-600 { color: #605040; }
+html.theme-warm input, html.theme-warm textarea, html.theme-warm select {
+  background: rgba(180,150,110,0.04);
+  border-color: rgba(180,150,110,0.1);
+}
+html.theme-warm input::placeholder, html.theme-warm textarea::placeholder {
+  color: rgba(180,150,110,0.3);
+}
+html.theme-warm ::-webkit-scrollbar-thumb { background: rgba(180,150,110,0.12); }
+html.theme-warm ::-webkit-scrollbar-thumb:hover { background: rgba(180,150,110,0.2); }
+
+/* ═══════════════════════════════════════════════════════════════════ */
+
+html, body, #root { height: 100%; margin: 0; }
+
 ::selection {
   background: rgb(var(--accent-500) / 0.25);
   color: rgb(var(--accent-50));
 }
 
-/* ---- Focus rings — accent-tinted ---- */
 *:focus-visible {
   outline: 1.5px solid rgb(var(--accent-500) / 0.5);
   outline-offset: 1px;
-  border-radius: 4px;
+  border-radius: var(--radius-base, 4px);
 }
-button:focus-visible,
-select:focus-visible {
-  outline: none;
-}
+button:focus-visible, select:focus-visible { outline: none; }
 
-/* ---- Smooth scrollbars ---- */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.08);
-  border-radius: 999px;
-}
-::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.14); }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 999px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.14); }
 
-/* ---- Glassmorphism utility layers ---- */
 @layer utilities {
   .glass {
-    background: rgba(18, 18, 20, 0.75);
+    background: var(--panel-bg, rgba(18,18,20,0.75));
     backdrop-filter: blur(16px) saturate(1.4);
     -webkit-backdrop-filter: blur(16px) saturate(1.4);
   }
@@ -130,13 +275,11 @@ select:focus-visible {
     backdrop-filter: blur(8px) saturate(1.2);
     -webkit-backdrop-filter: blur(8px) saturate(1.2);
   }
-  .border-glass { border-color: rgba(255, 255, 255, 0.06); }
+  .border-glass { border-color: rgba(255, 255, 255, var(--border-alpha, 0.06)); }
   .border-glass-light { border-color: rgba(255, 255, 255, 0.1); }
   .text-gradient {
     background: linear-gradient(135deg, rgb(var(--accent-500)), rgb(var(--gradient-end)));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
   }
   .bg-accent-gradient {
     background: linear-gradient(to right, rgb(var(--accent-600)), rgb(var(--gradient-end)));
@@ -149,7 +292,6 @@ select:focus-visible {
   }
 }
 
-/* ---- Smooth transitions everywhere ---- */
 button, a, select, input, textarea {
   transition-property: color, background-color, border-color, opacity, box-shadow;
   transition-duration: 150ms;

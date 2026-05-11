@@ -98,28 +98,54 @@ function ThemePicker() {
         <Palette className="h-3 w-3" />
       </button>
       {open && (
-        <div className="glass absolute bottom-full right-0 z-50 mb-1.5 w-44 animate-fade-in rounded-lg border border-glass-light p-1 shadow-xl shadow-black/50">
-          {THEMES.map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              onClick={() => pick(t.id)}
-              className={`flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-[11px] transition ${
-                current === t.id
-                  ? "bg-white/[0.06] text-neutral-100"
-                  : "text-neutral-400 hover:bg-white/[0.03] hover:text-neutral-200"
-              }`}
-            >
-              <span className={`inline-block h-2.5 w-2.5 rounded-full ${t.dot}`} />
-              {t.label}
-              {current === t.id && (
-                <span className="ml-auto text-cobweb-400">&#x2713;</span>
-              )}
-            </button>
-          ))}
+        <div className="glass absolute bottom-full right-0 z-50 mb-1.5 w-48 animate-fade-in rounded-lg border border-glass-light shadow-xl shadow-black/50">
+          <div className="border-b border-glass px-3 py-1.5 text-[9px] font-semibold uppercase tracking-widest text-neutral-600">
+            Color
+          </div>
+          <div className="p-1">
+            {THEMES.filter((t) => t.group === "color").map((t) => (
+              <ThemeRow key={t.id} theme={t} current={current} onPick={pick} />
+            ))}
+          </div>
+          <div className="border-t border-glass px-3 py-1.5 text-[9px] font-semibold uppercase tracking-widest text-neutral-600">
+            Style
+          </div>
+          <div className="p-1">
+            {THEMES.filter((t) => t.group === "style").map((t) => (
+              <ThemeRow key={t.id} theme={t} current={current} onPick={pick} />
+            ))}
+          </div>
         </div>
       )}
     </div>
+  );
+}
+
+function ThemeRow({
+  theme: t,
+  current,
+  onPick,
+}: {
+  theme: import("../state/theme").ThemeDef;
+  current: ThemeId;
+  onPick: (id: ThemeId) => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onPick(t.id)}
+      className={`flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-[11px] transition ${
+        current === t.id
+          ? "bg-white/[0.06] text-neutral-100"
+          : "text-neutral-400 hover:bg-white/[0.03] hover:text-neutral-200"
+      }`}
+    >
+      <span className={`inline-block h-2.5 w-2.5 rounded-full ${t.dot} shrink-0`} />
+      <span className="truncate">{t.label}</span>
+      {current === t.id && (
+        <span className="ml-auto shrink-0 text-cobweb-400">&#x2713;</span>
+      )}
+    </button>
   );
 }
 
