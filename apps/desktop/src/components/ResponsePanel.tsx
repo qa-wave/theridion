@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { AlertTriangle, Copy, Inbox } from "lucide-react";
+import { AlertTriangle, Copy, GitCompare, Inbox } from "lucide-react";
 import type { ExecuteResponse, TimingBreakdown } from "../lib/sidecar";
 import { CodeEditor } from "./CodeEditor";
 
@@ -9,9 +9,10 @@ interface Props {
   busy: boolean;
   response: ExecuteResponse | null;
   error: string | null;
+  onDiff?: () => void;
 }
 
-export function ResponsePanel({ busy, response, error }: Props) {
+export function ResponsePanel({ busy, response, error, onDiff }: Props) {
   const [tab, setTab] = useState<Tab>("body");
 
   if (busy && !response) return <Loading />;
@@ -20,7 +21,7 @@ export function ResponsePanel({ busy, response, error }: Props) {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <StatusRow res={response} />
+      <StatusRow res={response} onDiff={onDiff} />
       <div className="flex items-center gap-px border-b border-glass px-2">
         <TabButton active={tab === "body"} onClick={() => setTab("body")}>Body</TabButton>
         <TabButton active={tab === "headers"} onClick={() => setTab("headers")}>
@@ -70,7 +71,7 @@ function TabButton({
   );
 }
 
-function StatusRow({ res }: { res: ExecuteResponse }) {
+function StatusRow({ res, onDiff }: { res: ExecuteResponse; onDiff?: () => void }) {
   const tone = statusTone(res.status);
   const toneStyles = {
     ok: "border-emerald-600/30 bg-emerald-500/10 text-emerald-300 shadow-[0_0_12px_-4px_rgba(52,211,153,0.3)]",
@@ -85,6 +86,17 @@ function StatusRow({ res }: { res: ExecuteResponse }) {
       </span>
       <Stat label="Time" value={formatMs(res.elapsed_ms)} />
       <Stat label="Size" value={formatBytes(res.body_size_bytes)} />
+      {onDiff && (
+        <button
+          type="button"
+          onClick={onDiff}
+          className="inline-flex items-center gap-1 rounded-md border border-glass px-2 py-0.5 text-[10px] text-neutral-500 transition hover:bg-white/[0.04] hover:text-neutral-300"
+          title="Compare with previous response"
+        >
+          <GitCompare className="h-3 w-3" />
+          Diff
+        </button>
+      )}
       <span className="ml-auto truncate font-mono text-[10px] text-neutral-600">
         {res.final_url}
       </span>

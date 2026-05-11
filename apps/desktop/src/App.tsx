@@ -25,6 +25,7 @@ import { StatusBar } from "./components/StatusBar";
 import { SavePopover } from "./components/SavePopover";
 import { EnvManagerModal } from "./components/EnvManagerModal";
 import { CurlImportModal } from "./components/CurlImportModal";
+import { DiffModal } from "./components/DiffModal";
 import { GraphQLModal } from "./components/GraphQLModal";
 import { KafkaModal } from "./components/KafkaModal";
 import { WebSocketModal } from "./components/WebSocketModal";
@@ -61,6 +62,8 @@ export default function App() {
   const [graphqlOpen, setGraphqlOpen] = useState(false);
   const [wsOpen, setWsOpen] = useState(false);
   const [kafkaOpen, setKafkaOpen] = useState(false);
+  const [diffOpen, setDiffOpen] = useState(false);
+  const [previousResponse, setPreviousResponse] = useState<import("./lib/sidecar").ExecuteResponse | null>(null);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
 
@@ -194,6 +197,7 @@ export default function App() {
         environment_id: activeEnvId,
       };
       const response = await sidecar.execute(input);
+      setPreviousResponse(active.response);
       patchActive({ busy: false, response, error: null, lastRunAt: Date.now() });
       // Evaluate assertions if any exist.
       if (active.assertions.length > 0) {
@@ -518,6 +522,7 @@ export default function App() {
               busy={active.busy}
               response={active.response}
               error={active.error}
+              onDiff={() => setDiffOpen(true)}
             />
           </div>
           {historyOpen && (
@@ -551,6 +556,12 @@ export default function App() {
       <GraphQLModal open={graphqlOpen} onClose={() => setGraphqlOpen(false)} activeEnvId={activeEnvId} />
       <WebSocketModal open={wsOpen} onClose={() => setWsOpen(false)} />
       <KafkaModal open={kafkaOpen} onClose={() => setKafkaOpen(false)} />
+      <DiffModal
+        open={diffOpen}
+        onClose={() => setDiffOpen(false)}
+        currentResponse={active.response}
+        previousResponse={previousResponse}
+      />
       <SoapModal open={soapModalOpen} onClose={() => setSoapModalOpen(false)} />
     </div>
   );
