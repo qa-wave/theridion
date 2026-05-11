@@ -264,6 +264,7 @@ export default function App() {
       body: active.body.length > 0 ? active.body : null,
       auth: active.auth.type !== "none" ? active.auth : null,
       assertions: active.assertions,
+      pre_request_script: active.preRequestScript || null,
     });
 
     // Find the saved record we just wrote. If we passed an id, look it up;
@@ -284,6 +285,7 @@ export default function App() {
         body: active.body,
         auth: active.auth,
         assertions: active.assertions,
+        preRequestScript: active.preRequestScript,
       }),
     });
 
@@ -507,6 +509,8 @@ export default function App() {
               onBodyChange={(body) => patchActive({ body })}
               onAuthChange={(auth) => patchActive({ auth })}
               onAssertionsChange={(assertions) => patchActive({ assertions, assertionResults: null })}
+              preRequestScript={active.preRequestScript}
+              onPreRequestScriptChange={(preRequestScript) => patchActive({ preRequestScript })}
             />
           </div>
           <div className="min-h-0 overflow-hidden">

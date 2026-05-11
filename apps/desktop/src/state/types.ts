@@ -32,6 +32,7 @@ export interface RequestTab {
   auth: AuthConfig;
   assertions: Assertion[];
   assertionResults: AssertionResult[] | null;
+  preRequestScript: string;
   response: ExecuteResponse | null;
   error: string | null;
   busy: boolean;
@@ -62,6 +63,7 @@ export function newRequestTab(partial?: Partial<RequestTab>): RequestTab {
     auth: { type: "none" },
     assertions: [],
     assertionResults: null,
+    preRequestScript: "",
     response: null,
     error: null,
     busy: false,
@@ -82,6 +84,7 @@ export function signatureOf(t: Partial<RequestTab>): string {
     b: t.body,
     a: t.auth,
     t: t.assertions,
+    s: t.preRequestScript,
   });
 }
 
@@ -132,5 +135,6 @@ export function tabFromSaved(
     body: saved.body ?? "",
     auth: saved.auth ?? { type: "none" },
     assertions: saved.assertions ?? [],
+    preRequestScript: saved.pre_request_script ?? "",
   });
 }

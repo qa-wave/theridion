@@ -166,6 +166,7 @@ export interface CollectionItem {
   body?: string | null;
   auth?: AuthConfig | null;
   assertions?: Assertion[];
+  pre_request_script?: string | null;
   // folder field (when is_folder=true)
   items?: CollectionItem[];
 }
@@ -195,6 +196,7 @@ export interface SaveRequestInput {
   body?: string | null;
   auth?: AuthConfig | null;
   assertions?: Assertion[];
+  pre_request_script?: string | null;
   parent_folder_id?: string | null;
 }
 
@@ -322,6 +324,22 @@ export const sidecar = {
     call<IntrospectOutput>("/api/graphql/introspect", {
       method: "POST",
       body: JSON.stringify({ url, headers: headers ?? {}, environment_id }),
+    }),
+
+  executeScript: (input: {
+    script: string;
+    variables?: Record<string, string>;
+    request?: Record<string, unknown>;
+  }) =>
+    call<{
+      success: boolean;
+      variables: Record<string, string>;
+      logs: string[];
+      error: string | null;
+      duration_ms: number;
+    }>("/api/scripts/execute", {
+      method: "POST",
+      body: JSON.stringify(input),
     }),
 
   kafkaTopics: (bootstrap_servers: string) =>

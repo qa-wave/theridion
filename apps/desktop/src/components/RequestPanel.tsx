@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { Assertion, AssertionResult, AuthConfig } from "../state/types";
 import { CodeEditor } from "./CodeEditor";
 
-type Tab = "params" | "headers" | "body" | "auth" | "tests";
+type Tab = "params" | "headers" | "body" | "auth" | "tests" | "scripts";
 
 const TABS: { id: Tab; label: string; comingSoon?: boolean }[] = [
   { id: "params", label: "Params" },
@@ -10,6 +10,7 @@ const TABS: { id: Tab; label: string; comingSoon?: boolean }[] = [
   { id: "body", label: "Body" },
   { id: "auth", label: "Auth" },
   { id: "tests", label: "Tests" },
+  { id: "scripts", label: "Scripts" },
 ];
 
 interface Props {
@@ -24,6 +25,8 @@ interface Props {
   onBodyChange: (b: string) => void;
   onAuthChange: (a: AuthConfig) => void;
   onAssertionsChange: (a: Assertion[]) => void;
+  preRequestScript: string;
+  onPreRequestScriptChange: (s: string) => void;
 }
 
 export function RequestPanel({
@@ -38,6 +41,8 @@ export function RequestPanel({
   onBodyChange,
   onAuthChange,
   onAssertionsChange,
+  preRequestScript,
+  onPreRequestScriptChange,
 }: Props) {
   const [tab, setTab] = useState<Tab>("params");
 
@@ -88,6 +93,22 @@ export function RequestPanel({
         )}
         {tab === "body" && <BodyView value={body} onChange={onBodyChange} />}
         {tab === "auth" && <AuthView value={auth} onChange={onAuthChange} />}
+        {tab === "scripts" && (
+          <div className="flex h-full min-h-0 flex-col">
+            <p className="mb-2 text-[11px] uppercase tracking-widest text-neutral-500">
+              Pre-request Script
+              <span className="ml-2 normal-case text-neutral-600">JavaScript &middot; runs before each send</span>
+            </p>
+            <div className="min-h-[200px] flex-1 overflow-hidden rounded-lg border border-glass bg-neutral-900/50">
+              <CodeEditor
+                value={preRequestScript}
+                onChange={onPreRequestScriptChange}
+                language="javascript"
+                placeholder="// Available: pm.environment.get/set, pm.variables, pm.request\npm.environment.set('token', 'generated-value');"
+              />
+            </div>
+          </div>
+        )}
         {tab === "tests" && (
           <TestsView
             assertions={assertions}
