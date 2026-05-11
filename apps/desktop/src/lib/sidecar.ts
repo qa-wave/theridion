@@ -449,6 +449,20 @@ export const sidecar = {
       method: "POST",
       body: JSON.stringify(input),
     }),
+
+  // ---- Request duplication ------------------------------------------------
+  duplicateRequest: (collectionId: string, requestId: string) =>
+    call<StoredCollection>(
+      `/api/collections/${collectionId}/requests/${requestId}/duplicate`,
+      { method: "POST" },
+    ),
+
+  // ---- Collection variables -----------------------------------------------
+  updateCollectionVariables: (collectionId: string, variables: CollectionVariable[]) =>
+    call<StoredCollection>(`/api/collections/${collectionId}/variables`, {
+      method: "PATCH",
+      body: JSON.stringify({ variables }),
+    }),
 };
 
 // ---- Assertion types ----------------------------------------------------
@@ -722,4 +736,12 @@ export interface LoadTestResult {
   actual_rps: number;
   duration_seconds: number;
   errors: Record<string, number>;
+}
+
+// ---- Collection variables type -------------------------------------------
+
+export interface CollectionVariable {
+  name: string;
+  value: string;
+  enabled: boolean;
 }
