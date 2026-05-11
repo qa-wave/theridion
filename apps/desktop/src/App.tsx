@@ -24,6 +24,7 @@ import { ResponsePanel } from "./components/ResponsePanel";
 import { StatusBar } from "./components/StatusBar";
 import { SavePopover } from "./components/SavePopover";
 import { EnvManagerModal } from "./components/EnvManagerModal";
+import { CodegenModal } from "./components/CodegenModal";
 import { CurlImportModal } from "./components/CurlImportModal";
 import { DiffModal } from "./components/DiffModal";
 import { GraphQLModal } from "./components/GraphQLModal";
@@ -63,6 +64,7 @@ export default function App() {
   const [wsOpen, setWsOpen] = useState(false);
   const [kafkaOpen, setKafkaOpen] = useState(false);
   const [diffOpen, setDiffOpen] = useState(false);
+  const [codegenOpen, setCodegenOpen] = useState(false);
   const [previousResponse, setPreviousResponse] = useState<import("./lib/sidecar").ExecuteResponse | null>(null);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -523,6 +525,7 @@ export default function App() {
               response={active.response}
               error={active.error}
               onDiff={() => setDiffOpen(true)}
+              onCodegen={() => setCodegenOpen(true)}
             />
           </div>
           {historyOpen && (
@@ -556,6 +559,14 @@ export default function App() {
       <GraphQLModal open={graphqlOpen} onClose={() => setGraphqlOpen(false)} activeEnvId={activeEnvId} />
       <WebSocketModal open={wsOpen} onClose={() => setWsOpen(false)} />
       <KafkaModal open={kafkaOpen} onClose={() => setKafkaOpen(false)} />
+      <CodegenModal
+        open={codegenOpen}
+        onClose={() => setCodegenOpen(false)}
+        method={active.method}
+        url={active.url}
+        headers={parseHeadersText(active.headersRaw)}
+        body={active.body || null}
+      />
       <DiffModal
         open={diffOpen}
         onClose={() => setDiffOpen(false)}

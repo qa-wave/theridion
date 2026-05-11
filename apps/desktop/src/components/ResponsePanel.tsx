@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { AlertTriangle, Copy, GitCompare, Inbox } from "lucide-react";
+import { AlertTriangle, Code2, Copy, GitCompare, Inbox } from "lucide-react";
 import type { ExecuteResponse, TimingBreakdown } from "../lib/sidecar";
 import { CodeEditor } from "./CodeEditor";
 
@@ -10,9 +10,10 @@ interface Props {
   response: ExecuteResponse | null;
   error: string | null;
   onDiff?: () => void;
+  onCodegen?: () => void;
 }
 
-export function ResponsePanel({ busy, response, error, onDiff }: Props) {
+export function ResponsePanel({ busy, response, error, onDiff, onCodegen }: Props) {
   const [tab, setTab] = useState<Tab>("body");
 
   if (busy && !response) return <Loading />;
@@ -21,7 +22,7 @@ export function ResponsePanel({ busy, response, error, onDiff }: Props) {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <StatusRow res={response} onDiff={onDiff} />
+      <StatusRow res={response} onDiff={onDiff} onCodegen={onCodegen} />
       <div className="flex items-center gap-px border-b border-glass px-2">
         <TabButton active={tab === "body"} onClick={() => setTab("body")}>Body</TabButton>
         <TabButton active={tab === "headers"} onClick={() => setTab("headers")}>
@@ -71,7 +72,7 @@ function TabButton({
   );
 }
 
-function StatusRow({ res, onDiff }: { res: ExecuteResponse; onDiff?: () => void }) {
+function StatusRow({ res, onDiff, onCodegen }: { res: ExecuteResponse; onDiff?: () => void; onCodegen?: () => void }) {
   const tone = statusTone(res.status);
   const toneStyles = {
     ok: "border-emerald-600/30 bg-emerald-500/10 text-emerald-300 shadow-[0_0_12px_-4px_rgba(52,211,153,0.3)]",
@@ -86,6 +87,17 @@ function StatusRow({ res, onDiff }: { res: ExecuteResponse; onDiff?: () => void 
       </span>
       <Stat label="Time" value={formatMs(res.elapsed_ms)} />
       <Stat label="Size" value={formatBytes(res.body_size_bytes)} />
+      {onCodegen && (
+        <button
+          type="button"
+          onClick={onCodegen}
+          className="inline-flex items-center gap-1 rounded-md border border-glass px-2 py-0.5 text-[10px] text-neutral-500 transition hover:bg-white/[0.04] hover:text-neutral-300"
+          title="Generate code snippet"
+        >
+          <Code2 className="h-3 w-3" />
+          Code
+        </button>
+      )}
       {onDiff && (
         <button
           type="button"

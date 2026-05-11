@@ -326,6 +326,15 @@ export const sidecar = {
       body: JSON.stringify({ url, headers: headers ?? {}, environment_id }),
     }),
 
+  generateCode: (input: {
+    method: string; url: string; headers: Record<string, string>;
+    body: string | null; language: string;
+  }) =>
+    call<{ language: string; code: string }>("/api/codegen/generate", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+
   executeScript: (input: {
     script: string;
     variables?: Record<string, string>;
