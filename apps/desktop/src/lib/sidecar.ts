@@ -396,6 +396,13 @@ export const sidecar = {
       method: "POST",
       body: JSON.stringify(input),
     }),
+
+  // ---- Multipart ----------------------------------------------------------
+  executeMultipart: (input: ExecuteMultipartInput) =>
+    call<ExecuteResponse>("/api/requests/execute-multipart", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
 };
 
 // ---- Assertion types ----------------------------------------------------
@@ -507,4 +514,26 @@ export interface SoapExecuteOutput {
   ok: boolean;
   result: unknown;
   fault: string | null;
+}
+
+// ---- Multipart types ------------------------------------------------------
+
+export interface FormField {
+  key: string;
+  value: string;
+  is_file: boolean;
+  filename?: string;
+  content_type?: string;
+}
+
+export interface ExecuteMultipartInput {
+  method: ExecuteRequestInput["method"];
+  url: string;
+  headers?: Record<string, string>;
+  query?: Record<string, string>;
+  fields: FormField[];
+  auth?: AuthConfig | null;
+  timeout_seconds?: number;
+  follow_redirects?: boolean;
+  environment_id?: string | null;
 }
