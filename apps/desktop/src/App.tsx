@@ -32,6 +32,7 @@ import { KafkaModal } from "./components/KafkaModal";
 import { WebSocketModal } from "./components/WebSocketModal";
 import { HistoryPanel, type HistoryEntry } from "./components/HistoryPanel";
 import { SoapModal } from "./components/SoapModal";
+import { CommandPalette, useDefaultActions } from "./components/CommandPalette";
 
 const APP_VERSION = "0.0.1";
 const ACTIVE_ENV_KEY = "theridion.activeEnvironmentId";
@@ -68,6 +69,7 @@ export default function App() {
   const [previousResponse, setPreviousResponse] = useState<import("./lib/sidecar").ExecuteResponse | null>(null);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [cmdPaletteOpen, setCmdPaletteOpen] = useState(false);
 
   // ---- sidecar health polling ---------------------------------------------
   useEffect(() => {
@@ -407,11 +409,26 @@ export default function App() {
     // null out tabs that lost their backing request.
   }
 
+  // ---- command palette actions ----------------------------------------------
+  const cmdActions = useDefaultActions({
+    newTab: () => newTab(),
+    importCurl: () => setCurlImportOpen(true),
+    openGraphQL: () => setGraphqlOpen(true),
+    openWebSocket: () => setWsOpen(true),
+    openKafka: () => setKafkaOpen(true),
+    openSoap: () => setSoapModalOpen(true),
+    manageEnvs: () => setEnvManagerOpen(true),
+    openCodegen: () => setCodegenOpen(true),
+  });
+
   // ---- keyboard shortcuts -------------------------------------------------
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       const cmd = e.metaKey || e.ctrlKey;
-      if (cmd && e.key === "s") {
+      if (cmd && e.key === "k") {
+        e.preventDefault();
+        setCmdPaletteOpen((o) => !o);
+      } else if (cmd && e.key === "s") {
         e.preventDefault();
         // Cmd+Shift+S = always show picker (Save As); Cmd+S alone = save in
         // place when bound, otherwise open picker.
@@ -574,6 +591,11 @@ export default function App() {
         previousResponse={previousResponse}
       />
       <SoapModal open={soapModalOpen} onClose={() => setSoapModalOpen(false)} />
+      <CommandPalette
+        open={cmdPaletteOpen}
+        onClose={() => setCmdPaletteOpen(false)}
+        actions={cmdActions}
+      />
     </div>
   );
 }
