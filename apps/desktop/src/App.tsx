@@ -25,6 +25,7 @@ import { StatusBar } from "./components/StatusBar";
 import { SavePopover } from "./components/SavePopover";
 import { EnvManagerModal } from "./components/EnvManagerModal";
 import { CurlImportModal } from "./components/CurlImportModal";
+import { GraphQLModal } from "./components/GraphQLModal";
 import { HistoryPanel, type HistoryEntry } from "./components/HistoryPanel";
 import { SoapModal } from "./components/SoapModal";
 
@@ -55,6 +56,7 @@ export default function App() {
   const [envManagerOpen, setEnvManagerOpen] = useState(false);
   const [soapModalOpen, setSoapModalOpen] = useState(false);
   const [curlImportOpen, setCurlImportOpen] = useState(false);
+  const [graphqlOpen, setGraphqlOpen] = useState(false);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
 
@@ -448,6 +450,7 @@ export default function App() {
           onClose={closeTab}
           onNew={() => newTab()}
           onImportCurl={() => setCurlImportOpen(true)}
+          onOpenGraphQL={() => setGraphqlOpen(true)}
           onToggleHistory={() => setHistoryOpen((o) => !o)}
           historyOpen={historyOpen}
           historyCount={history.length}
@@ -535,6 +538,7 @@ export default function App() {
         onClose={() => setCurlImportOpen(false)}
         onImport={importCurl}
       />
+      <GraphQLModal open={graphqlOpen} onClose={() => setGraphqlOpen(false)} activeEnvId={activeEnvId} />
       <SoapModal open={soapModalOpen} onClose={() => setSoapModalOpen(false)} />
     </div>
   );
