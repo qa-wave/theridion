@@ -1,4 +1,5 @@
-import { Activity, BookOpen, Braces, Clock, Database, Globe, Plus, Server, Terminal, Wifi, X } from "lucide-react";
+import { Activity, BookOpen, Braces, Clock, Command, Database, Globe, MoreHorizontal, Plus, Server, Terminal, Wifi, X } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
 import { HTTP_METHOD_COLOR, isDirty } from "../state/types";
 import type { RequestTab } from "../state/types";
 import type { EnvironmentSummary } from "../lib/sidecar";
@@ -51,6 +52,21 @@ export function RequestTabBar({
   onSelectEnv,
   onManageEnv,
 }: Props) {
+  const [overflowOpen, setOverflowOpen] = useState(false);
+  const overflowRef = useRef<HTMLDivElement>(null);
+
+  // Close overflow menu on outside click.
+  useEffect(() => {
+    if (!overflowOpen) return;
+    function onMouseDown(e: MouseEvent) {
+      if (overflowRef.current && !overflowRef.current.contains(e.target as Node)) {
+        setOverflowOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", onMouseDown);
+    return () => document.removeEventListener("mousedown", onMouseDown);
+  }, [overflowOpen]);
+
   return (
     <div className="flex items-stretch gap-px border-b border-glass bg-neutral-925/80 pl-1">
       <div className="flex flex-1 items-stretch gap-0.5 overflow-x-auto py-1 pl-1">
@@ -95,47 +111,39 @@ export function RequestTabBar({
         })}
       </div>
 
-      {/* Action buttons — right side */}
+      {/* Action buttons -- right side */}
       <div className="flex items-center gap-0.5 px-1">
-        <BarButton onClick={onNew} title="New request (⌘T)">
+        <BarButton onClick={onNew} title="New request (Cmd+T)">
           <Plus className="h-3.5 w-3.5" />
         </BarButton>
-        <BarButton onClick={onImportCurl} title="Import cURL">
-          <Terminal className="h-3.5 w-3.5" />
-          <span className="text-[11px]">cURL</span>
+
+        {/* Command palette hint */}
+        <BarButton onClick={() => { /* Cmd+K is handled globally */ const e = new KeyboardEvent("keydown", { key: "k", metaKey: true, bubbles: true }); window.dispatchEvent(e); }} title="Command palette (Cmd+K)">
+          <Command className="h-3.5 w-3.5" />
+          <span className="text-[11px]">Cmd+K</span>
         </BarButton>
-        <BarButton onClick={onOpenSwagger} title="Swagger / OpenAPI Browser">
-          <BookOpen className="h-3.5 w-3.5" />
-          <span className="text-[11px]">Swagger</span>
-        </BarButton>
-        <BarButton onClick={onOpenGraphQL} title="GraphQL">
-          <Braces className="h-3.5 w-3.5" />
-          <span className="text-[11px]">GraphQL</span>
-        </BarButton>
-        <BarButton onClick={onOpenWebSocket} title="WebSocket">
-          <Wifi className="h-3.5 w-3.5" />
-          <span className="text-[11px]">WS</span>
-        </BarButton>
-        <BarButton onClick={onOpenKafka} title="Kafka">
-          <Database className="h-3.5 w-3.5" />
-          <span className="text-[11px]">Kafka</span>
-        </BarButton>
-        <BarButton onClick={onOpenGrpc} title="gRPC">
-          <Server className="h-3.5 w-3.5" />
-          <span className="text-[11px]">gRPC</span>
-        </BarButton>
-        <BarButton onClick={onOpenMock} title="Mock Server">
-          <Server className="h-3.5 w-3.5" />
-          <span className="text-[11px]">Mock</span>
-        </BarButton>
-        <BarButton onClick={onOpenLoadTest} title="Load Test">
-          <Activity className="h-3.5 w-3.5" />
-          <span className="text-[11px]">Load</span>
-        </BarButton>
-        <BarButton onClick={onOpenSoap} title="SOAP / WSDL">
-          <Globe className="h-3.5 w-3.5" />
-          <span className="text-[11px]">SOAP</span>
-        </BarButton>
+
+        {/* Overflow menu for protocol/tool buttons */}
+        <div className="relative" ref={overflowRef}>
+          <BarButton onClick={() => setOverflowOpen((o) => !o)} title="More tools" active={overflowOpen}>
+            <MoreHorizontal className="h-3.5 w-3.5" />
+            <span className="text-[11px]">More</span>
+          </BarButton>
+          {overflowOpen && (
+            <div className="absolute right-0 top-full z-50 mt-1 w-48 rounded-lg border border-neutral-800 bg-neutral-900 py-1 shadow-xl">
+              <OverflowItem icon={<Terminal className="h-3.5 w-3.5" />} label="cURL import" onClick={() => { onImportCurl(); setOverflowOpen(false); }} />
+              <OverflowItem icon={<BookOpen className="h-3.5 w-3.5" />} label="Swagger / OpenAPI" onClick={() => { onOpenSwagger(); setOverflowOpen(false); }} />
+              <OverflowItem icon={<Braces className="h-3.5 w-3.5" />} label="GraphQL" onClick={() => { onOpenGraphQL(); setOverflowOpen(false); }} />
+              <OverflowItem icon={<Wifi className="h-3.5 w-3.5" />} label="WebSocket" onClick={() => { onOpenWebSocket(); setOverflowOpen(false); }} />
+              <OverflowItem icon={<Database className="h-3.5 w-3.5" />} label="Kafka" onClick={() => { onOpenKafka(); setOverflowOpen(false); }} />
+              <OverflowItem icon={<Server className="h-3.5 w-3.5" />} label="gRPC" onClick={() => { onOpenGrpc(); setOverflowOpen(false); }} />
+              <OverflowItem icon={<Server className="h-3.5 w-3.5" />} label="Mock Server" onClick={() => { onOpenMock(); setOverflowOpen(false); }} />
+              <OverflowItem icon={<Activity className="h-3.5 w-3.5" />} label="Load Test" onClick={() => { onOpenLoadTest(); setOverflowOpen(false); }} />
+              <OverflowItem icon={<Globe className="h-3.5 w-3.5" />} label="SOAP / WSDL" onClick={() => { onOpenSoap(); setOverflowOpen(false); }} />
+            </div>
+          )}
+        </div>
+
         <BarButton
           onClick={onToggleHistory}
           title="Toggle history"
@@ -159,6 +167,27 @@ export function RequestTabBar({
         </div>
       </div>
     </div>
+  );
+}
+
+function OverflowItem({
+  icon,
+  label,
+  onClick,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex w-full items-center gap-2.5 px-3 py-1.5 text-xs text-neutral-400 transition hover:bg-neutral-800/60 hover:text-neutral-200"
+    >
+      {icon}
+      <span>{label}</span>
+    </button>
   );
 }
 

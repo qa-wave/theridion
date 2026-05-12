@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useModals } from "./hooks/useModals";
 import {
   sidecar,
   type CollectionItem,
@@ -78,40 +79,14 @@ export default function App() {
       ? window.localStorage.getItem(ACTIVE_ENV_KEY)
       : null,
   );
-  const [envManagerOpen, setEnvManagerOpen] = useState(false);
-  const [soapModalOpen, setSoapModalOpen] = useState(false);
-  const [curlImportOpen, setCurlImportOpen] = useState(false);
-  const [graphqlOpen, setGraphqlOpen] = useState(false);
-  const [wsOpen, setWsOpen] = useState(false);
-  const [kafkaOpen, setKafkaOpen] = useState(false);
-  const [diffOpen, setDiffOpen] = useState(false);
-  const [codegenOpen, setCodegenOpen] = useState(false);
-  const [testGenOpen, setTestGenOpen] = useState(false);
+  const modals = useModals();
   const [previousResponse, setPreviousResponse] = useState<import("./lib/sidecar").ExecuteResponse | null>(null);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [cmdPaletteOpen, setCmdPaletteOpen] = useState(false);
-  const [grpcOpen, setGrpcOpen] = useState(false);
-  const [mockOpen, setMockOpen] = useState(false);
-  const [loadTestOpen, setLoadTestOpen] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [importOpen, setImportOpen] = useState(false);
-  const [serviceMapOpen, setServiceMapOpen] = useState(false);
-  const [proxyOpen, setProxyOpen] = useState(false);
-  const [swaggerOpen, setSwaggerOpen] = useState(false);
   const [requestCount, setRequestCount] = useState(0);
   const [lastStatus, setLastStatus] = useState<number | null>(null);
   const [consoleEntries, setConsoleEntries] = useState<ConsoleEntry[]>([]);
-  const [jwtOpen, setJwtOpen] = useState(false);
-  const [batchOpen, setBatchOpen] = useState(false);
-  const [monitorsOpen, setMonitorsOpen] = useState(false);
-  const [securityOpen, setSecurityOpen] = useState(false);
-  const [collVarsOpen, setCollVarsOpen] = useState(false);
-  const [secretsOpen, setSecretsOpen] = useState(false);
-  const [webhooksOpen, setWebhooksOpen] = useState(false);
-  const [multiEnvOpen, setMultiEnvOpen] = useState(false);
-  const [flowEditorOpen, setFlowEditorOpen] = useState(false);
-  const [perfDashOpen, setPerfDashOpen] = useState(false);
   const [ctxMenu, setCtxMenu] = useState<{ open: boolean; x: number; y: number; actions: ContextMenuAction[] }>({ open: false, x: 0, y: 0, actions: [] });
 
   // ---- sidecar health polling ---------------------------------------------
@@ -458,31 +433,31 @@ export default function App() {
   // ---- command palette actions ----------------------------------------------
   const cmdActions = useDefaultActions({
     newTab: () => newTab(),
-    importCurl: () => setCurlImportOpen(true),
-    openGraphQL: () => setGraphqlOpen(true),
-    openWebSocket: () => setWsOpen(true),
-    openKafka: () => setKafkaOpen(true),
-    openSoap: () => setSoapModalOpen(true),
-    manageEnvs: () => setEnvManagerOpen(true),
-    openCodegen: () => setCodegenOpen(true),
-    openGrpc: () => setGrpcOpen(true),
-    openMock: () => setMockOpen(true),
-    openLoadTest: () => setLoadTestOpen(true),
-    openSettings: () => setSettingsOpen(true),
-    importCollection: () => setImportOpen(true),
-    openServiceMap: () => setServiceMapOpen(true),
-    openProxy: () => setProxyOpen(true),
-    openSwagger: () => setSwaggerOpen(true),
-    openJwt: () => setJwtOpen(true),
-    openBatch: () => setBatchOpen(true),
-    openMonitors: () => setMonitorsOpen(true),
-    openSecurity: () => setSecurityOpen(true),
-    openCollVars: () => setCollVarsOpen(true),
-    openSecrets: () => setSecretsOpen(true),
-    openWebhooks: () => setWebhooksOpen(true),
-    openMultiEnv: () => setMultiEnvOpen(true),
-    openFlowEditor: () => setFlowEditorOpen(true),
-    openPerfDash: () => setPerfDashOpen(true),
+    importCurl: () => modals.open("curlImport"),
+    openGraphQL: () => modals.open("graphql"),
+    openWebSocket: () => modals.open("webSocket"),
+    openKafka: () => modals.open("kafka"),
+    openSoap: () => modals.open("soap"),
+    manageEnvs: () => modals.open("envManager"),
+    openCodegen: () => modals.open("codegen"),
+    openGrpc: () => modals.open("grpc"),
+    openMock: () => modals.open("mock"),
+    openLoadTest: () => modals.open("loadTest"),
+    openSettings: () => modals.open("settings"),
+    importCollection: () => modals.open("import"),
+    openServiceMap: () => modals.open("serviceMap"),
+    openProxy: () => modals.open("proxy"),
+    openSwagger: () => modals.open("swagger"),
+    openJwt: () => modals.open("jwt"),
+    openBatch: () => modals.open("batch"),
+    openMonitors: () => modals.open("monitors"),
+    openSecurity: () => modals.open("security"),
+    openCollVars: () => modals.open("collVars"),
+    openSecrets: () => modals.open("secrets"),
+    openWebhooks: () => modals.open("webhooks"),
+    openMultiEnv: () => modals.open("multiEnv"),
+    openFlowEditor: () => modals.open("flowEditor"),
+    openPerfDash: () => modals.open("perfDash"),
     collections,
     onOpenRequest: openSaved,
   });
@@ -496,7 +471,7 @@ export default function App() {
         setCmdPaletteOpen((o) => !o);
       } else if (cmd && e.key === ",") {
         e.preventDefault();
-        setSettingsOpen(true);
+        modals.open("settings");
       } else if (cmd && e.key === "s") {
         e.preventDefault();
         // Cmd+Shift+S = always show picker (Save As); Cmd+S alone = save in
@@ -530,7 +505,7 @@ export default function App() {
           loading={collectionsLoading}
           onOpen={openSaved}
           onNewCollection={newCollection}
-          onGenerateTests={() => setTestGenOpen(true)}
+          onGenerateTests={() => modals.open("testGen")}
           onNewFolder={newFolder}
           onDeleteCollection={deleteCollection}
           onDeleteRequest={deleteRequest}
@@ -576,22 +551,22 @@ export default function App() {
           onSelect={setActiveId}
           onClose={closeTab}
           onNew={() => newTab()}
-          onImportCurl={() => setCurlImportOpen(true)}
-          onOpenGraphQL={() => setGraphqlOpen(true)}
-          onOpenWebSocket={() => setWsOpen(true)}
-          onOpenKafka={() => setKafkaOpen(true)}
-          onOpenGrpc={() => setGrpcOpen(true)}
-          onOpenMock={() => setMockOpen(true)}
-          onOpenLoadTest={() => setLoadTestOpen(true)}
-          onOpenSwagger={() => setSwaggerOpen(true)}
+          onImportCurl={() => modals.open("curlImport")}
+          onOpenGraphQL={() => modals.open("graphql")}
+          onOpenWebSocket={() => modals.open("webSocket")}
+          onOpenKafka={() => modals.open("kafka")}
+          onOpenGrpc={() => modals.open("grpc")}
+          onOpenMock={() => modals.open("mock")}
+          onOpenLoadTest={() => modals.open("loadTest")}
+          onOpenSwagger={() => modals.open("swagger")}
           onToggleHistory={() => setHistoryOpen((o) => !o)}
           historyOpen={historyOpen}
           historyCount={history.length}
-          onOpenSoap={() => setSoapModalOpen(true)}
+          onOpenSoap={() => modals.open("soap")}
           environments={environments}
           activeEnvId={activeEnvId}
           onSelectEnv={setActiveEnvId}
-          onManageEnv={() => setEnvManagerOpen(true)}
+          onManageEnv={() => modals.open("envManager")}
         />
         <div className="relative">
           <UrlBar
@@ -646,8 +621,8 @@ export default function App() {
               busy={active.busy}
               response={active.response}
               error={active.error}
-              onDiff={() => setDiffOpen(true)}
-              onCodegen={() => setCodegenOpen(true)}
+              onDiff={() => modals.open("diff")}
+              onCodegen={() => modals.open("codegen")}
               consoleEntries={consoleEntries}
             />
           </div>
@@ -666,53 +641,53 @@ export default function App() {
       </main>
 
       <div className="col-span-2">
-        <StatusBar sidecarStatus={sidecarStatus} appVersion={APP_VERSION} onOpenSettings={() => setSettingsOpen(true)} requestCount={requestCount} lastStatus={lastStatus} />
+        <StatusBar sidecarStatus={sidecarStatus} appVersion={APP_VERSION} onOpenSettings={() => modals.open("settings")} requestCount={requestCount} lastStatus={lastStatus} />
       </div>
 
       <EnvManagerModal
-        open={envManagerOpen}
-        onClose={() => setEnvManagerOpen(false)}
+        open={modals.isOpen("envManager")}
+        onClose={modals.close}
         onChanged={refreshEnvironments}
       />
       <CurlImportModal
-        open={curlImportOpen}
-        onClose={() => setCurlImportOpen(false)}
+        open={modals.isOpen("curlImport")}
+        onClose={modals.close}
         onImport={importCurl}
       />
-      <GraphQLModal open={graphqlOpen} onClose={() => setGraphqlOpen(false)} activeEnvId={activeEnvId} />
-      <WebSocketModal open={wsOpen} onClose={() => setWsOpen(false)} />
-      <KafkaModal open={kafkaOpen} onClose={() => setKafkaOpen(false)} />
+      <GraphQLModal open={modals.isOpen("graphql")} onClose={modals.close} activeEnvId={activeEnvId} />
+      <WebSocketModal open={modals.isOpen("webSocket")} onClose={modals.close} />
+      <KafkaModal open={modals.isOpen("kafka")} onClose={modals.close} />
       <CodegenModal
-        open={codegenOpen}
-        onClose={() => setCodegenOpen(false)}
+        open={modals.isOpen("codegen")}
+        onClose={modals.close}
         method={active.method}
         url={active.url}
         headers={parseHeadersText(active.headersRaw)}
         body={active.body || null}
       />
       <DiffModal
-        open={diffOpen}
-        onClose={() => setDiffOpen(false)}
+        open={modals.isOpen("diff")}
+        onClose={modals.close}
         currentResponse={active.response}
         previousResponse={previousResponse}
       />
-      <GrpcModal open={grpcOpen} onClose={() => setGrpcOpen(false)} />
-      <MockServerModal open={mockOpen} onClose={() => setMockOpen(false)} />
+      <GrpcModal open={modals.isOpen("grpc")} onClose={modals.close} />
+      <MockServerModal open={modals.isOpen("mock")} onClose={modals.close} />
       <LoadTestModal
-        open={loadTestOpen}
-        onClose={() => setLoadTestOpen(false)}
+        open={modals.isOpen("loadTest")}
+        onClose={modals.close}
         method={active.method}
         url={active.url}
         headers={parseHeadersText(active.headersRaw)}
         body={active.body || null}
       />
-      <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
-      <ImportModal open={importOpen} onClose={() => setImportOpen(false)} onImported={refreshCollections} />
-      <ServiceMapModal open={serviceMapOpen} onClose={() => setServiceMapOpen(false)} />
-      <ProxyRecorderModal open={proxyOpen} onClose={() => setProxyOpen(false)} />
+      <SettingsModal open={modals.isOpen("settings")} onClose={modals.close} />
+      <ImportModal open={modals.isOpen("import")} onClose={modals.close} onImported={refreshCollections} />
+      <ServiceMapModal open={modals.isOpen("serviceMap")} onClose={modals.close} />
+      <ProxyRecorderModal open={modals.isOpen("proxy")} onClose={modals.close} />
       <SwaggerBrowserModal
-        open={swaggerOpen}
-        onClose={() => setSwaggerOpen(false)}
+        open={modals.isOpen("swagger")}
+        onClose={modals.close}
         onTryEndpoint={(method, url, headers, body) => {
           newTab({
             method: method as import("./state/types").Method,
@@ -722,10 +697,10 @@ export default function App() {
           });
         }}
       />
-      <SoapModal open={soapModalOpen} onClose={() => setSoapModalOpen(false)} />
+      <SoapModal open={modals.isOpen("soap")} onClose={modals.close} />
       <TestGenModal
-        open={testGenOpen}
-        onClose={() => setTestGenOpen(false)}
+        open={modals.isOpen("testGen")}
+        onClose={modals.close}
         onCreated={() => {
           void refreshCollections();
         }}
@@ -742,16 +717,16 @@ export default function App() {
         actions={ctxMenu.actions}
         onClose={() => setCtxMenu((c) => ({ ...c, open: false }))}
       />
-      <JwtInspectorModal open={jwtOpen} onClose={() => setJwtOpen(false)} />
-      <BatchRunnerModal open={batchOpen} onClose={() => setBatchOpen(false)} />
-      <MonitorsModal open={monitorsOpen} onClose={() => setMonitorsOpen(false)} />
-      <SecurityScannerModal open={securityOpen} onClose={() => setSecurityOpen(false)} />
-      <CollectionVarsModal open={collVarsOpen} onClose={() => setCollVarsOpen(false)} />
-      <SecretsVaultModal open={secretsOpen} onClose={() => setSecretsOpen(false)} />
-      <WebhooksModal open={webhooksOpen} onClose={() => setWebhooksOpen(false)} />
-      <MultiEnvModal open={multiEnvOpen} onClose={() => setMultiEnvOpen(false)} />
-      <FlowEditorModal open={flowEditorOpen} onClose={() => setFlowEditorOpen(false)} />
-      <PerformanceDashboardModal open={perfDashOpen} onClose={() => setPerfDashOpen(false)} />
+      <JwtInspectorModal open={modals.isOpen("jwt")} onClose={modals.close} />
+      <BatchRunnerModal open={modals.isOpen("batch")} onClose={modals.close} />
+      <MonitorsModal open={modals.isOpen("monitors")} onClose={modals.close} />
+      <SecurityScannerModal open={modals.isOpen("security")} onClose={modals.close} />
+      <CollectionVarsModal open={modals.isOpen("collVars")} onClose={modals.close} />
+      <SecretsVaultModal open={modals.isOpen("secrets")} onClose={modals.close} />
+      <WebhooksModal open={modals.isOpen("webhooks")} onClose={modals.close} />
+      <MultiEnvModal open={modals.isOpen("multiEnv")} onClose={modals.close} />
+      <FlowEditorModal open={modals.isOpen("flowEditor")} onClose={modals.close} />
+      <PerformanceDashboardModal open={modals.isOpen("perfDash")} onClose={modals.close} />
     </div>
   );
 }

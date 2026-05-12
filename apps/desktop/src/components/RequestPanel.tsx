@@ -15,7 +15,7 @@ const TABS: { id: Tab; label: string; comingSoon?: boolean }[] = [
   { id: "body", label: "Body" },
   { id: "auth", label: "Auth" },
   { id: "tests", label: "Tests" },
-  { id: "scripts", label: "Scripts" },
+  { id: "scripts", label: "Pre-request" },
 ];
 
 interface Props {
