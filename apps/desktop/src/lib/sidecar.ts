@@ -331,6 +331,27 @@ export const sidecar = {
       body: JSON.stringify({ url, headers: headers ?? {}, environment_id }),
     }),
 
+  // ---- AI ----------------------------------------------------------------
+  aiSettings: () =>
+    call<{ provider: string; ollama_base_url: string; ollama_model: string }>("/api/ai/settings"),
+  updateAiSettings: (settings: { provider: string; ollama_base_url: string; ollama_model: string }) =>
+    call<{ provider: string; ollama_base_url: string; ollama_model: string }>("/api/ai/settings", {
+      method: "PUT",
+      body: JSON.stringify(settings),
+    }),
+  aiPing: () => call<{ ok: boolean; version?: string; error?: string }>("/api/ai/ping"),
+  aiModels: () => call<{ models: Array<{ name: string; size: number }> }>("/api/ai/models"),
+  aiTestGen: (input: {
+    method: string; url: string; headers: Record<string, string>;
+    request_body: string | null; response_status: number;
+    response_headers: Record<string, string>; response_body: string;
+    category: string;
+  }) =>
+    call<{ assertions: Array<{ type: string; expected: string; path: string; operator: string }>; explanation: string }>(
+      "/api/ai/testgen",
+      { method: "POST", body: JSON.stringify(input) },
+    ),
+
   importCollection: (content: string, format?: string) =>
     call<{ collection_id: string; collection_name: string; request_count: number }>(
       "/api/import",
