@@ -1,4 +1,4 @@
-import { Activity, Braces, Clock, Database, Globe, Plus, Server, Terminal, Wifi, X } from "lucide-react";
+import { Activity, BookOpen, Braces, Clock, Database, Globe, Plus, Server, Terminal, Wifi, X } from "lucide-react";
 import { HTTP_METHOD_COLOR, isDirty } from "../state/types";
 import type { RequestTab } from "../state/types";
 import type { EnvironmentSummary } from "../lib/sidecar";
@@ -18,6 +18,7 @@ interface Props {
   onOpenGrpc: () => void;
   onOpenMock: () => void;
   onOpenLoadTest: () => void;
+  onOpenSwagger: () => void;
   onToggleHistory: () => void;
   historyOpen: boolean;
   historyCount: number;
@@ -41,6 +42,7 @@ export function RequestTabBar({
   onOpenGrpc,
   onOpenMock,
   onOpenLoadTest,
+  onOpenSwagger,
   onToggleHistory,
   historyOpen,
   historyCount,
@@ -101,6 +103,10 @@ export function RequestTabBar({
         <BarButton onClick={onImportCurl} title="Import cURL">
           <Terminal className="h-3.5 w-3.5" />
           <span className="text-[11px]">cURL</span>
+        </BarButton>
+        <BarButton onClick={onOpenSwagger} title="Swagger / OpenAPI Browser">
+          <BookOpen className="h-3.5 w-3.5" />
+          <span className="text-[11px]">Swagger</span>
         </BarButton>
         <BarButton onClick={onOpenGraphQL} title="GraphQL">
           <Braces className="h-3.5 w-3.5" />

@@ -159,6 +159,7 @@ export function useDefaultActions(callbacks: {
   importCollection?: () => void;
   openServiceMap?: () => void;
   openProxy?: () => void;
+  openSwagger?: () => void;
 }): CommandAction[] {
   return useMemo(
     () => [
@@ -231,6 +232,9 @@ export function useDefaultActions(callbacks: {
       }] : []),
       ...(callbacks.openProxy ? [{
         id: "proxy-recorder", label: "Proxy Recorder (capture traffic)", icon: <Radio size={14} />, onSelect: callbacks.openProxy,
+      }] : []),
+      ...(callbacks.openSwagger ? [{
+        id: "swagger-browser", label: "Swagger / OpenAPI Browser", icon: <FileCode size={14} />, onSelect: callbacks.openSwagger,
       }] : []),
     ],
     [callbacks],

@@ -36,6 +36,7 @@ import { LoadTestModal } from "./components/LoadTestModal";
 import { MockServerModal } from "./components/MockServerModal";
 import { ProxyRecorderModal } from "./components/ProxyRecorderModal";
 import { ServiceMapModal } from "./components/ServiceMapModal";
+import { SwaggerBrowserModal } from "./components/SwaggerBrowserModal";
 import { SettingsModal } from "./components/SettingsModal";
 import { WebSocketModal } from "./components/WebSocketModal";
 import { HistoryPanel, type HistoryEntry } from "./components/HistoryPanel";
@@ -86,6 +87,7 @@ export default function App() {
   const [importOpen, setImportOpen] = useState(false);
   const [serviceMapOpen, setServiceMapOpen] = useState(false);
   const [proxyOpen, setProxyOpen] = useState(false);
+  const [swaggerOpen, setSwaggerOpen] = useState(false);
 
   // ---- sidecar health polling ---------------------------------------------
   useEffect(() => {
@@ -442,6 +444,7 @@ export default function App() {
     importCollection: () => setImportOpen(true),
     openServiceMap: () => setServiceMapOpen(true),
     openProxy: () => setProxyOpen(true),
+    openSwagger: () => setSwaggerOpen(true),
   });
 
   // ---- keyboard shortcuts -------------------------------------------------
@@ -512,6 +515,7 @@ export default function App() {
           onOpenGrpc={() => setGrpcOpen(true)}
           onOpenMock={() => setMockOpen(true)}
           onOpenLoadTest={() => setLoadTestOpen(true)}
+          onOpenSwagger={() => setSwaggerOpen(true)}
           onToggleHistory={() => setHistoryOpen((o) => !o)}
           historyOpen={historyOpen}
           historyCount={history.length}
@@ -634,6 +638,18 @@ export default function App() {
       <ImportModal open={importOpen} onClose={() => setImportOpen(false)} onImported={refreshCollections} />
       <ServiceMapModal open={serviceMapOpen} onClose={() => setServiceMapOpen(false)} />
       <ProxyRecorderModal open={proxyOpen} onClose={() => setProxyOpen(false)} />
+      <SwaggerBrowserModal
+        open={swaggerOpen}
+        onClose={() => setSwaggerOpen(false)}
+        onTryEndpoint={(method, url, headers, body) => {
+          newTab({
+            method: method as import("./state/types").Method,
+            url,
+            headersRaw: Object.entries(headers).map(([k, v]) => `${k}: ${v}`).join("\n"),
+            body: body || "",
+          });
+        }}
+      />
       <SoapModal open={soapModalOpen} onClose={() => setSoapModalOpen(false)} />
       <TestGenModal
         open={testGenOpen}
