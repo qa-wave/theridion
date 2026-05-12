@@ -34,6 +34,7 @@ import { ImportModal } from "./components/ImportModal";
 import { KafkaModal } from "./components/KafkaModal";
 import { LoadTestModal } from "./components/LoadTestModal";
 import { MockServerModal } from "./components/MockServerModal";
+import { ProxyRecorderModal } from "./components/ProxyRecorderModal";
 import { ServiceMapModal } from "./components/ServiceMapModal";
 import { SettingsModal } from "./components/SettingsModal";
 import { WebSocketModal } from "./components/WebSocketModal";
@@ -84,6 +85,7 @@ export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [serviceMapOpen, setServiceMapOpen] = useState(false);
+  const [proxyOpen, setProxyOpen] = useState(false);
 
   // ---- sidecar health polling ---------------------------------------------
   useEffect(() => {
@@ -439,6 +441,7 @@ export default function App() {
     openSettings: () => setSettingsOpen(true),
     importCollection: () => setImportOpen(true),
     openServiceMap: () => setServiceMapOpen(true),
+    openProxy: () => setProxyOpen(true),
   });
 
   // ---- keyboard shortcuts -------------------------------------------------
@@ -630,6 +633,7 @@ export default function App() {
       <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
       <ImportModal open={importOpen} onClose={() => setImportOpen(false)} onImported={refreshCollections} />
       <ServiceMapModal open={serviceMapOpen} onClose={() => setServiceMapOpen(false)} />
+      <ProxyRecorderModal open={proxyOpen} onClose={() => setProxyOpen(false)} />
       <SoapModal open={soapModalOpen} onClose={() => setSoapModalOpen(false)} />
       <TestGenModal
         open={testGenOpen}

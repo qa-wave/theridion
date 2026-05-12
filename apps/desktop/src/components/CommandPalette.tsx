@@ -158,6 +158,7 @@ export function useDefaultActions(callbacks: {
   openSettings?: () => void;
   importCollection?: () => void;
   openServiceMap?: () => void;
+  openProxy?: () => void;
 }): CommandAction[] {
   return useMemo(
     () => [
@@ -227,6 +228,9 @@ export function useDefaultActions(callbacks: {
       }] : []),
       ...(callbacks.openServiceMap ? [{
         id: "service-map", label: "Service Dependency Map", icon: <Globe size={14} />, onSelect: callbacks.openServiceMap,
+      }] : []),
+      ...(callbacks.openProxy ? [{
+        id: "proxy-recorder", label: "Proxy Recorder (capture traffic)", icon: <Radio size={14} />, onSelect: callbacks.openProxy,
       }] : []),
     ],
     [callbacks],
