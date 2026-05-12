@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Settings2 } from "lucide-react";
+import { Activity, Settings2 } from "lucide-react";
 import type { HealthResponse } from "../lib/sidecar";
 import { applyTheme, loadTheme } from "../state/theme";
 
@@ -12,9 +12,12 @@ interface Props {
   onOpenSettings: () => void;
   requestCount?: number;
   lastStatus?: number | null;
+  networkOpen?: boolean;
+  networkEntryCount?: number;
+  onToggleNetwork?: () => void;
 }
 
-export function StatusBar({ sidecarStatus, appVersion, onOpenSettings, requestCount = 0, lastStatus = null }: Props) {
+export function StatusBar({ sidecarStatus, appVersion, onOpenSettings, requestCount = 0, lastStatus = null, networkOpen = false, networkEntryCount = 0, onToggleNetwork }: Props) {
   const ok = sidecarStatus.state === "ok";
   const checking = sidecarStatus.state === "checking";
   const label = ok
@@ -75,6 +78,25 @@ export function StatusBar({ sidecarStatus, appVersion, onOpenSettings, requestCo
       )}
 
       <span className="ml-auto flex items-center gap-2">
+        {onToggleNetwork && (
+          <button
+            type="button"
+            onClick={onToggleNetwork}
+            className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 transition ${
+              networkOpen
+                ? "bg-cobweb-500/20 text-cobweb-400"
+                : "text-neutral-500 hover:bg-white/[0.05] hover:text-neutral-300"
+            }`}
+            title="Network Console (⌘⇧N)"
+          >
+            <Activity className="h-3 w-3" />
+            {networkEntryCount > 0 && (
+              <span className="rounded-full bg-cobweb-500/30 px-1.5 text-[9px] font-bold text-cobweb-300">
+                {networkEntryCount}
+              </span>
+            )}
+          </button>
+        )}
         <button
           type="button"
           onClick={onOpenSettings}

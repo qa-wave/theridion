@@ -54,6 +54,7 @@ import { WebhooksModal } from "./components/WebhooksModal";
 import { MultiEnvModal } from "./components/MultiEnvModal";
 import { FlowEditorModal } from "./components/FlowEditorModal";
 import { PerformanceDashboardModal } from "./components/PerformanceDashboardModal";
+import { NetworkConsole, type NetworkEntry, type NetworkEntryType } from "./components/NetworkConsole";
 
 const APP_VERSION = "0.0.1";
 const ACTIVE_ENV_KEY = "theridion.activeEnvironmentId";
@@ -88,6 +89,10 @@ export default function App() {
   const [lastStatus, setLastStatus] = useState<number | null>(null);
   const [consoleEntries, setConsoleEntries] = useState<ConsoleEntry[]>([]);
   const [ctxMenu, setCtxMenu] = useState<{ open: boolean; x: number; y: number; actions: ContextMenuAction[] }>({ open: false, x: 0, y: 0, actions: [] });
+  const [networkOpen, setNetworkOpen] = useState(false);
+  const [networkEntries, setNetworkEntries] = useState<NetworkEntry[]>([]);
+  const [networkRecording, setNetworkRecording] = useState(true);
+  const [networkPreserveLog, setNetworkPreserveLog] = useState(false);
 
   // ---- sidecar health polling ---------------------------------------------
   useEffect(() => {
@@ -225,6 +230,34 @@ export default function App() {
       patchActive({ busy: false, response, error: null, lastRunAt: Date.now() });
       setRequestCount((c) => c + 1);
       setLastStatus(response.status);
+      // Capture network entry for the Network Console.
+      if (networkRecording) {
+        const entryType: NetworkEntryType = detectNetworkType(active.url, active.body, active.method);
+        const networkEntry: NetworkEntry = {
+          id: crypto.randomUUID(),
+          timestamp: Date.now(),
+          method: active.method,
+          url: response.resolved_url ?? response.final_url ?? active.url,
+          status: response.status,
+          statusText: response.status_text ?? "",
+          type: entryType,
+          requestHeaders: parseHeadersText(active.headersRaw),
+          responseHeaders: response.headers,
+          requestBody: active.body.length > 0 ? active.body : null,
+          responseBody: response.body,
+          cookies: response.cookies ?? {},
+          size: response.body_size_bytes,
+          elapsed_ms: response.elapsed_ms,
+          timing: response.timing ? {
+            dns_ms: response.timing.dns_ms,
+            connect_ms: response.timing.connect_ms,
+            tls_ms: response.timing.tls_ms,
+            ttfb_ms: response.timing.transfer_ms, // map transfer to ttfb as approximation
+            download_ms: 0,
+          } : undefined,
+        };
+        setNetworkEntries((prev) => [...prev, networkEntry]);
+      }
       // Evaluate assertions if any exist.
       if (active.assertions.length > 0) {
         try {
@@ -488,6 +521,9 @@ export default function App() {
       } else if (cmd && e.key === "w") {
         e.preventDefault();
         closeTab(activeId);
+      } else if (cmd && e.shiftKey && e.key === "N") {
+        e.preventDefault();
+        setNetworkOpen((o) => !o);
       } else if (cmd && e.key === "Enter") {
         e.preventDefault();
         void send();
@@ -499,8 +535,8 @@ export default function App() {
   }, [active, activeId, collections, sidecarStatus.state]);
 
   return (
-    <div className="grid h-full grid-cols-[260px_1fr] grid-rows-[1fr_auto] bg-neutral-950 bg-mesh-gradient text-neutral-100">
-      <div className="row-span-1 overflow-hidden">
+    <div className={`grid h-full grid-cols-[260px_1fr] ${networkOpen ? "grid-rows-[1fr_300px_auto]" : "grid-rows-[1fr_auto]"} bg-neutral-950 bg-mesh-gradient text-neutral-100`}>
+      <div className={`${networkOpen ? "row-span-1" : "row-span-1"} overflow-hidden`}>
         <Sidebar
           collections={collections}
           loading={collectionsLoading}
@@ -642,8 +678,30 @@ export default function App() {
         </div>
       </main>
 
+      {networkOpen && (
+        <div className="col-span-2 overflow-hidden">
+          <NetworkConsole
+            entries={networkEntries}
+            recording={networkRecording}
+            onToggleRecording={() => setNetworkRecording((r) => !r)}
+            onClear={() => setNetworkEntries([])}
+            preserveLog={networkPreserveLog}
+            onTogglePreserveLog={() => setNetworkPreserveLog((p) => !p)}
+          />
+        </div>
+      )}
+
       <div className="col-span-2">
-        <StatusBar sidecarStatus={sidecarStatus} appVersion={APP_VERSION} onOpenSettings={() => modals.open("settings")} requestCount={requestCount} lastStatus={lastStatus} />
+        <StatusBar
+          sidecarStatus={sidecarStatus}
+          appVersion={APP_VERSION}
+          onOpenSettings={() => modals.open("settings")}
+          requestCount={requestCount}
+          lastStatus={lastStatus}
+          networkOpen={networkOpen}
+          networkEntryCount={networkEntries.length}
+          onToggleNetwork={() => setNetworkOpen((o) => !o)}
+        />
       </div>
 
       <EnvManagerModal
@@ -731,6 +789,16 @@ export default function App() {
       <PerformanceDashboardModal open={modals.isOpen("perfDash")} onClose={modals.close} />
     </div>
   );
+}
+
+function detectNetworkType(url: string, body: string, _method: string): NetworkEntryType {
+  const lUrl = url.toLowerCase();
+  const lBody = body.toLowerCase();
+  if (lUrl.includes("soap") || lBody.includes("<soap:") || lBody.includes("<soapenv:") || lBody.includes("schemas.xmlsoap.org")) return "soap";
+  if (lUrl.includes("graphql") || (lBody.includes('"query"') && lBody.includes("{"))) return "graphql";
+  if (lUrl.includes("grpc") || lUrl.includes("twirp")) return "grpc";
+  if (lUrl.startsWith("ws://") || lUrl.startsWith("wss://")) return "ws";
+  return "xhr";
 }
 
 function deriveNameFromUrl(url: string): string {
