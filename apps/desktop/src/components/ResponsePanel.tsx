@@ -1,9 +1,16 @@
-import { useMemo, useState } from "react";
-import { AlertTriangle, Code2, Copy, GitCompare, Inbox } from "lucide-react";
-import type { ExecuteResponse, TimingBreakdown } from "../lib/sidecar";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AlertTriangle, CheckCircle2, Code2, Copy, GitCompare, Inbox, Search, Terminal, XCircle } from "lucide-react";
+import type { ExecuteResponse, SchemaValidateOutput, TimingBreakdown } from "../lib/sidecar";
+import { sidecar } from "../lib/sidecar";
 import { CodeEditor } from "./CodeEditor";
 
-type Tab = "body" | "headers" | "cookies" | "timing";
+export interface ConsoleEntry {
+  timestamp: number;
+  level: "info" | "warn" | "error" | "log";
+  message: string;
+}
+
+type Tab = "body" | "headers" | "cookies" | "timing" | "console" | "schema";
 
 interface Props {
   busy: boolean;
@@ -11,17 +18,41 @@ interface Props {
   error: string | null;
   onDiff?: () => void;
   onCodegen?: () => void;
+  consoleEntries?: ConsoleEntry[];
 }
 
-export function ResponsePanel({ busy, response, error, onDiff, onCodegen }: Props) {
+export function ResponsePanel({ busy, response, error, onDiff, onCodegen, consoleEntries = [] }: Props) {
   const [tab, setTab] = useState<Tab>("body");
+  const panelRef = useRef<HTMLDivElement>(null);
+  const [headerSearch, setHeaderSearch] = useState("");
+  const [cookieSearch, setCookieSearch] = useState("");
+  const headerSearchRef = useRef<HTMLInputElement | null>(null);
+  const cookieSearchRef = useRef<HTMLInputElement | null>(null);
+
+  // Ctrl+F handler to focus search when response panel is active
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key === "f") {
+        if (!panelRef.current?.contains(document.activeElement) && !panelRef.current?.matches(":hover")) return;
+        if (tab === "headers") {
+          e.preventDefault();
+          headerSearchRef.current?.focus();
+        } else if (tab === "cookies") {
+          e.preventDefault();
+          cookieSearchRef.current?.focus();
+        }
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [tab]);
 
   if (busy && !response) return <Loading />;
   if (error && !response) return <ErrorView error={error} />;
   if (!response) return <Empty />;
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
+    <div ref={panelRef} className="flex h-full min-h-0 flex-col">
       <StatusRow res={response} onDiff={onDiff} onCodegen={onCodegen} />
       <div className="flex items-center gap-px border-b border-glass px-2">
         <TabButton active={tab === "body"} onClick={() => setTab("body")}>Body</TabButton>
@@ -36,12 +67,37 @@ export function ResponsePanel({ busy, response, error, onDiff, onCodegen }: Prop
         <TabButton active={tab === "timing"} onClick={() => setTab("timing")}>
           Timing
         </TabButton>
+        <TabButton active={tab === "console"} onClick={() => setTab("console")}>
+          Console
+          {consoleEntries.length > 0 && (
+            <span className="ml-1 text-neutral-500">{consoleEntries.length}</span>
+          )}
+        </TabButton>
+        <TabButton active={tab === "schema"} onClick={() => setTab("schema")}>
+          Schema
+        </TabButton>
       </div>
       <div className="min-h-0 flex-1 overflow-hidden">
         {tab === "body" && <BodyView res={response} />}
-        {tab === "headers" && <HeadersView res={response} />}
-        {tab === "cookies" && <CookiesView res={response} />}
+        {tab === "headers" && (
+          <HeadersView
+            res={response}
+            search={headerSearch}
+            onSearchChange={setHeaderSearch}
+            searchRef={headerSearchRef}
+          />
+        )}
+        {tab === "cookies" && (
+          <CookiesView
+            res={response}
+            search={cookieSearch}
+            onSearchChange={setCookieSearch}
+            searchRef={cookieSearchRef}
+          />
+        )}
         {tab === "timing" && <TimingView res={response} />}
+        {tab === "console" && <ConsoleView entries={consoleEntries} response={response} />}
+        {tab === "schema" && <SchemaView res={response} />}
       </div>
     </div>
   );
@@ -149,56 +205,122 @@ function BodyView({ res }: { res: ExecuteResponse }) {
   );
 }
 
-function HeadersView({ res }: { res: ExecuteResponse }) {
+function HeadersView({
+  res,
+  search,
+  onSearchChange,
+  searchRef,
+}: {
+  res: ExecuteResponse;
+  search: string;
+  onSearchChange: (s: string) => void;
+  searchRef: React.Ref<HTMLInputElement>;
+}) {
+  const q = search.toLowerCase();
+  const filtered = useMemo(
+    () =>
+      Object.entries(res.headers).filter(
+        ([k, v]) => !q || k.toLowerCase().includes(q) || v.toLowerCase().includes(q),
+      ),
+    [res.headers, q],
+  );
   return (
-    <div className="overflow-auto">
-      <table className="w-full text-xs">
-        <thead className="sticky top-0 bg-neutral-925 text-[11px] uppercase tracking-wider text-neutral-500">
-          <tr>
-            <th className="px-4 py-1.5 text-left font-medium">Name</th>
-            <th className="px-4 py-1.5 text-left font-medium">Value</th>
-          </tr>
-        </thead>
-        <tbody>
-          {Object.entries(res.headers).map(([k, v]) => (
-            <tr key={k} className="border-t border-glass/60 hover:bg-neutral-900/40">
-              <td className="px-4 py-1.5 font-mono text-neutral-400">{k}</td>
-              <td className="px-4 py-1.5 font-mono text-neutral-100 break-all">{v}</td>
+    <div className="flex h-full flex-col overflow-hidden">
+      <div className="flex items-center gap-2 border-b border-glass/60 px-4 py-1.5">
+        <Search className="h-3 w-3 text-neutral-500" />
+        <input
+          ref={searchRef}
+          type="text"
+          value={search}
+          onChange={(e) => onSearchChange(e.target.value)}
+          placeholder="Filter headers..."
+          className="flex-1 bg-transparent text-xs text-neutral-100 outline-none placeholder:text-neutral-600"
+          spellCheck={false}
+        />
+        {search && (
+          <span className="text-[10px] text-neutral-500">{filtered.length} / {Object.keys(res.headers).length}</span>
+        )}
+      </div>
+      <div className="flex-1 overflow-auto">
+        <table className="w-full text-xs">
+          <thead className="sticky top-0 bg-neutral-925 text-[11px] uppercase tracking-wider text-neutral-500">
+            <tr>
+              <th className="px-4 py-1.5 text-left font-medium">Name</th>
+              <th className="px-4 py-1.5 text-left font-medium">Value</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {filtered.map(([k, v]) => (
+              <tr key={k} className="border-t border-glass/60 hover:bg-neutral-900/40">
+                <td className="px-4 py-1.5 font-mono text-neutral-400">{k}</td>
+                <td className="px-4 py-1.5 font-mono text-neutral-100 break-all">{v}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
 
-function CookiesView({ res }: { res: ExecuteResponse }) {
-  const entries = Object.entries(res.cookies ?? {});
-  if (entries.length === 0) {
+function CookiesView({
+  res,
+  search,
+  onSearchChange,
+  searchRef,
+}: {
+  res: ExecuteResponse;
+  search: string;
+  onSearchChange: (s: string) => void;
+  searchRef: React.Ref<HTMLInputElement>;
+}) {
+  const allEntries = Object.entries(res.cookies ?? {});
+  if (allEntries.length === 0) {
     return (
       <div className="flex h-full items-center justify-center text-xs text-neutral-500">
         No cookies in this response
       </div>
     );
   }
+  const q = search.toLowerCase();
+  const filtered = allEntries.filter(
+    ([k, v]) => !q || k.toLowerCase().includes(q) || v.toLowerCase().includes(q),
+  );
   return (
-    <div className="overflow-auto">
-      <table className="w-full text-xs">
-        <thead className="sticky top-0 bg-neutral-925 text-[11px] uppercase tracking-wider text-neutral-500">
-          <tr>
-            <th className="px-4 py-1.5 text-left font-medium">Name</th>
-            <th className="px-4 py-1.5 text-left font-medium">Value</th>
-          </tr>
-        </thead>
-        <tbody>
-          {entries.map(([k, v]) => (
-            <tr key={k} className="border-t border-glass/60 hover:bg-neutral-900/40">
-              <td className="px-4 py-1.5 font-mono text-neutral-400">{k}</td>
-              <td className="px-4 py-1.5 font-mono text-neutral-100 break-all">{v}</td>
+    <div className="flex h-full flex-col overflow-hidden">
+      <div className="flex items-center gap-2 border-b border-glass/60 px-4 py-1.5">
+        <Search className="h-3 w-3 text-neutral-500" />
+        <input
+          ref={searchRef}
+          type="text"
+          value={search}
+          onChange={(e) => onSearchChange(e.target.value)}
+          placeholder="Filter cookies..."
+          className="flex-1 bg-transparent text-xs text-neutral-100 outline-none placeholder:text-neutral-600"
+          spellCheck={false}
+        />
+        {search && (
+          <span className="text-[10px] text-neutral-500">{filtered.length} / {allEntries.length}</span>
+        )}
+      </div>
+      <div className="flex-1 overflow-auto">
+        <table className="w-full text-xs">
+          <thead className="sticky top-0 bg-neutral-925 text-[11px] uppercase tracking-wider text-neutral-500">
+            <tr>
+              <th className="px-4 py-1.5 text-left font-medium">Name</th>
+              <th className="px-4 py-1.5 text-left font-medium">Value</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {filtered.map(([k, v]) => (
+              <tr key={k} className="border-t border-glass/60 hover:bg-neutral-900/40">
+                <td className="px-4 py-1.5 font-mono text-neutral-400">{k}</td>
+                <td className="px-4 py-1.5 font-mono text-neutral-100 break-all">{v}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
@@ -252,6 +374,118 @@ function TimingView({ res }: { res: ExecuteResponse }) {
           <span className="font-mono font-bold text-neutral-100">{formatMs(t.total_ms)}</span>
         </div>
       </div>
+    </div>
+  );
+}
+
+function ConsoleView({ entries, response }: { entries: ConsoleEntry[]; response: ExecuteResponse }) {
+  const lifecycle: ConsoleEntry[] = [
+    { timestamp: response.elapsed_ms ? Date.now() - response.elapsed_ms : Date.now(), level: "info", message: `Request sent to ${response.final_url}` },
+    { timestamp: Date.now(), level: "info", message: `Response received: ${response.status} ${response.status_text || ""} in ${formatMs(response.elapsed_ms)}` },
+  ];
+  const all = [...lifecycle, ...entries].sort((a, b) => a.timestamp - b.timestamp);
+  const levelColor: Record<string, string> = {
+    info: "text-cobweb-400",
+    log: "text-neutral-300",
+    warn: "text-amber-400",
+    error: "text-rose-400",
+  };
+  return (
+    <div className="h-full overflow-auto p-4 font-mono text-xs">
+      {all.map((e, i) => (
+        <div key={i} className="flex gap-3 py-0.5">
+          <span className="shrink-0 text-neutral-600">{new Date(e.timestamp).toLocaleTimeString()}</span>
+          <Terminal className="mt-0.5 h-3 w-3 shrink-0 text-neutral-600" />
+          <span className={levelColor[e.level] ?? "text-neutral-300"}>{e.message}</span>
+        </div>
+      ))}
+      {all.length === 0 && (
+        <div className="flex h-full items-center justify-center text-neutral-500">
+          No console output
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SchemaView({ res }: { res: ExecuteResponse }) {
+  const [schema, setSchema] = useState("");
+  const [result, setResult] = useState<SchemaValidateOutput | null>(null);
+  const [validating, setValidating] = useState(false);
+  const [schemaError, setSchemaError] = useState<string | null>(null);
+
+  const validate = useCallback(async () => {
+    if (!schema.trim()) return;
+    setValidating(true);
+    setSchemaError(null);
+    try {
+      const r = await sidecar.validateSchema(res.body, schema);
+      setResult(r);
+    } catch (e: unknown) {
+      setSchemaError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setValidating(false);
+    }
+  }, [res.body, schema]);
+
+  return (
+    <div className="flex h-full flex-col gap-3 overflow-auto p-4">
+      <div className="flex items-center justify-between">
+        <p className="text-[11px] uppercase tracking-wider text-neutral-500">
+          JSON Schema Validation
+        </p>
+        <button
+          type="button"
+          onClick={validate}
+          disabled={validating || !schema.trim()}
+          className="rounded-md border border-glass bg-cobweb-600/20 px-3 py-1 text-xs font-medium text-cobweb-400 transition hover:bg-cobweb-600/30 disabled:opacity-40"
+        >
+          {validating ? "Validating..." : "Validate"}
+        </button>
+      </div>
+      <div className="min-h-[120px] flex-1 overflow-hidden rounded border border-glass bg-neutral-900/50">
+        <CodeEditor
+          value={schema}
+          onChange={setSchema}
+          language="json"
+          placeholder='{"type": "object", "properties": {...}}'
+        />
+      </div>
+      {schemaError && (
+        <div className="rounded border border-rose-800/50 bg-rose-950/20 px-3 py-2 text-xs text-rose-400">
+          {schemaError}
+        </div>
+      )}
+      {result && (
+        <div className={`rounded border px-3 py-2 text-xs ${
+          result.valid
+            ? "border-emerald-800/50 bg-emerald-950/20"
+            : "border-rose-800/50 bg-rose-950/20"
+        }`}>
+          <div className="flex items-center gap-2 font-medium">
+            {result.valid ? (
+              <>
+                <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                <span className="text-emerald-400">Schema validation passed</span>
+              </>
+            ) : (
+              <>
+                <XCircle className="h-4 w-4 text-rose-400" />
+                <span className="text-rose-400">{result.errors.length} validation error{result.errors.length !== 1 ? "s" : ""}</span>
+              </>
+            )}
+          </div>
+          {result.errors.length > 0 && (
+            <ul className="mt-2 space-y-1">
+              {result.errors.map((err, i) => (
+                <li key={i} className="text-rose-300">
+                  <span className="font-mono text-rose-400">{err.path || "$"}</span>: {err.message}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
     </div>
   );
 }

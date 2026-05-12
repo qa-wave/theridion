@@ -20,7 +20,7 @@ import { Sidebar } from "./components/Sidebar";
 import { RequestTabBar } from "./components/RequestTabBar";
 import { UrlBar } from "./components/UrlBar";
 import { RequestPanel } from "./components/RequestPanel";
-import { ResponsePanel } from "./components/ResponsePanel";
+import { ResponsePanel, type ConsoleEntry } from "./components/ResponsePanel";
 import { StatusBar } from "./components/StatusBar";
 import { SavePopover } from "./components/SavePopover";
 import { EnvManagerModal } from "./components/EnvManagerModal";
@@ -42,6 +42,17 @@ import { WebSocketModal } from "./components/WebSocketModal";
 import { HistoryPanel, type HistoryEntry } from "./components/HistoryPanel";
 import { SoapModal } from "./components/SoapModal";
 import { CommandPalette, useDefaultActions } from "./components/CommandPalette";
+import { ContextMenu, buildSidebarActions, type ContextMenuAction } from "./components/ContextMenu";
+import { JwtInspectorModal } from "./components/JwtInspectorModal";
+import { BatchRunnerModal } from "./components/BatchRunnerModal";
+import { MonitorsModal } from "./components/MonitorsModal";
+import { SecurityScannerModal } from "./components/SecurityScannerModal";
+import { CollectionVarsModal } from "./components/CollectionVarsModal";
+import { SecretsVaultModal } from "./components/SecretsVaultModal";
+import { WebhooksModal } from "./components/WebhooksModal";
+import { MultiEnvModal } from "./components/MultiEnvModal";
+import { FlowEditorModal } from "./components/FlowEditorModal";
+import { PerformanceDashboardModal } from "./components/PerformanceDashboardModal";
 
 const APP_VERSION = "0.0.1";
 const ACTIVE_ENV_KEY = "theridion.activeEnvironmentId";
@@ -88,6 +99,20 @@ export default function App() {
   const [serviceMapOpen, setServiceMapOpen] = useState(false);
   const [proxyOpen, setProxyOpen] = useState(false);
   const [swaggerOpen, setSwaggerOpen] = useState(false);
+  const [requestCount, setRequestCount] = useState(0);
+  const [lastStatus, setLastStatus] = useState<number | null>(null);
+  const [consoleEntries, setConsoleEntries] = useState<ConsoleEntry[]>([]);
+  const [jwtOpen, setJwtOpen] = useState(false);
+  const [batchOpen, setBatchOpen] = useState(false);
+  const [monitorsOpen, setMonitorsOpen] = useState(false);
+  const [securityOpen, setSecurityOpen] = useState(false);
+  const [collVarsOpen, setCollVarsOpen] = useState(false);
+  const [secretsOpen, setSecretsOpen] = useState(false);
+  const [webhooksOpen, setWebhooksOpen] = useState(false);
+  const [multiEnvOpen, setMultiEnvOpen] = useState(false);
+  const [flowEditorOpen, setFlowEditorOpen] = useState(false);
+  const [perfDashOpen, setPerfDashOpen] = useState(false);
+  const [ctxMenu, setCtxMenu] = useState<{ open: boolean; x: number; y: number; actions: ContextMenuAction[] }>({ open: false, x: 0, y: 0, actions: [] });
 
   // ---- sidecar health polling ---------------------------------------------
   useEffect(() => {
@@ -209,6 +234,7 @@ export default function App() {
   async function send() {
     if (!active.url || active.busy) return;
     patchActive({ busy: true, error: null });
+    setConsoleEntries([]);
     try {
       const input: ExecuteRequestInput = {
         method: active.method,
@@ -221,6 +247,8 @@ export default function App() {
       const response = await sidecar.execute(input);
       setPreviousResponse(active.response);
       patchActive({ busy: false, response, error: null, lastRunAt: Date.now() });
+      setRequestCount((c) => c + 1);
+      setLastStatus(response.status);
       // Evaluate assertions if any exist.
       if (active.assertions.length > 0) {
         try {
@@ -445,6 +473,18 @@ export default function App() {
     openServiceMap: () => setServiceMapOpen(true),
     openProxy: () => setProxyOpen(true),
     openSwagger: () => setSwaggerOpen(true),
+    openJwt: () => setJwtOpen(true),
+    openBatch: () => setBatchOpen(true),
+    openMonitors: () => setMonitorsOpen(true),
+    openSecurity: () => setSecurityOpen(true),
+    openCollVars: () => setCollVarsOpen(true),
+    openSecrets: () => setSecretsOpen(true),
+    openWebhooks: () => setWebhooksOpen(true),
+    openMultiEnv: () => setMultiEnvOpen(true),
+    openFlowEditor: () => setFlowEditorOpen(true),
+    openPerfDash: () => setPerfDashOpen(true),
+    collections,
+    onOpenRequest: openSaved,
   });
 
   // ---- keyboard shortcuts -------------------------------------------------
@@ -498,6 +538,34 @@ export default function App() {
           onRenameCollection={renameCollection}
           onRenameItem={renameItem}
           onRefresh={refreshCollections}
+          onContextMenu={(e, collectionId, item) => {
+            e.preventDefault();
+            setCtxMenu({
+              open: true,
+              x: e.clientX,
+              y: e.clientY,
+              actions: buildSidebarActions({
+                onRename: () => {
+                  const name = prompt("Rename:", item.name);
+                  if (name) void renameItem(collectionId, item.id, name);
+                },
+                onDuplicate: () => {
+                  void sidecar.duplicateRequest(collectionId, item.id).then(() => refreshCollections());
+                },
+                onDelete: () => {
+                  if (confirm(`Delete "${item.name}"?`)) void deleteRequest(collectionId, item.id);
+                },
+                onCopyAsCurl: item.url ? () => {
+                  void sidecar.generateCurl({
+                    method: item.method ?? "GET",
+                    url: item.url ?? "",
+                    headers: item.headers,
+                    body: item.body,
+                  }).then((r) => navigator.clipboard.writeText(r.curl));
+                } : undefined,
+              }),
+            });
+          }}
         />
       </div>
 
@@ -568,6 +636,9 @@ export default function App() {
               onAssertionsChange={(assertions) => patchActive({ assertions, assertionResults: null })}
               preRequestScript={active.preRequestScript}
               onPreRequestScriptChange={(preRequestScript) => patchActive({ preRequestScript })}
+              savedAs={active.savedAs}
+              method={active.method}
+              onMethodChange={(method) => patchActive({ method })}
             />
           </div>
           <div className="min-h-0 overflow-hidden">
@@ -577,6 +648,7 @@ export default function App() {
               error={active.error}
               onDiff={() => setDiffOpen(true)}
               onCodegen={() => setCodegenOpen(true)}
+              consoleEntries={consoleEntries}
             />
           </div>
           {historyOpen && (
@@ -594,7 +666,7 @@ export default function App() {
       </main>
 
       <div className="col-span-2">
-        <StatusBar sidecarStatus={sidecarStatus} appVersion={APP_VERSION} onOpenSettings={() => setSettingsOpen(true)} />
+        <StatusBar sidecarStatus={sidecarStatus} appVersion={APP_VERSION} onOpenSettings={() => setSettingsOpen(true)} requestCount={requestCount} lastStatus={lastStatus} />
       </div>
 
       <EnvManagerModal
@@ -663,6 +735,23 @@ export default function App() {
         onClose={() => setCmdPaletteOpen(false)}
         actions={cmdActions}
       />
+      <ContextMenu
+        open={ctxMenu.open}
+        x={ctxMenu.x}
+        y={ctxMenu.y}
+        actions={ctxMenu.actions}
+        onClose={() => setCtxMenu((c) => ({ ...c, open: false }))}
+      />
+      <JwtInspectorModal open={jwtOpen} onClose={() => setJwtOpen(false)} />
+      <BatchRunnerModal open={batchOpen} onClose={() => setBatchOpen(false)} />
+      <MonitorsModal open={monitorsOpen} onClose={() => setMonitorsOpen(false)} />
+      <SecurityScannerModal open={securityOpen} onClose={() => setSecurityOpen(false)} />
+      <CollectionVarsModal open={collVarsOpen} onClose={() => setCollVarsOpen(false)} />
+      <SecretsVaultModal open={secretsOpen} onClose={() => setSecretsOpen(false)} />
+      <WebhooksModal open={webhooksOpen} onClose={() => setWebhooksOpen(false)} />
+      <MultiEnvModal open={multiEnvOpen} onClose={() => setMultiEnvOpen(false)} />
+      <FlowEditorModal open={flowEditorOpen} onClose={() => setFlowEditorOpen(false)} />
+      <PerformanceDashboardModal open={perfDashOpen} onClose={() => setPerfDashOpen(false)} />
     </div>
   );
 }

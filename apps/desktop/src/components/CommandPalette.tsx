@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  BarChart3,
   Plus,
   Upload,
   Globe,
@@ -9,7 +10,17 @@ import {
   FileCode,
   Beaker,
   Search,
+  Key,
+  Database,
+  Clock,
+  Shield,
+  Layers,
+  Lock,
+  GitCompare,
+  GitBranch,
 } from "lucide-react";
+import type { StoredCollection, CollectionItem } from "../lib/sidecar";
+import { HTTP_METHOD_COLOR, type Method } from "../state/types";
 
 export interface CommandAction {
   id: string;
@@ -142,6 +153,38 @@ export function CommandPalette({ open, onClose, actions }: CommandPaletteProps) 
   );
 }
 
+/** Flatten all collection items into a list of request actions. */
+function flattenCollectionRequests(
+  collections: StoredCollection[],
+  onOpen: (collectionId: string, item: CollectionItem) => void,
+): CommandAction[] {
+  const results: CommandAction[] = [];
+  function walk(collectionId: string, collectionName: string, items: CollectionItem[]) {
+    for (const item of items) {
+      if (item.is_folder) {
+        if (item.items) walk(collectionId, collectionName, item.items);
+      } else {
+        const method = (item.method ?? "GET") as Method;
+        results.push({
+          id: `req-${collectionId}-${item.id}`,
+          label: `${method} ${item.name}`,
+          shortcut: collectionName,
+          icon: (
+            <span className={`text-[11px] font-bold ${HTTP_METHOD_COLOR[method] ?? "text-neutral-400"}`}>
+              {method.slice(0, 3)}
+            </span>
+          ),
+          onSelect: () => onOpen(collectionId, item),
+        });
+      }
+    }
+  }
+  for (const col of collections) {
+    walk(col.id, col.name, col.items);
+  }
+  return results;
+}
+
 /** Default set of command palette actions. Callers should pass callbacks. */
 export function useDefaultActions(callbacks: {
   newTab: () => void;
@@ -160,7 +203,27 @@ export function useDefaultActions(callbacks: {
   openServiceMap?: () => void;
   openProxy?: () => void;
   openSwagger?: () => void;
+  openJwt?: () => void;
+  openBatch?: () => void;
+  openMonitors?: () => void;
+  openSecurity?: () => void;
+  openCollVars?: () => void;
+  openSecrets?: () => void;
+  openWebhooks?: () => void;
+  openMultiEnv?: () => void;
+  openFlowEditor?: () => void;
+  openPerfDash?: () => void;
+  collections?: StoredCollection[];
+  onOpenRequest?: (collectionId: string, item: CollectionItem) => void;
 }): CommandAction[] {
+  const requestActions = useMemo(
+    () =>
+      callbacks.collections && callbacks.onOpenRequest
+        ? flattenCollectionRequests(callbacks.collections, callbacks.onOpenRequest)
+        : [],
+    [callbacks.collections, callbacks.onOpenRequest],
+  );
+
   return useMemo(
     () => [
       {
@@ -236,7 +299,38 @@ export function useDefaultActions(callbacks: {
       ...(callbacks.openSwagger ? [{
         id: "swagger-browser", label: "Swagger / OpenAPI Browser", icon: <FileCode size={14} />, onSelect: callbacks.openSwagger,
       }] : []),
+      ...(callbacks.openJwt ? [{
+        id: "jwt-inspector", label: "JWT Inspector", icon: <Key size={14} />, onSelect: callbacks.openJwt,
+      }] : []),
+      ...(callbacks.openBatch ? [{
+        id: "batch-runner", label: "Batch Runner", icon: <Database size={14} />, onSelect: callbacks.openBatch,
+      }] : []),
+      ...(callbacks.openMonitors ? [{
+        id: "monitors", label: "Monitors (Scheduled Runs)", icon: <Clock size={14} />, onSelect: callbacks.openMonitors,
+      }] : []),
+      ...(callbacks.openSecurity ? [{
+        id: "security-scanner", label: "Security Scanner", icon: <Shield size={14} />, onSelect: callbacks.openSecurity,
+      }] : []),
+      ...(callbacks.openCollVars ? [{
+        id: "collection-vars", label: "Collection Variables", icon: <Layers size={14} />, onSelect: callbacks.openCollVars,
+      }] : []),
+      ...(callbacks.openSecrets ? [{
+        id: "secrets-vault", label: "Secrets Vault", icon: <Lock size={14} />, onSelect: callbacks.openSecrets,
+      }] : []),
+      ...(callbacks.openWebhooks ? [{
+        id: "webhooks", label: "Webhooks", icon: <Globe size={14} />, onSelect: callbacks.openWebhooks,
+      }] : []),
+      ...(callbacks.openMultiEnv ? [{
+        id: "multi-env", label: "Multi-Environment Runner", icon: <GitCompare size={14} />, onSelect: callbacks.openMultiEnv,
+      }] : []),
+      ...(callbacks.openFlowEditor ? [{
+        id: "flow-editor", label: "Flow Editor", icon: <GitBranch size={14} />, onSelect: callbacks.openFlowEditor,
+      }] : []),
+      ...(callbacks.openPerfDash ? [{
+        id: "perf-dashboard", label: "Performance Dashboard", icon: <BarChart3 size={14} />, onSelect: callbacks.openPerfDash,
+      }] : []),
+      ...requestActions,
     ],
-    [callbacks],
+    [callbacks, requestActions],
   );
 }

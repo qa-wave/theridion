@@ -1,6 +1,11 @@
 import { useState } from "react";
+import { ChevronDown } from "lucide-react";
 import type { Assertion, AssertionResult, AuthConfig } from "../state/types";
+import type { RequestExample } from "../lib/sidecar";
+import { sidecar } from "../lib/sidecar";
 import { CodeEditor } from "./CodeEditor";
+import type { Method } from "../state/types";
+import { headersToText, parseHeadersText } from "../state/types";
 
 type Tab = "params" | "headers" | "body" | "auth" | "tests" | "scripts";
 
@@ -27,6 +32,9 @@ interface Props {
   onAssertionsChange: (a: Assertion[]) => void;
   preRequestScript: string;
   onPreRequestScriptChange: (s: string) => void;
+  savedAs?: { collectionId: string; requestId: string } | null;
+  method?: Method;
+  onMethodChange?: (m: Method) => void;
 }
 
 export function RequestPanel({
@@ -43,6 +51,9 @@ export function RequestPanel({
   onAssertionsChange,
   preRequestScript,
   onPreRequestScriptChange,
+  savedAs,
+  method,
+  onMethodChange,
 }: Props) {
   const [tab, setTab] = useState<Tab>("params");
 
@@ -84,6 +95,22 @@ export function RequestPanel({
             </button>
           );
         })}
+        {savedAs && (
+          <ExamplesDropdown
+            collectionId={savedAs.collectionId}
+            requestId={savedAs.requestId}
+            currentMethod={method ?? "GET"}
+            currentUrl={url}
+            currentHeaders={headersRaw}
+            currentBody={body}
+            onApply={(ex) => {
+              if (onMethodChange) onMethodChange(ex.method as Method);
+              onUrlChange(ex.url);
+              onHeadersChange(headersToText(ex.headers));
+              onBodyChange(ex.body ?? "");
+            }}
+          />
+        )}
       </div>
 
       <div className="min-h-0 flex-1 overflow-auto p-4">
@@ -95,10 +122,19 @@ export function RequestPanel({
         {tab === "auth" && <AuthView value={auth} onChange={onAuthChange} />}
         {tab === "scripts" && (
           <div className="flex h-full min-h-0 flex-col">
-            <p className="mb-2 text-[11px] uppercase tracking-widest text-neutral-500">
-              Pre-request Script
-              <span className="ml-2 normal-case text-neutral-600">JavaScript &middot; runs before each send</span>
-            </p>
+            <div className="mb-2 flex items-center justify-between">
+              <p className="text-[11px] uppercase tracking-widest text-neutral-500">
+                Pre-request Script
+                <span className="ml-2 normal-case text-neutral-600">JavaScript &middot; runs before each send</span>
+              </p>
+              <SnippetsDropdown
+                onInsert={(snippet) =>
+                  onPreRequestScriptChange(
+                    preRequestScript ? preRequestScript + "\n" + snippet : snippet,
+                  )
+                }
+              />
+            </div>
             <div className="min-h-[200px] flex-1 overflow-hidden rounded-lg border border-glass bg-neutral-900/50">
               <CodeEditor
                 value={preRequestScript}
@@ -205,9 +241,12 @@ function ParamsView({ url, onUrlChange }: { url: string; onUrlChange: (u: string
 function HeadersView({ value, onChange }: { value: string; onChange: (s: string) => void }) {
   return (
     <div>
-      <p className="mb-2 text-[11px] uppercase tracking-wider text-neutral-500">
-        Headers <span className="ml-1 text-neutral-600 normal-case">— one per line: Name: value</span>
-      </p>
+      <div className="mb-2 flex items-center justify-between">
+        <p className="text-[11px] uppercase tracking-wider text-neutral-500">
+          Headers <span className="ml-1 text-neutral-600 normal-case">— one per line: Name: value</span>
+        </p>
+        <QuickHeaderDropdown onAdd={(header) => onChange(value ? value + "\n" + header : header)} />
+      </div>
       <textarea
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -220,17 +259,141 @@ function HeadersView({ value, onChange }: { value: string; onChange: (s: string)
   );
 }
 
+type BodyMode = "raw" | "form-data" | "url-encoded";
+
+interface FormRow {
+  key: string;
+  value: string;
+}
+
 function BodyView({ value, onChange }: { value: string; onChange: (s: string) => void }) {
+  const [mode, setMode] = useState<BodyMode>("raw");
+  const [formRows, setFormRows] = useState<FormRow[]>([{ key: "", value: "" }]);
+  const [urlRows, setUrlRows] = useState<FormRow[]>([{ key: "", value: "" }]);
+
+  function serializeForm(rows: FormRow[]) {
+    return JSON.stringify(
+      Object.fromEntries(rows.filter((r) => r.key).map((r) => [r.key, r.value])),
+      null,
+      2,
+    );
+  }
+
+  function serializeUrlEncoded(rows: FormRow[]) {
+    return rows
+      .filter((r) => r.key)
+      .map((r) => `${encodeURIComponent(r.key)}=${encodeURIComponent(r.value)}`)
+      .join("&");
+  }
+
+  function updateFormRow(rows: FormRow[], setRows: (r: FormRow[]) => void, idx: number, field: "key" | "value", val: string, serialize: (r: FormRow[]) => string) {
+    const next = rows.map((r, i) => (i === idx ? { ...r, [field]: val } : r));
+    setRows(next);
+    onChange(serialize(next));
+  }
+
+  function addRow(rows: FormRow[], setRows: (r: FormRow[]) => void) {
+    setRows([...rows, { key: "", value: "" }]);
+  }
+
+  function removeRow(rows: FormRow[], setRows: (r: FormRow[]) => void, idx: number, serialize: (r: FormRow[]) => string) {
+    const next = rows.filter((_, i) => i !== idx);
+    const ensured = next.length > 0 ? next : [{ key: "", value: "" }];
+    setRows(ensured);
+    onChange(serialize(ensured));
+  }
+
+  function renderTable(rows: FormRow[], setRows: (r: FormRow[]) => void, serialize: (r: FormRow[]) => string) {
+    return (
+      <div>
+        <div className="overflow-hidden rounded border border-glass">
+          <table className="w-full text-xs">
+            <thead className="bg-neutral-900/60 text-neutral-500">
+              <tr>
+                <th className="w-1/3 px-3 py-1.5 text-left font-medium">Key</th>
+                <th className="px-3 py-1.5 text-left font-medium">Value</th>
+                <th className="w-8" />
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r, idx) => (
+                <tr key={idx} className="border-t border-glass">
+                  <td>
+                    <input
+                      value={r.key}
+                      onChange={(e) => updateFormRow(rows, setRows, idx, "key", e.target.value, serialize)}
+                      placeholder="key"
+                      className="w-full bg-transparent px-3 py-1.5 font-mono text-xs focus:outline-none"
+                      spellCheck={false}
+                    />
+                  </td>
+                  <td>
+                    <input
+                      value={r.value}
+                      onChange={(e) => updateFormRow(rows, setRows, idx, "value", e.target.value, serialize)}
+                      placeholder="value"
+                      className="w-full bg-transparent px-3 py-1.5 font-mono text-xs focus:outline-none"
+                      spellCheck={false}
+                    />
+                  </td>
+                  <td className="text-center">
+                    <button
+                      type="button"
+                      onClick={() => removeRow(rows, setRows, idx, serialize)}
+                      className="rounded p-1 text-neutral-600 transition hover:bg-neutral-800 hover:text-rose-400"
+                      title="Remove"
+                    >
+                      x
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <button
+          type="button"
+          onClick={() => addRow(rows, setRows)}
+          className="mt-2 text-xs text-cobweb-400 hover:text-cobweb-300"
+        >
+          + Add row
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <p className="mb-2 text-[11px] uppercase tracking-wider text-neutral-500">Body</p>
-      <div className="min-h-[280px] flex-1 overflow-hidden rounded border border-glass bg-neutral-900/50">
-        <CodeEditor
-          value={value}
-          onChange={onChange}
-          placeholder='{"hello":"world"}'
-        />
+      <div className="mb-2 flex items-center gap-1">
+        <p className="text-[11px] uppercase tracking-wider text-neutral-500">Body</p>
+        <div className="ml-2 flex rounded-md border border-glass overflow-hidden text-[11px]">
+          {(["raw", "form-data", "url-encoded"] as BodyMode[]).map((m) => (
+            <button
+              key={m}
+              type="button"
+              onClick={() => setMode(m)}
+              className={`px-2 py-0.5 transition ${
+                mode === m
+                  ? "bg-cobweb-600/20 text-cobweb-400"
+                  : "text-neutral-500 hover:text-neutral-300 hover:bg-neutral-800/40"
+              }`}
+            >
+              {m === "raw" ? "Raw" : m === "form-data" ? "Form Data" : "URL Encoded"}
+            </button>
+          ))}
+        </div>
       </div>
+      {mode === "raw" && (
+        <div className="min-h-[280px] flex-1 overflow-hidden rounded border border-glass bg-neutral-900/50">
+          <CodeEditor
+            value={value}
+            onChange={onChange}
+            placeholder='{"hello":"world"}'
+          />
+        </div>
+      )}
+      {mode === "form-data" && renderTable(formRows, setFormRows, serializeForm)}
+      {mode === "url-encoded" && renderTable(urlRows, setUrlRows, serializeUrlEncoded)}
     </div>
   );
 }
@@ -530,6 +693,192 @@ function TestsView({
           </div>
         );
       })}
+    </div>
+  );
+}
+
+const SCRIPT_SNIPPETS: { label: string; code: string }[] = [
+  {
+    label: "Set Bearer Token",
+    code: `pm.environment.set('token', 'your-bearer-token-here');`,
+  },
+  {
+    label: "Generate UUID",
+    code: `pm.environment.set('uuid', crypto.randomUUID());`,
+  },
+  {
+    label: "Add Timestamp Header",
+    code: `pm.request.headers['X-Timestamp'] = new Date().toISOString();`,
+  },
+  {
+    label: "Log Response",
+    code: `console.log('Response status:', pm.response?.status);
+console.log('Response body:', pm.response?.body?.substring(0, 200));`,
+  },
+];
+
+function SnippetsDropdown({ onInsert }: { onInsert: (code: string) => void }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="inline-flex items-center gap-1 rounded-md border border-glass px-2 py-0.5 text-[11px] text-neutral-500 transition hover:bg-white/[0.04] hover:text-neutral-300"
+      >
+        Snippets
+        <ChevronDown className="h-3 w-3" />
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full z-20 mt-1 w-56 rounded-md border border-neutral-700 bg-neutral-900 py-1 shadow-lg">
+          {SCRIPT_SNIPPETS.map((s) => (
+            <button
+              key={s.label}
+              type="button"
+              onClick={() => { onInsert(s.code); setOpen(false); }}
+              className="w-full px-3 py-1.5 text-left text-xs text-neutral-300 hover:bg-neutral-800"
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+const HEADER_PRESETS: { label: string; header: string }[] = [
+  { label: "Accept: application/json", header: "Accept: application/json" },
+  { label: "Authorization: Bearer {{token}}", header: "Authorization: Bearer {{token}}" },
+  { label: "Content-Type: application/json", header: "Content-Type: application/json" },
+  { label: "Content-Type: text/xml", header: "Content-Type: text/xml" },
+];
+
+function QuickHeaderDropdown({ onAdd }: { onAdd: (header: string) => void }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="inline-flex items-center gap-1 rounded-md border border-glass px-2 py-0.5 text-[11px] text-neutral-500 transition hover:bg-white/[0.04] hover:text-neutral-300"
+      >
+        Quick Add
+        <ChevronDown className="h-3 w-3" />
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full z-20 mt-1 w-64 rounded-md border border-neutral-700 bg-neutral-900 py-1 shadow-lg">
+          {HEADER_PRESETS.map((p) => (
+            <button
+              key={p.label}
+              type="button"
+              onClick={() => { onAdd(p.header); setOpen(false); }}
+              className="w-full px-3 py-1.5 text-left font-mono text-xs text-neutral-300 hover:bg-neutral-800"
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ExamplesDropdown({
+  collectionId,
+  requestId,
+  currentMethod,
+  currentUrl,
+  currentHeaders,
+  currentBody,
+  onApply,
+}: {
+  collectionId: string;
+  requestId: string;
+  currentMethod: string;
+  currentUrl: string;
+  currentHeaders: string;
+  currentBody: string;
+  onApply: (ex: RequestExample) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [examples, setExamples] = useState<RequestExample[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  async function loadExamples() {
+    setLoading(true);
+    try {
+      const list = await sidecar.listExamples(collectionId, requestId);
+      setExamples(list as RequestExample[]);
+    } catch {
+      // silently fail
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function saveAsExample() {
+    const name = prompt("Example name:", "Example");
+    if (!name) return;
+    setSaving(true);
+    try {
+      await sidecar.addExample(collectionId, requestId, {
+        name,
+        method: currentMethod,
+        url: currentUrl,
+        headers: parseHeadersText(currentHeaders),
+        body: currentBody || null,
+      });
+      await loadExamples();
+    } catch {
+      // silently fail
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="relative ml-auto">
+      <button
+        type="button"
+        onClick={() => { setOpen((o) => !o); if (!open) void loadExamples(); }}
+        className="inline-flex items-center gap-1 px-2 py-2 text-xs text-neutral-500 transition hover:text-neutral-300"
+      >
+        Examples
+        <ChevronDown className="h-3 w-3" />
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full z-20 mt-1 w-60 rounded-md border border-neutral-700 bg-neutral-900 py-1 shadow-lg">
+          {loading && (
+            <div className="px-3 py-2 text-xs text-neutral-500">Loading...</div>
+          )}
+          {!loading && examples.length === 0 && (
+            <div className="px-3 py-2 text-xs text-neutral-500">No examples saved</div>
+          )}
+          {examples.map((ex) => (
+            <button
+              key={ex.id}
+              type="button"
+              onClick={() => { onApply(ex); setOpen(false); }}
+              className="w-full px-3 py-1.5 text-left text-xs text-neutral-300 hover:bg-neutral-800"
+            >
+              <span className="font-mono text-cobweb-400">{ex.method}</span>{" "}
+              {ex.name}
+            </button>
+          ))}
+          <div className="border-t border-neutral-700 mt-1 pt-1">
+            <button
+              type="button"
+              onClick={() => { void saveAsExample(); }}
+              disabled={saving}
+              className="w-full px-3 py-1.5 text-left text-xs text-cobweb-400 hover:bg-neutral-800 disabled:opacity-50"
+            >
+              {saving ? "Saving..." : "+ Save as Example"}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

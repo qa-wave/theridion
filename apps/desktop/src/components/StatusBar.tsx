@@ -10,9 +10,11 @@ interface Props {
     | { state: "down"; error: string };
   appVersion: string;
   onOpenSettings: () => void;
+  requestCount?: number;
+  lastStatus?: number | null;
 }
 
-export function StatusBar({ sidecarStatus, appVersion, onOpenSettings }: Props) {
+export function StatusBar({ sidecarStatus, appVersion, onOpenSettings, requestCount = 0, lastStatus = null }: Props) {
   const ok = sidecarStatus.state === "ok";
   const checking = sidecarStatus.state === "checking";
   const label = ok
@@ -50,6 +52,27 @@ export function StatusBar({ sidecarStatus, appVersion, onOpenSettings }: Props) 
           </span>
         )}
       </span>
+
+      {requestCount > 0 && (
+        <span className="inline-flex items-center gap-2 text-neutral-500">
+          <span className="font-mono">{requestCount} request{requestCount !== 1 ? "s" : ""}</span>
+          {lastStatus !== null && (
+            <span
+              className={`inline-flex items-center rounded-md border px-1.5 py-0.5 font-mono text-[10px] font-bold ${
+                lastStatus >= 500
+                  ? "border-rose-700/40 bg-rose-500/10 text-rose-400"
+                  : lastStatus >= 400
+                    ? "border-amber-700/40 bg-amber-500/10 text-amber-400"
+                    : lastStatus >= 300
+                      ? "border-cobweb-700/40 bg-cobweb-500/10 text-cobweb-400"
+                      : "border-emerald-700/40 bg-emerald-500/10 text-emerald-400"
+              }`}
+            >
+              {lastStatus}
+            </span>
+          )}
+        </span>
+      )}
 
       <span className="ml-auto flex items-center gap-2">
         <button

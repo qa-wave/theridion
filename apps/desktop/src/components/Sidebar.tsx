@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ChevronDown,
   ChevronRight,
@@ -11,10 +11,12 @@ import {
   RefreshCw,
   Search,
   Sparkles,
+  Star,
   Trash2,
 } from "lucide-react";
 import { HTTP_METHOD_COLOR } from "../state/types";
-import type { CollectionItem, StoredCollection } from "../lib/sidecar";
+import type { CollectionItem, StoredCollection, FavoriteItem } from "../lib/sidecar";
+import { sidecar } from "../lib/sidecar";
 
 interface Props {
   collections: StoredCollection[];
@@ -29,6 +31,7 @@ interface Props {
   onRenameCollection: (id: string, name: string) => void;
   onRenameItem: (collectionId: string, itemId: string, name: string) => void;
   onRefresh: () => void;
+  onContextMenu?: (e: React.MouseEvent, collectionId: string, item: CollectionItem) => void;
 }
 
 export function Sidebar({
@@ -44,12 +47,72 @@ export function Sidebar({
   onRenameCollection,
   onRenameItem,
   onRefresh,
+  onContextMenu,
 }: Props) {
   const [query, setQuery] = useState("");
   const filter = query.toLowerCase();
+  const [favorites, setFavorites] = useState<FavoriteItem[]>([]);
+  const [favOpen, setFavOpen] = useState(true);
+
+  useEffect(() => {
+    sidecar.listFavorites().then((r) => setFavorites(r.items)).catch(() => {});
+  }, [collections]);
+
+  async function toggleFavorite(collectionId: string, item: CollectionItem) {
+    const exists = favorites.some((f) => f.collection_id === collectionId && f.request_id === item.id);
+    try {
+      if (exists) {
+        const res = await sidecar.removeFavorite(collectionId, item.id);
+        setFavorites(res.items);
+      } else {
+        const res = await sidecar.addFavorite({
+          collection_id: collectionId,
+          request_id: item.id,
+          name: item.name,
+          method: item.method ?? "GET",
+          url: item.url ?? "",
+        });
+        setFavorites(res.items);
+      }
+    } catch {
+      // non-critical
+    }
+  }
 
   return (
     <aside className="flex h-full flex-col border-r border-glass bg-neutral-925/90">
+      {/* Favorites section */}
+      {favorites.length > 0 && (
+        <div className="border-b border-glass">
+          <div className="flex items-center gap-1 px-3 pt-2 pb-1">
+            <button type="button" onClick={() => setFavOpen(!favOpen)} className="shrink-0 text-neutral-500">
+              {favOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+            </button>
+            <Star className="h-3 w-3 text-amber-500" />
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500">Favorites</span>
+            <span className="ml-auto text-[10px] text-neutral-600">{favorites.length}</span>
+          </div>
+          {favOpen && (
+            <div className="px-1 pb-2">
+              {favorites.map((f) => (
+                <button
+                  key={`${f.collection_id}-${f.request_id}`}
+                  type="button"
+                  onClick={() => onOpen(f.collection_id, { id: f.request_id, name: f.name, is_folder: false, method: f.method as CollectionItem["method"], url: f.url })}
+                  className="group flex w-full items-center gap-2 rounded px-2 py-1 text-xs text-neutral-300 hover:bg-neutral-800/60"
+                >
+                  <Star className="h-2.5 w-2.5 fill-amber-500 text-amber-500" />
+                  <span className={`w-9 shrink-0 font-mono text-[10px] font-bold tabular-nums ${HTTP_METHOD_COLOR[f.method as keyof typeof HTTP_METHOD_COLOR] ?? "text-neutral-400"}`}>
+                    {f.method}
+                  </span>
+                  <span className="truncate">{f.name}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="flex items-center gap-1 px-3 pt-3 pb-2">
         <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500">
           Collections
@@ -113,6 +176,9 @@ export function Sidebar({
               onDeleteRequest={(rid) => onDeleteRequest(c.id, rid)}
               onRenameCollection={(name) => onRenameCollection(c.id, name)}
               onRenameItem={(itemId, name) => onRenameItem(c.id, itemId, name)}
+              favorites={favorites}
+              onToggleFavorite={(item) => toggleFavorite(c.id, item)}
+              onContextMenu={onContextMenu ? (e, item) => onContextMenu(e, c.id, item) : undefined}
             />
           ))
         )}
@@ -191,6 +257,9 @@ function CollectionNode({
   onDeleteRequest,
   onRenameCollection,
   onRenameItem,
+  favorites,
+  onToggleFavorite,
+  onContextMenu,
 }: {
   collection: StoredCollection;
   filter: string;
@@ -201,6 +270,9 @@ function CollectionNode({
   onDeleteRequest: (id: string) => void;
   onRenameCollection: (name: string) => void;
   onRenameItem: (itemId: string, name: string) => void;
+  favorites?: FavoriteItem[];
+  onToggleFavorite?: (item: CollectionItem) => void;
+  onContextMenu?: (e: React.MouseEvent, item: CollectionItem) => void;
 }) {
   const [open, setOpen] = useState(true);
   const [renaming, setRenaming] = useState(false);
@@ -279,6 +351,10 @@ function CollectionNode({
           onDeleteFolder={onDeleteFolder}
           onDeleteRequest={onDeleteRequest}
           onRenameItem={onRenameItem}
+          favorites={favorites}
+          onToggleFavorite={onToggleFavorite}
+          collectionId={collection.id}
+          onContextMenu={onContextMenu}
         />
       )}
       {open && collection.items.length === 0 && (
@@ -298,6 +374,10 @@ function ItemList({
   onDeleteFolder,
   onDeleteRequest,
   onRenameItem,
+  favorites,
+  onToggleFavorite,
+  collectionId,
+  onContextMenu,
 }: {
   items: CollectionItem[];
   depth: number;
@@ -306,6 +386,10 @@ function ItemList({
   onDeleteFolder: (id: string) => void;
   onDeleteRequest: (id: string) => void;
   onRenameItem: (itemId: string, name: string) => void;
+  favorites?: FavoriteItem[];
+  onToggleFavorite?: (item: CollectionItem) => void;
+  collectionId?: string;
+  onContextMenu?: (e: React.MouseEvent, item: CollectionItem) => void;
 }) {
   return (
     <>
@@ -320,6 +404,10 @@ function ItemList({
             onDeleteFolder={onDeleteFolder}
             onDeleteRequest={onDeleteRequest}
             onRenameItem={onRenameItem}
+            favorites={favorites}
+            onToggleFavorite={onToggleFavorite}
+            collectionId={collectionId}
+            onContextMenu={onContextMenu}
           />
         ) : (
           <RequestRow
@@ -329,6 +417,9 @@ function ItemList({
             onOpen={() => onOpen(it)}
             onDelete={() => onDeleteRequest(it.id)}
             onRename={(name) => onRenameItem(it.id, name)}
+            isFavorite={favorites?.some((f) => f.collection_id === collectionId && f.request_id === it.id)}
+            onToggleFavorite={onToggleFavorite ? () => onToggleFavorite(it) : undefined}
+            onContextMenu={onContextMenu ? (e) => onContextMenu(e, it) : undefined}
           />
         ),
       )}
@@ -344,6 +435,10 @@ function FolderNode({
   onDeleteFolder,
   onDeleteRequest,
   onRenameItem,
+  favorites,
+  onToggleFavorite,
+  collectionId,
+  onContextMenu,
 }: {
   folder: CollectionItem;
   depth: number;
@@ -352,6 +447,10 @@ function FolderNode({
   onDeleteFolder: (id: string) => void;
   onDeleteRequest: (id: string) => void;
   onRenameItem: (itemId: string, name: string) => void;
+  favorites?: FavoriteItem[];
+  onToggleFavorite?: (item: CollectionItem) => void;
+  collectionId?: string;
+  onContextMenu?: (e: React.MouseEvent, item: CollectionItem) => void;
 }) {
   const [open, setOpen] = useState(true);
   const [renaming, setRenaming] = useState(false);
@@ -428,6 +527,10 @@ function FolderNode({
           onDeleteFolder={onDeleteFolder}
           onDeleteRequest={onDeleteRequest}
           onRenameItem={onRenameItem}
+          favorites={favorites}
+          onToggleFavorite={onToggleFavorite}
+          collectionId={collectionId}
+          onContextMenu={onContextMenu}
         />
       )}
     </div>
@@ -440,17 +543,23 @@ function RequestRow({
   onOpen,
   onDelete,
   onRename,
+  isFavorite,
+  onToggleFavorite,
+  onContextMenu,
 }: {
   request: CollectionItem;
   depth: number;
   onOpen: () => void;
   onDelete: () => void;
   onRename: (name: string) => void;
+  isFavorite?: boolean;
+  onToggleFavorite?: () => void;
+  onContextMenu?: (e: React.MouseEvent) => void;
 }) {
   const [renaming, setRenaming] = useState(false);
   const padLeft = `${1.25 + depth * 0.75}rem`;
   return (
-    <div className="group flex items-center rounded text-xs hover:bg-neutral-800/60">
+    <div className="group flex items-center rounded text-xs hover:bg-neutral-800/60" onContextMenu={onContextMenu}>
       {renaming ? (
         <div className="flex flex-1 items-center gap-2 py-0.5" style={{ paddingLeft: padLeft }}>
           <span
@@ -483,6 +592,20 @@ function RequestRow({
             {request.method ?? ""}
           </span>
           <span className="truncate">{request.name}</span>
+        </button>
+      )}
+      {onToggleFavorite && (
+        <button
+          type="button"
+          onClick={onToggleFavorite}
+          className={`rounded p-0.5 transition ${
+            isFavorite
+              ? "text-amber-500"
+              : "text-neutral-600 opacity-0 hover:text-amber-400 group-hover:opacity-100"
+          } hover:bg-neutral-800`}
+          title={isFavorite ? "Remove from favorites" : "Add to favorites"}
+        >
+          <Star className={`h-3 w-3 ${isFavorite ? "fill-amber-500" : ""}`} />
         </button>
       )}
       <button
