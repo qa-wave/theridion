@@ -1182,6 +1182,13 @@ export const sidecar = {
       body: JSON.stringify(input),
     }),
 
+  // ---- Self-Healing ----------------------------------------------------------
+  healAssertion: (input: HealAssertionInput) =>
+    call<HealAssertionOutput>("/api/assertions/heal", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+
   // ---- MCP Server ------------------------------------------------------------
   mcpManifest: () => call<McpManifest>("/api/mcp/manifest"),
   mcpInvoke: (tool: string, args: Record<string, unknown>) =>
@@ -1237,6 +1244,43 @@ export const sidecar = {
 
   // ---- AMF Protocol (stub) ---------------------------------------------------
   amfInvoke: () => call<StubOutput>("/api/amf/invoke", { method: "POST" }),
+
+  // ---- YAML Projects --------------------------------------------------------
+  listProjects: () =>
+    call<ProjectSummary[]>("/api/projects"),
+  getProject: (name: string) =>
+    call<YamlProject>(`/api/projects/${encodeURIComponent(name)}`),
+  createProject: (name: string) =>
+    call<YamlProject>("/api/projects", {
+      method: "POST",
+      body: JSON.stringify({ name }),
+    }),
+  exportToYaml: (collectionId: string) =>
+    call<{ project_name: string }>(
+      `/api/projects/_/export-from-collection/${collectionId}`,
+      { method: "POST" },
+    ),
+  deleteProject: async (name: string) => {
+    const baseUrl = await getSidecarBaseUrl();
+    const r = await fetch(`${baseUrl}/api/projects/${encodeURIComponent(name)}`, {
+      method: "DELETE",
+    });
+    if (!r.ok && r.status !== 204) throw new Error(`delete project ${r.status}`);
+  },
+
+  // ---- OAuth2 PKCE + Callback ------------------------------------------------
+  oauth2AuthorizeUrl: (input: OAuth2AuthorizeUrlInput) =>
+    call<OAuth2AuthorizeUrlOutput>("/api/auth/oauth2/authorize-url", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  oauth2StartCallback: (port?: number, timeoutSeconds?: number) =>
+    call<{ port: number; status: string }>("/api/auth/oauth2/callback-server/start", {
+      method: "POST",
+      body: JSON.stringify({ port: port ?? 9876, timeout_seconds: timeoutSeconds ?? 300 }),
+    }),
+  oauth2PollResult: () =>
+    call<OAuth2CallbackResult>("/api/auth/oauth2/callback-server/result"),
 };
 
 // ---- Assertion types ----------------------------------------------------
@@ -2820,4 +2864,77 @@ export interface AiChatOutput {
   response: string;
   suggestions: AiSuggestion[];
   error?: string | null;
+}
+
+// ---- Self-Healing types -----------------------------------------------------
+
+export interface HealAssertionInput {
+  assertion: Assertion;
+  response_body: string;
+  response_headers?: Record<string, string>;
+  response_status?: number;
+}
+
+export interface HealCandidate {
+  original_path: string;
+  suggested_path: string;
+  confidence: number;
+  reason: string;
+}
+
+export interface HealAssertionOutput {
+  candidates: HealCandidate[];
+  auto_fixable: boolean;
+}
+
+// ---- YAML Project types -----------------------------------------------------
+
+export interface ProjectSummary {
+  name: string;
+  collection_count: number;
+  environment_count: number;
+  created_at: string | null;
+}
+
+export interface ProjectEnvironment {
+  name: string;
+  variables: Record<string, string>;
+}
+
+export interface ProjectCollection {
+  name: string;
+  requests: Array<Record<string, unknown>>;
+  variables: Record<string, string>;
+}
+
+export interface YamlProject {
+  name: string;
+  created_at: string | null;
+  collections: ProjectCollection[];
+  environments: ProjectEnvironment[];
+}
+
+// ---- OAuth2 PKCE types ------------------------------------------------------
+
+export interface OAuth2AuthorizeUrlInput {
+  auth_url: string;
+  client_id: string;
+  redirect_uri?: string;
+  scope?: string;
+  state?: string;
+  use_pkce?: boolean;
+}
+
+export interface OAuth2AuthorizeUrlOutput {
+  url: string;
+  state: string;
+  code_verifier: string | null;
+  code_challenge: string | null;
+}
+
+export interface OAuth2CallbackResult {
+  status: "waiting" | "received" | "expired" | "not_running";
+  code: string | null;
+  state: string | null;
+  error: string | null;
 }
