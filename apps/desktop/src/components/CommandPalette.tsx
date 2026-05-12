@@ -157,6 +157,7 @@ export function useDefaultActions(callbacks: {
   openLoadTest?: () => void;
   openSettings?: () => void;
   importCollection?: () => void;
+  openServiceMap?: () => void;
 }): CommandAction[] {
   return useMemo(
     () => [
@@ -223,6 +224,9 @@ export function useDefaultActions(callbacks: {
       }] : []),
       ...(callbacks.importCollection ? [{
         id: "import-collection", label: "Import Collection (Postman/Insomnia)", icon: <Upload size={14} />, onSelect: callbacks.importCollection,
+      }] : []),
+      ...(callbacks.openServiceMap ? [{
+        id: "service-map", label: "Service Dependency Map", icon: <Globe size={14} />, onSelect: callbacks.openServiceMap,
       }] : []),
     ],
     [callbacks],

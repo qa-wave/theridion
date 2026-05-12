@@ -34,6 +34,7 @@ import { ImportModal } from "./components/ImportModal";
 import { KafkaModal } from "./components/KafkaModal";
 import { LoadTestModal } from "./components/LoadTestModal";
 import { MockServerModal } from "./components/MockServerModal";
+import { ServiceMapModal } from "./components/ServiceMapModal";
 import { SettingsModal } from "./components/SettingsModal";
 import { WebSocketModal } from "./components/WebSocketModal";
 import { HistoryPanel, type HistoryEntry } from "./components/HistoryPanel";
@@ -82,6 +83,7 @@ export default function App() {
   const [loadTestOpen, setLoadTestOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [serviceMapOpen, setServiceMapOpen] = useState(false);
 
   // ---- sidecar health polling ---------------------------------------------
   useEffect(() => {
@@ -436,6 +438,7 @@ export default function App() {
     openLoadTest: () => setLoadTestOpen(true),
     openSettings: () => setSettingsOpen(true),
     importCollection: () => setImportOpen(true),
+    openServiceMap: () => setServiceMapOpen(true),
   });
 
   // ---- keyboard shortcuts -------------------------------------------------
@@ -626,6 +629,7 @@ export default function App() {
       />
       <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
       <ImportModal open={importOpen} onClose={() => setImportOpen(false)} onImported={refreshCollections} />
+      <ServiceMapModal open={serviceMapOpen} onClose={() => setServiceMapOpen(false)} />
       <SoapModal open={soapModalOpen} onClose={() => setSoapModalOpen(false)} />
       <TestGenModal
         open={testGenOpen}
