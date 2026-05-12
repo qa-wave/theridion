@@ -1,4 +1,4 @@
-import { Activity, BookOpen, Braces, Clock, Command, Database, Globe, MoreHorizontal, Plus, Server, Terminal, Wifi, X } from "lucide-react";
+import { Activity, BookOpen, Bot, Braces, Clock, Command, Database, Globe, MoreHorizontal, Plus, Server, Terminal, Wifi, X } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { HTTP_METHOD_COLOR, isDirty } from "../state/types";
 import type { RequestTab } from "../state/types";
@@ -27,6 +27,7 @@ interface Props {
   activeEnvId: string | null;
   onSelectEnv: (id: string | null) => void;
   onManageEnv: () => void;
+  onOpenAgentExplorer?: () => void;
 }
 
 export function RequestTabBar({
@@ -51,6 +52,7 @@ export function RequestTabBar({
   activeEnvId,
   onSelectEnv,
   onManageEnv,
+  onOpenAgentExplorer,
 }: Props) {
   const [overflowOpen, setOverflowOpen] = useState(false);
   const overflowRef = useRef<HTMLDivElement>(null);
@@ -140,6 +142,9 @@ export function RequestTabBar({
               <OverflowItem icon={<Server className="h-3.5 w-3.5" />} label="Mock Server" onClick={() => { onOpenMock(); setOverflowOpen(false); }} />
               <OverflowItem icon={<Activity className="h-3.5 w-3.5" />} label="Load Test" onClick={() => { onOpenLoadTest(); setOverflowOpen(false); }} />
               <OverflowItem icon={<Globe className="h-3.5 w-3.5" />} label="SOAP / WSDL" onClick={() => { onOpenSoap(); setOverflowOpen(false); }} />
+              {onOpenAgentExplorer && (
+                <OverflowItem icon={<Bot className="h-3.5 w-3.5" />} label="AI: Explore API" onClick={() => { onOpenAgentExplorer(); setOverflowOpen(false); }} />
+              )}
             </div>
           )}
         </div>

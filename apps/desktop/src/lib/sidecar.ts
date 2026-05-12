@@ -1281,6 +1281,32 @@ export const sidecar = {
     }),
   oauth2PollResult: () =>
     call<OAuth2CallbackResult>("/api/auth/oauth2/callback-server/result"),
+
+  // ---- Traffic Replay ------------------------------------------------------
+  replayHar: (input: { har_content: string; environment_id?: string; collection_name?: string; ignore_paths?: string[] }) =>
+    call<ReplayOutput>("/api/replay/from-har", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  replayCollection: (input: { collection_id: string; environment_id?: string }) =>
+    call<ReplayOutput>("/api/replay/run-collection", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+
+  // ---- Agent Explorer -------------------------------------------------------
+  exploreApi: (input: {
+    base_url: string;
+    max_requests?: number;
+    methods?: string[];
+    headers?: Record<string, string>;
+    save_as_collection?: boolean;
+    collection_name?: string;
+  }) =>
+    call<ExploreApiResult>("/api/agent/explore", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
 };
 
 // ---- Assertion types ----------------------------------------------------
@@ -2937,4 +2963,59 @@ export interface OAuth2CallbackResult {
   code: string | null;
   state: string | null;
   error: string | null;
+}
+
+// ---- Traffic Replay types ---------------------------------------------------
+
+export interface ReplayDiff {
+  request_name: string;
+  method: string;
+  url: string;
+  original_status: number;
+  replay_status: number;
+  status_match: boolean;
+  body_match: boolean;
+  body_diffs: Array<{ path: string; original: unknown; replayed: unknown }>;
+  header_diffs: Array<{ path: string; original: unknown; replayed: unknown }>;
+  original_elapsed_ms: number;
+  replay_elapsed_ms: number;
+}
+
+export interface ReplayOutput {
+  total_requests: number;
+  replayed: number;
+  matches: number;
+  diffs: number;
+  errors: number;
+  results: ReplayDiff[];
+  collection_id: string | null;
+  elapsed_ms: number;
+}
+
+// ---- Agent Explorer types ---------------------------------------------------
+
+export interface ExploreIssue {
+  severity: "error" | "warning" | "info";
+  message: string;
+  endpoint: string;
+}
+
+export interface ExploredEndpoint {
+  method: string;
+  path: string;
+  status: number | null;
+  elapsed_ms: number;
+  size_bytes: number;
+  content_type: string;
+  issues: string[];
+  body_preview: string;
+}
+
+export interface ExploreApiResult {
+  endpoints_discovered: number;
+  requests_sent: number;
+  issues: ExploreIssue[];
+  endpoints: ExploredEndpoint[];
+  collection_id: string | null;
+  elapsed_ms: number;
 }

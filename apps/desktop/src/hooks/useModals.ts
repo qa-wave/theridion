@@ -28,6 +28,7 @@ export type ModalId =
   | "multiEnv"
   | "flowEditor"
   | "perfDash"
+  | "agentExplorer"
   | null;
 
 export function useModals() {

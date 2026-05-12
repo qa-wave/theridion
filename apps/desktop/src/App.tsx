@@ -54,7 +54,9 @@ import { WebhooksModal } from "./components/WebhooksModal";
 import { MultiEnvModal } from "./components/MultiEnvModal";
 import { FlowEditorModal } from "./components/FlowEditorModal";
 import { PerformanceDashboardModal } from "./components/PerformanceDashboardModal";
+import { AgentExplorerModal } from "./components/AgentExplorerModal";
 import { NetworkConsole, type NetworkEntry, type NetworkEntryType } from "./components/NetworkConsole";
+import { ActivityBar, type AppMode } from "./components/ActivityBar";
 
 const APP_VERSION = "0.0.1";
 const ACTIVE_ENV_KEY = "theridion.activeEnvironmentId";
@@ -93,6 +95,7 @@ export default function App() {
   const [networkEntries, setNetworkEntries] = useState<NetworkEntry[]>([]);
   const [networkRecording, setNetworkRecording] = useState(true);
   const [networkPreserveLog, setNetworkPreserveLog] = useState(false);
+  const [appMode, setAppMode] = useState<AppMode>("requests");
 
   // ---- sidecar health polling ---------------------------------------------
   useEffect(() => {
@@ -492,6 +495,7 @@ export default function App() {
     openMultiEnv: () => modals.open("multiEnv"),
     openFlowEditor: () => modals.open("flowEditor"),
     openPerfDash: () => modals.open("perfDash"),
+    openAgentExplorer: () => modals.open("agentExplorer"),
     collections,
     onOpenRequest: openSaved,
   });
@@ -535,8 +539,17 @@ export default function App() {
   }, [active, activeId, collections, sidecarStatus.state]);
 
   return (
-    <div className={`grid h-full grid-cols-[260px_1fr] ${networkOpen ? "grid-rows-[1fr_300px_auto]" : "grid-rows-[1fr_auto]"} bg-neutral-950 bg-mesh-gradient text-neutral-100`}>
-      <div className={`${networkOpen ? "row-span-1" : "row-span-1"} overflow-hidden`}>
+    <div className={`grid h-full grid-cols-[40px_260px_1fr] ${networkOpen && appMode === "requests" ? "grid-rows-[1fr_300px_auto]" : "grid-rows-[1fr_auto]"} bg-neutral-950 bg-mesh-gradient text-neutral-100`}>
+      <div className="row-span-1 overflow-hidden">
+        <ActivityBar
+          mode={appMode}
+          onModeChange={setAppMode}
+          networkEntryCount={networkEntries.length}
+        />
+      </div>
+
+      {appMode === "requests" && (<>
+      <div className="row-span-1 overflow-hidden">
         <Sidebar
           collections={collections}
           loading={collectionsLoading}
@@ -604,6 +617,7 @@ export default function App() {
           activeEnvId={activeEnvId}
           onSelectEnv={setActiveEnvId}
           onManageEnv={() => modals.open("envManager")}
+          onOpenAgentExplorer={() => modals.open("agentExplorer")}
         />
         <div className="relative">
           <UrlBar
@@ -677,8 +691,18 @@ export default function App() {
           )}
         </div>
       </main>
+      </>)}
 
-      {networkOpen && (
+      {appMode === "flows" && (
+        <div className="col-span-2 flex items-center justify-center text-neutral-500">
+          <div className="text-center">
+            <p className="text-lg font-medium text-neutral-400">Flow Editor</p>
+            <p className="mt-1 text-sm">Coming soon</p>
+          </div>
+        </div>
+      )}
+
+      {appMode === "traffic" && (
         <div className="col-span-2 overflow-hidden">
           <NetworkConsole
             entries={networkEntries}
@@ -691,7 +715,29 @@ export default function App() {
         </div>
       )}
 
-      <div className="col-span-2">
+      {appMode === "monitors" && (
+        <div className="col-span-2 flex items-center justify-center text-neutral-500">
+          <div className="text-center">
+            <p className="text-lg font-medium text-neutral-400">API Monitors</p>
+            <p className="mt-1 text-sm">Coming soon</p>
+          </div>
+        </div>
+      )}
+
+      {networkOpen && appMode === "requests" && (
+        <div className="col-span-3 overflow-hidden">
+          <NetworkConsole
+            entries={networkEntries}
+            recording={networkRecording}
+            onToggleRecording={() => setNetworkRecording((r) => !r)}
+            onClear={() => setNetworkEntries([])}
+            preserveLog={networkPreserveLog}
+            onTogglePreserveLog={() => setNetworkPreserveLog((p) => !p)}
+          />
+        </div>
+      )}
+
+      <div className="col-span-3">
         <StatusBar
           sidecarStatus={sidecarStatus}
           appVersion={APP_VERSION}
@@ -787,6 +833,7 @@ export default function App() {
       <MultiEnvModal open={modals.isOpen("multiEnv")} onClose={modals.close} />
       <FlowEditorModal open={modals.isOpen("flowEditor")} onClose={modals.close} />
       <PerformanceDashboardModal open={modals.isOpen("perfDash")} onClose={modals.close} />
+      <AgentExplorerModal open={modals.isOpen("agentExplorer")} onClose={modals.close} onCollectionCreated={refreshCollections} />
     </div>
   );
 }

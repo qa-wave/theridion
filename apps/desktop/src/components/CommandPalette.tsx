@@ -213,6 +213,7 @@ export function useDefaultActions(callbacks: {
   openMultiEnv?: () => void;
   openFlowEditor?: () => void;
   openPerfDash?: () => void;
+  openAgentExplorer?: () => void;
   collections?: StoredCollection[];
   onOpenRequest?: (collectionId: string, item: CollectionItem) => void;
 }): CommandAction[] {
@@ -328,6 +329,9 @@ export function useDefaultActions(callbacks: {
       }] : []),
       ...(callbacks.openPerfDash ? [{
         id: "perf-dashboard", label: "Performance Dashboard", icon: <BarChart3 size={14} />, onSelect: callbacks.openPerfDash,
+      }] : []),
+      ...(callbacks.openAgentExplorer ? [{
+        id: "agent-explorer", label: "AI: Explore API", icon: <Search size={14} />, onSelect: callbacks.openAgentExplorer,
       }] : []),
       ...requestActions,
     ],
