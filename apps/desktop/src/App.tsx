@@ -590,7 +590,7 @@ export default function App() {
       </main>
 
       <div className="col-span-2">
-        <StatusBar sidecarStatus={sidecarStatus} appVersion={APP_VERSION} />
+        <StatusBar sidecarStatus={sidecarStatus} appVersion={APP_VERSION} onOpenSettings={() => setSettingsOpen(true)} />
       </div>
 
       <EnvManagerModal

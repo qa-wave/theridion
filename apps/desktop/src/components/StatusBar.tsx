@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Palette } from "lucide-react";
+import { Palette, Settings2 } from "lucide-react";
 import type { HealthResponse } from "../lib/sidecar";
 import { THEMES, applyTheme, loadTheme, type ThemeId } from "../state/theme";
 
@@ -9,9 +9,10 @@ interface Props {
     | { state: "ok"; info: HealthResponse }
     | { state: "down"; error: string };
   appVersion: string;
+  onOpenSettings: () => void;
 }
 
-export function StatusBar({ sidecarStatus, appVersion }: Props) {
+export function StatusBar({ sidecarStatus, appVersion, onOpenSettings }: Props) {
   const ok = sidecarStatus.state === "ok";
   const checking = sidecarStatus.state === "checking";
   const label = ok
@@ -47,7 +48,15 @@ export function StatusBar({ sidecarStatus, appVersion }: Props) {
         )}
       </span>
 
-      <span className="ml-auto flex items-center gap-3">
+      <span className="ml-auto flex items-center gap-2">
+        <button
+          type="button"
+          onClick={onOpenSettings}
+          className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-neutral-500 transition hover:bg-white/[0.05] hover:text-neutral-300"
+          title="Settings (⌘,)"
+        >
+          <Settings2 className="h-3 w-3" />
+        </button>
         <ThemePicker />
         <span className="font-mono text-[10px] text-neutral-600">
           Theridion v{appVersion}
