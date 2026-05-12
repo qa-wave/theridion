@@ -331,6 +331,57 @@ export const sidecar = {
       body: JSON.stringify({ url, headers: headers ?? {}, environment_id }),
     }),
 
+  // ---- Service Map -------------------------------------------------------
+  getServiceMap: () => call<ServiceGraph>("/api/servicemap"),
+  saveServiceMap: (graph: ServiceGraph) =>
+    call<ServiceGraph>("/api/servicemap", { method: "PUT", body: JSON.stringify(graph) }),
+  discoverServices: () => call<ServiceGraph>("/api/servicemap/discover", { method: "POST" }),
+  addServiceNode: (node: { label: string; url?: string; x?: number; y?: number; color?: string }) =>
+    call<ServiceGraph>("/api/servicemap/nodes", { method: "POST", body: JSON.stringify(node) }),
+  deleteServiceNode: (nodeId: string) =>
+    call<ServiceGraph>(`/api/servicemap/nodes/${nodeId}`, { method: "DELETE" }),
+  addServiceEdge: (edge: { source: string; target: string; label?: string }) =>
+    call<ServiceGraph>("/api/servicemap/edges", { method: "POST", body: JSON.stringify(edge) }),
+  deleteServiceEdge: (edgeId: string) =>
+    call<ServiceGraph>(`/api/servicemap/edges/${edgeId}`, { method: "DELETE" }),
+
+  // ---- API Docs ----------------------------------------------------------
+  parseApiDoc: (input: { content?: string; url?: string }) =>
+    call<ApiDocOutput>("/api/apidocs/parse", { method: "POST", body: JSON.stringify(input) }),
+
+  // ---- Timeline ----------------------------------------------------------
+  recordTimeline: (input: { request_id: string; status: number; body: string; headers: Record<string, string>; elapsed_ms: number }) =>
+    call<TimelineOutput>("/api/timeline/record", { method: "POST", body: JSON.stringify(input) }),
+  getTimeline: (requestId: string) => call<TimelineOutput>(`/api/timeline/${requestId}`),
+
+  // ---- Workspace ---------------------------------------------------------
+  exportWorkspace: () => getSidecarBaseUrl().then((base) => `${base}/api/workspace/export`),
+
+  // ---- Schema Validation -------------------------------------------------
+  validateSchema: (body: string, schema: string) =>
+    call<SchemaValidateOutput>("/api/schema/validate", {
+      method: "POST",
+      body: JSON.stringify({ body, schema }),
+    }),
+
+  // ---- Env Diff ----------------------------------------------------------
+  compareEnvs: (leftId: string, rightId: string) =>
+    call<EnvDiffOutput>("/api/envdiff/compare", {
+      method: "POST",
+      body: JSON.stringify({ left_id: leftId, right_id: rightId }),
+    }),
+
+  // ---- Favorites ---------------------------------------------------------
+  listFavorites: () => call<{ items: FavoriteItem[] }>("/api/favorites"),
+  addFavorite: (fav: FavoriteItem) =>
+    call<{ items: FavoriteItem[] }>("/api/favorites", { method: "POST", body: JSON.stringify(fav) }),
+  removeFavorite: (collectionId: string, requestId: string) =>
+    call<{ items: FavoriteItem[] }>(`/api/favorites/${collectionId}/${requestId}`, { method: "DELETE" }),
+
+  // ---- Batch Runner ------------------------------------------------------
+  runBatch: (input: { collection_id: string; environment_id?: string; dataset: Array<Record<string, string>>; dataset_csv?: string }) =>
+    call<BatchOutput>("/api/batch/run", { method: "POST", body: JSON.stringify(input) }),
+
   // ---- AI ----------------------------------------------------------------
   aiSettings: () =>
     call<{ provider: string; ollama_base_url: string; ollama_model: string }>("/api/ai/settings"),
@@ -889,6 +940,71 @@ export interface LoadTestResult {
 }
 
 // ---- Collection variables type -------------------------------------------
+
+// ---- Service Map types ---------------------------------------------------
+
+export interface ServiceNode {
+  id: string; label: string; url: string; x: number; y: number; color: string;
+}
+export interface ServiceEdge {
+  id: string; source: string; target: string; label: string;
+}
+export interface ServiceGraph {
+  nodes: ServiceNode[]; edges: ServiceEdge[];
+}
+
+// ---- API Doc types -------------------------------------------------------
+
+export interface ApiDocEndpoint {
+  path: string; method: string; summary: string; description: string;
+  parameters: Array<Record<string, unknown>>; tags: string[];
+}
+export interface ApiDocOutput {
+  title: string; version: string; description: string; base_url: string;
+  endpoints: ApiDocEndpoint[];
+}
+
+// ---- Timeline types ------------------------------------------------------
+
+export interface ResponseSnapshot {
+  timestamp: number; status: number; body_hash: string; body_preview: string;
+  elapsed_ms: number; body_size: number; changes: string[];
+}
+export interface TimelineOutput {
+  request_id: string; snapshots: ResponseSnapshot[];
+}
+
+// ---- Schema Validation types ---------------------------------------------
+
+export interface SchemaValidateOutput {
+  valid: boolean; errors: Array<{ path: string; message: string }>;
+}
+
+// ---- Env Diff types ------------------------------------------------------
+
+export interface EnvDiffOutput {
+  left_name: string; right_name: string;
+  diffs: Array<{ name: string; left_value: string | null; right_value: string | null; status: string }>;
+  total: number; changed: number; added: number; removed: number;
+}
+
+// ---- Favorites types -----------------------------------------------------
+
+export interface FavoriteItem {
+  collection_id: string; request_id: string; name: string; method: string; url: string;
+}
+
+// ---- Batch Runner types --------------------------------------------------
+
+export interface BatchOutput {
+  total_rows: number; total_requests: number; total_passed: number;
+  total_failed: number; total_errors: number; elapsed_ms: number;
+  rows: Array<{
+    row_index: number; variables: Record<string, string>;
+    request_results: Array<Record<string, unknown>>;
+    passed: number; failed: number; errors: number;
+  }>;
+}
 
 export interface CollectionVariable {
   name: string;
