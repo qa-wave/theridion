@@ -834,11 +834,401 @@ export const sidecar = {
       body: JSON.stringify(input),
     }),
 
+  // ---- Request Examples ---------------------------------------------------
+  listExamples: (collectionId: string, requestId: string) =>
+    call<Array<{ id: string; name: string; method: string; url: string; headers: Record<string, string>; body: string | null; notes: string | null }>>(
+      `/api/collections/${collectionId}/requests/${requestId}/examples`,
+    ),
+  addExample: (collectionId: string, requestId: string, example: {
+    name: string; method?: string; url?: string; headers?: Record<string, string>; body?: string | null; notes?: string | null;
+  }) =>
+    call<StoredCollection>(`/api/collections/${collectionId}/requests/${requestId}/examples`, {
+      method: "POST", body: JSON.stringify(example),
+    }),
+  deleteExample: (collectionId: string, requestId: string, exampleId: string) =>
+    call<StoredCollection>(
+      `/api/collections/${collectionId}/requests/${requestId}/examples/${exampleId}`,
+      { method: "DELETE" },
+    ),
+
   universalImport: (content: string, filename?: string, format?: string) =>
     call<UniversalImportResult>("/api/import/universal", {
       method: "POST",
       body: JSON.stringify({ content, filename, format: format ?? "auto" }),
     }),
+
+  // ---- WS-Security -----------------------------------------------------------
+  wsSecurityExecute: (input: WsSecurityInput) =>
+    call<WsSecurityOutput>("/api/soap/ws-security", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+
+  // ---- MTOM ------------------------------------------------------------------
+  mtomSend: (input: MtomInput) =>
+    call<MtomOutput>("/api/soap/mtom", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+
+  // ---- WSDL Diff -------------------------------------------------------------
+  wsdlDiff: (input: { old_wsdl_url: string; new_wsdl_url: string }) =>
+    call<WsdlDiffOutput>("/api/soap/wsdl-diff", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+
+  // ---- SOAP Coverage ---------------------------------------------------------
+  soapCoverage: (input: { wsdl_url: string; collection_id: string }) =>
+    call<SoapCoverageOutput>("/api/soap/coverage", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+
+  // ---- JMS (stub) ------------------------------------------------------------
+  jmsSend: () => call<StubOutput>("/api/jms/send", { method: "POST" }),
+  jmsReceive: () => call<StubOutput>("/api/jms/receive", { method: "POST" }),
+
+  // ---- JDBC ------------------------------------------------------------------
+  jdbcQuery: (input: JdbcInput) =>
+    call<JdbcOutput>("/api/jdbc/query", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+
+  // ---- XSD Validation --------------------------------------------------------
+  xsdValidate: (input: { xml: string; xsd: string }) =>
+    call<XsdValidateOutput>("/api/soap/xsd-validate", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+
+  // ---- WSDL Mock Generator ---------------------------------------------------
+  wsdlGenerateMock: (wsdl_url: string) =>
+    call<WsdlMockGenOutput>("/api/soap/generate-mock", {
+      method: "POST",
+      body: JSON.stringify({ wsdl_url }),
+    }),
+
+  // ---- MQTT (stub) -----------------------------------------------------------
+  mqttConnect: () => call<StubOutput>("/api/mqtt/connect", { method: "POST" }),
+  mqttPublish: () => call<StubOutput>("/api/mqtt/publish", { method: "POST" }),
+  mqttSubscribe: () => call<StubOutput>("/api/mqtt/subscribe", { method: "POST" }),
+
+  // ---- OAuth 1.0 -------------------------------------------------------------
+  oauth1Sign: (input: OAuth1Input) =>
+    call<OAuth1Output>("/api/auth/oauth1", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+
+  // ---- Visual Test Builder ---------------------------------------------------
+  getTestBuilder: (collectionId: string) =>
+    call<TestBuilderData>(`/api/test-builder/${collectionId}`),
+  putTestBuilder: (collectionId: string, data: TestBuilderData) =>
+    call<TestBuilderData>(`/api/test-builder/${collectionId}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+
+  // ---- Data Loop -------------------------------------------------------------
+  dataLoop: (input: DataLoopInput) =>
+    call<DataLoopOutput>("/api/test/data-loop", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+
+  // ---- Flows -----------------------------------------------------------------
+  executeFlowBlocks: (input: FlowBlockExecuteInput) =>
+    call<FlowBlockExecuteOutput>("/api/flows/execute", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+
+  // ---- Monitors --------------------------------------------------------------
+  listMonitors: () => call<MonitorListOutput>("/api/monitors"),
+  createMonitor: (input: MonitorConfig) =>
+    call<MonitorConfig>("/api/monitors/create", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  deleteMonitor: async (id: string) => {
+    const baseUrl = await getSidecarBaseUrl();
+    const r = await fetch(`${baseUrl}/api/monitors/${id}`, { method: "DELETE" });
+    if (!r.ok) throw new Error(`delete monitor ${r.status}`);
+  },
+
+  // ---- Webhooks --------------------------------------------------------------
+  listWebhooks: () => call<WebhookListOutput>("/api/webhooks"),
+  createWebhook: (input: WebhookConfig) =>
+    call<WebhookConfig>("/api/webhooks/create", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  deleteWebhook: async (id: string) => {
+    const baseUrl = await getSidecarBaseUrl();
+    const r = await fetch(`${baseUrl}/api/webhooks/${id}`, { method: "DELETE" });
+    if (!r.ok) throw new Error(`delete webhook ${r.status}`);
+  },
+  triggerWebhook: (id: string) =>
+    call<{ status: string; collection_id: string }>(`/api/webhooks/${id}/trigger`, { method: "POST" }),
+
+  // ---- Body Modes ------------------------------------------------------------
+  encodeForm: (fields: Array<{ key: string; value: string; type: string }>) =>
+    call<{ encoded_body: string; content_type: string }>("/api/requests/encode-form", {
+      method: "POST",
+      body: JSON.stringify({ fields }),
+    }),
+
+  // ---- Cookie Manager --------------------------------------------------------
+  getAllCookies: () => call<CookieManagerList>("/api/cookies/all"),
+  deleteCookiesByDomain: async (domain: string) => {
+    const baseUrl = await getSidecarBaseUrl();
+    const r = await fetch(`${baseUrl}/api/cookies/domain/${domain}`, { method: "DELETE" });
+    if (!r.ok) throw new Error(`delete cookies ${r.status}`);
+  },
+  editCookies: (cookies: CookieManagerEntry[]) =>
+    call<CookieManagerList>("/api/cookies/edit", {
+      method: "PUT",
+      body: JSON.stringify({ cookies }),
+    }),
+
+  // ---- Request Console -------------------------------------------------------
+  consoleLog: (entries: ConsoleLogEntry[]) =>
+    call<{ stored: number }>("/api/console/log", {
+      method: "POST",
+      body: JSON.stringify({ entries }),
+    }),
+  consoleEntries: () => call<{ entries: ConsoleLogEntry[]; total: number }>("/api/console/entries"),
+
+  // ---- Visualizer ------------------------------------------------------------
+  visualize: (template: string, data: unknown) =>
+    call<{ html: string }>("/api/visualize/render", {
+      method: "POST",
+      body: JSON.stringify({ template, data }),
+    }),
+
+  // ---- Terminal --------------------------------------------------------------
+  terminalExec: (command: string, cwd?: string) =>
+    call<TerminalOutput>("/api/terminal/exec", {
+      method: "POST",
+      body: JSON.stringify({ command, cwd }),
+    }),
+
+  // ---- Keybindings -----------------------------------------------------------
+  getKeybindings: () => call<{ bindings: Record<string, string> }>("/api/settings/keybindings"),
+  putKeybindings: (bindings: Record<string, string>) =>
+    call<{ bindings: Record<string, string> }>("/api/settings/keybindings", {
+      method: "PUT",
+      body: JSON.stringify({ bindings }),
+    }),
+
+  // ---- Collection Docs -------------------------------------------------------
+  generateDocs: (collectionId: string) =>
+    call<{ markdown: string; html: string }>(`/api/docs/generate/${collectionId}`, { method: "POST" }),
+
+  // ---- API Catalog -----------------------------------------------------------
+  listCatalog: () => call<{ entries: CatalogEntry[] }>("/api/catalog"),
+  createCatalogEntry: (entry: CatalogEntry) =>
+    call<CatalogEntry>("/api/catalog", {
+      method: "POST",
+      body: JSON.stringify(entry),
+    }),
+  updateCatalogEntry: (id: string, entry: CatalogEntry) =>
+    call<CatalogEntry>(`/api/catalog/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(entry),
+    }),
+  deleteCatalogEntry: async (id: string) => {
+    const baseUrl = await getSidecarBaseUrl();
+    const r = await fetch(`${baseUrl}/api/catalog/${id}`, { method: "DELETE" });
+    if (!r.ok) throw new Error(`delete catalog ${r.status}`);
+  },
+
+  // ---- API Governance --------------------------------------------------------
+  lintSpec: (spec: string) =>
+    call<GovernanceOutput>("/api/governance/lint", {
+      method: "POST",
+      body: JSON.stringify({ spec }),
+    }),
+
+  // ---- API Versioning --------------------------------------------------------
+  compareVersions: (v1_spec: string, v2_spec: string) =>
+    call<VersionDiffOutput>("/api/versioning/compare", {
+      method: "POST",
+      body: JSON.stringify({ v1_spec, v2_spec }),
+    }),
+
+  // ---- OpenAPI Sync ----------------------------------------------------------
+  syncOpenapi: (input: { collection_id: string; spec_url: string }) =>
+    call<OpenApiSyncOutput>("/api/sync/openapi", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+
+  // ---- Collection Branching --------------------------------------------------
+  forkCollection: (collectionId: string) =>
+    call<ForkOutput>(`/api/collections/${collectionId}/fork`, { method: "POST" }),
+  mergeCollection: (collectionId: string, sourceId: string) =>
+    call<MergeOutput>(`/api/collections/${collectionId}/merge`, {
+      method: "POST",
+      body: JSON.stringify({ source_id: sourceId }),
+    }),
+
+  // ---- Project Encryption ----------------------------------------------------
+  encryptProject: (passphrase: string) =>
+    call<{ status: string; files_encrypted: number }>("/api/security/encrypt-project", {
+      method: "POST",
+      body: JSON.stringify({ passphrase }),
+    }),
+  decryptProject: (passphrase: string) =>
+    call<{ status: string; files_encrypted: number }>("/api/security/decrypt-project", {
+      method: "POST",
+      body: JSON.stringify({ passphrase }),
+    }),
+
+  // ---- Secret Encryption -----------------------------------------------------
+  encryptSecretValue: (value: string, passphrase: string) =>
+    call<{ encrypted: string; decrypted: string }>("/api/security/encrypt-secret", {
+      method: "POST",
+      body: JSON.stringify({ value, passphrase }),
+    }),
+  decryptSecretValue: (value: string, passphrase: string) =>
+    call<{ encrypted: string; decrypted: string }>("/api/security/decrypt-secret", {
+      method: "POST",
+      body: JSON.stringify({ value, passphrase }),
+    }),
+
+  // ---- Secret Managers -------------------------------------------------------
+  fetchSecretFromProvider: (provider: string, config: Record<string, string>) =>
+    call<{ name: string; value: string; error: string | null }>("/api/secrets/fetch", {
+      method: "POST",
+      body: JSON.stringify({ provider, config }),
+    }),
+
+  // ---- PAC Proxy -------------------------------------------------------------
+  pacResolve: (pac_content: string, url: string) =>
+    call<{ proxy_url: string | null }>("/api/proxy/pac-resolve", {
+      method: "POST",
+      body: JSON.stringify({ pac_content, url }),
+    }),
+
+  // ---- NPM Loader ------------------------------------------------------------
+  npmInstallModule: (module_name: string) =>
+    call<NpmInstallOutput>("/api/scripts/install-module", {
+      method: "POST",
+      body: JSON.stringify({ module_name }),
+    }),
+  npmExecuteWithModules: (script: string, modules: string[]) =>
+    call<NpmExecuteOutput>("/api/scripts/execute-with-modules", {
+      method: "POST",
+      body: JSON.stringify({ script, modules }),
+    }),
+
+  // ---- Cookie Scripting ------------------------------------------------------
+  cookieScript: (script: string, cookies: Record<string, string>) =>
+    call<CookieScriptOutput>("/api/scripts/cookie-api", {
+      method: "POST",
+      body: JSON.stringify({ script, cookies }),
+    }),
+
+  // ---- Groovy (stub) ---------------------------------------------------------
+  groovyExecute: () => call<StubOutput>("/api/scripts/groovy", { method: "POST" }),
+
+  // ---- JUnit Reporter --------------------------------------------------------
+  generateJunit: (results: JunitTestResult[]) =>
+    call<{ xml: string }>("/api/reports/junit", {
+      method: "POST",
+      body: JSON.stringify({ results }),
+    }),
+
+  // ---- CLI Reporters ---------------------------------------------------------
+  generateReport: (results: ReportResultItem[], format: string) =>
+    call<{ content: string; content_type: string }>("/api/reports/generate", {
+      method: "POST",
+      body: JSON.stringify({ results, format }),
+    }),
+
+  // ---- Team Workspaces -------------------------------------------------------
+  listTeamWorkspaces: () => call<{ workspaces: TeamWorkspace[] }>("/api/workspaces"),
+  createTeamWorkspace: (workspace: TeamWorkspace) =>
+    call<TeamWorkspace>("/api/workspaces", {
+      method: "POST",
+      body: JSON.stringify(workspace),
+    }),
+  updateTeamWorkspace: (id: string, workspace: TeamWorkspace) =>
+    call<TeamWorkspace>(`/api/workspaces/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(workspace),
+    }),
+  deleteTeamWorkspace: async (id: string) => {
+    const baseUrl = await getSidecarBaseUrl();
+    const r = await fetch(`${baseUrl}/api/workspaces/${id}`, { method: "DELETE" });
+    if (!r.ok) throw new Error(`delete workspace ${r.status}`);
+  },
+
+  // ---- Integrations ----------------------------------------------------------
+  notifyIntegration: (input: { provider: string; url: string; message: string; payload?: Record<string, unknown> }) =>
+    call<{ ok: boolean; status_code: number; error: string | null }>("/api/integrations/notify", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+
+  // ---- MCP Server ------------------------------------------------------------
+  mcpManifest: () => call<McpManifest>("/api/mcp/manifest"),
+  mcpInvoke: (tool: string, args: Record<string, unknown>) =>
+    call<McpInvokeOutput>("/api/mcp/invoke", {
+      method: "POST",
+      body: JSON.stringify({ tool, arguments: args }),
+    }),
+
+  // ---- Bru Format ------------------------------------------------------------
+  toBru: (collection: Record<string, unknown>) =>
+    call<{ content: string }>("/api/format/to-bru", {
+      method: "POST",
+      body: JSON.stringify({ collection }),
+    }),
+  fromBru: (content: string) =>
+    call<{ collection: Record<string, unknown> }>("/api/format/from-bru", {
+      method: "POST",
+      body: JSON.stringify({ content }),
+    }),
+
+  // ---- YAML Collections ------------------------------------------------------
+  toYaml: (collection: Record<string, unknown>) =>
+    call<{ content: string }>("/api/format/to-yaml", {
+      method: "POST",
+      body: JSON.stringify({ collection }),
+    }),
+  fromYaml: (content: string) =>
+    call<{ collection: Record<string, unknown> }>("/api/format/from-yaml", {
+      method: "POST",
+      body: JSON.stringify({ content }),
+    }),
+
+  // ---- Composite Project -----------------------------------------------------
+  explodeCollection: (collectionId: string) =>
+    call<{ files_created: number; directory: string }>(`/api/format/explode/${collectionId}`, { method: "POST" }),
+  implodeCollection: (directory: string) =>
+    call<{ collection_id: string; items_loaded: number }>("/api/format/implode", {
+      method: "POST",
+      body: JSON.stringify({ directory }),
+    }),
+
+  // ---- Conversational AI -----------------------------------------------------
+  aiChat: (message: string, context?: AiChatContext) =>
+    call<AiChatOutput>("/api/ai/chat", {
+      method: "POST",
+      body: JSON.stringify({ message, context }),
+    }),
+
+  // ---- VS Code API -----------------------------------------------------------
+  vscodeStatus: () => call<{ status: string; version: string; uptime_seconds: number }>("/api/vscode/status"),
+  vscodeCollections: () =>
+    call<{ collections: Array<{ id: string; name: string; request_count: number }> }>("/api/vscode/collections"),
+
+  // ---- AMF Protocol (stub) ---------------------------------------------------
+  amfInvoke: () => call<StubOutput>("/api/amf/invoke", { method: "POST" }),
 };
 
 // ---- Assertion types ----------------------------------------------------
@@ -2036,4 +2426,390 @@ export interface UniversalImportResult {
   collection_name: string;
   request_count: number;
   warnings: string[];
+}
+
+// ---- WS-Security types -----------------------------------------------------
+
+export interface WsSecurityConfig {
+  type: "UsernameToken" | "X509" | "SAML";
+  username?: string;
+  password?: string;
+  certificate?: string;
+}
+
+export interface WsSecurityInput {
+  wsdl_url: string;
+  operation: string;
+  args?: Record<string, unknown>;
+  security: WsSecurityConfig;
+  endpoint_url?: string;
+  envelope_xml?: string;
+}
+
+export interface WsSecurityOutput {
+  ok: boolean;
+  result?: string | null;
+  fault?: string | null;
+}
+
+// ---- MTOM types ------------------------------------------------------------
+
+export interface MtomAttachment {
+  filename: string;
+  content_base64: string;
+  content_type?: string;
+}
+
+export interface MtomInput {
+  url: string;
+  soap_action: string;
+  envelope_xml: string;
+  attachments?: MtomAttachment[];
+}
+
+export interface MtomOutput {
+  ok: boolean;
+  response_xml?: string | null;
+  error?: string | null;
+}
+
+// ---- WSDL Diff types -------------------------------------------------------
+
+export interface WsdlDiffOutput {
+  added_operations: string[];
+  removed_operations: string[];
+  changed_types: string[];
+  breaking: boolean;
+}
+
+// ---- SOAP Coverage types ----------------------------------------------------
+
+export interface SoapCoverageOutput {
+  total_operations: number;
+  covered: string[];
+  uncovered: string[];
+  coverage_pct: number;
+}
+
+// ---- Stub output (JMS, MQTT, Groovy, AMF) -----------------------------------
+
+export interface StubOutput {
+  status: string;
+  message: string;
+}
+
+// ---- JDBC types -------------------------------------------------------------
+
+export interface JdbcInput {
+  connection_string: string;
+  query: string;
+  params?: unknown[];
+}
+
+export interface JdbcOutput {
+  columns: string[];
+  rows: unknown[][];
+  row_count: number;
+  error?: string | null;
+}
+
+// ---- XSD Validation types ---------------------------------------------------
+
+export interface XsdValidateOutput {
+  valid: boolean;
+  errors: Array<{ line: number; message: string }>;
+}
+
+// ---- WSDL Mock Gen types ----------------------------------------------------
+
+export interface WsdlMockGenOutput {
+  operations: Array<{ name: string; mock_response_xml: string }>;
+  error?: string | null;
+}
+
+// ---- OAuth 1.0 types --------------------------------------------------------
+
+export interface OAuth1Input {
+  consumer_key: string;
+  consumer_secret: string;
+  token?: string;
+  token_secret?: string;
+  url: string;
+  method?: string;
+}
+
+export interface OAuth1Output {
+  authorization_header: string;
+  signed_url: string;
+}
+
+// ---- Visual Test Builder types ----------------------------------------------
+
+export interface TestStep {
+  type: "request" | "delay" | "assert" | "loop" | "condition";
+  config: Record<string, unknown>;
+}
+
+export interface TestBuilderData {
+  steps: TestStep[];
+  version: number;
+}
+
+// ---- Data Loop types --------------------------------------------------------
+
+export interface DataLoopInput {
+  collection_id: string;
+  datasource: { type: "csv" | "json"; data: string };
+  loop_variable?: string;
+}
+
+export interface DataLoopRowResult {
+  row_index: number;
+  variables: Record<string, string>;
+  status: string;
+  error?: string | null;
+}
+
+export interface DataLoopOutput {
+  total_rows: number;
+  results: DataLoopRowResult[];
+}
+
+// ---- Flow Block types -------------------------------------------------------
+
+export interface FlowBlock {
+  id: string;
+  type: "request" | "transform" | "condition" | "delay";
+  config: Record<string, unknown>;
+  next?: string[];
+}
+
+export interface FlowBlockExecuteInput {
+  blocks: FlowBlock[];
+}
+
+export interface FlowBlockResult {
+  block_id: string;
+  output: Record<string, unknown>;
+  error?: string | null;
+}
+
+export interface FlowBlockExecuteOutput {
+  results: FlowBlockResult[];
+  elapsed_ms: number;
+}
+
+// ---- Monitor types ----------------------------------------------------------
+
+export interface MonitorConfig {
+  id?: string;
+  collection_id: string;
+  environment_id?: string | null;
+  cron?: string;
+  enabled?: boolean;
+  last_run?: string | null;
+  last_status?: string | null;
+}
+
+export interface MonitorListOutput {
+  monitors: MonitorConfig[];
+}
+
+// ---- Webhook types ----------------------------------------------------------
+
+export interface WebhookConfig {
+  id?: string;
+  collection_id: string;
+  environment_id?: string | null;
+  url: string;
+  enabled?: boolean;
+}
+
+export interface WebhookListOutput {
+  webhooks: WebhookConfig[];
+}
+
+// ---- Cookie Manager types ---------------------------------------------------
+
+export interface CookieManagerEntry {
+  name: string;
+  value: string;
+  domain: string;
+  path?: string;
+  env_id?: string | null;
+}
+
+export interface CookieManagerList {
+  cookies: CookieManagerEntry[];
+}
+
+// ---- Console Log types ------------------------------------------------------
+
+export interface ConsoleLogEntry {
+  timestamp?: string;
+  method?: string;
+  url?: string;
+  status?: number;
+  elapsed_ms?: number;
+  request_headers?: Record<string, string>;
+  response_headers?: Record<string, string>;
+  request_body?: string | null;
+  response_body?: string | null;
+}
+
+// ---- Terminal types ---------------------------------------------------------
+
+export interface TerminalOutput {
+  stdout: string;
+  stderr: string;
+  exit_code: number;
+}
+
+// ---- Catalog types ----------------------------------------------------------
+
+export interface CatalogEntry {
+  id?: string;
+  name: string;
+  version?: string;
+  spec_url?: string;
+  owner?: string;
+  tags?: string[];
+  status?: "active" | "deprecated";
+}
+
+// ---- Governance types -------------------------------------------------------
+
+export interface GovernanceRule {
+  rule: string;
+  passed: boolean;
+  message: string;
+}
+
+export interface GovernanceOutput {
+  score: number;
+  rules: GovernanceRule[];
+}
+
+// ---- Version Diff types -----------------------------------------------------
+
+export interface VersionDiffOutput {
+  breaking_changes: string[];
+  non_breaking: string[];
+  added: string[];
+  removed: string[];
+  summary: string;
+}
+
+// ---- OpenAPI Sync types -----------------------------------------------------
+
+export interface OpenApiSyncOutput {
+  in_sync: boolean;
+  missing_in_collection: string[];
+  extra_in_collection: string[];
+  drifted: string[];
+}
+
+// ---- Collection Branching types ---------------------------------------------
+
+export interface ForkOutput {
+  id: string;
+  name: string;
+  parent_id: string;
+  item_count: number;
+}
+
+export interface MergeOutput {
+  id: string;
+  name: string;
+  merged_items: number;
+}
+
+// ---- NPM Loader types ------------------------------------------------------
+
+export interface NpmInstallOutput {
+  installed: boolean;
+  path: string;
+  error?: string | null;
+}
+
+export interface NpmExecuteOutput {
+  stdout: string;
+  stderr: string;
+  exit_code: number;
+}
+
+// ---- Cookie Scripting types -------------------------------------------------
+
+export interface CookieScriptOutput {
+  cookies_modified: Record<string, string>;
+  result: string;
+  error?: string | null;
+}
+
+// ---- JUnit Reporter types ---------------------------------------------------
+
+export interface JunitTestResult {
+  name: string;
+  status: "passed" | "failed" | "error";
+  elapsed_ms?: number;
+  error?: string | null;
+  assertions?: number;
+}
+
+// ---- CLI Reporter types -----------------------------------------------------
+
+export interface ReportResultItem {
+  name: string;
+  status: string;
+  elapsed_ms?: number;
+  error?: string | null;
+  assertions?: number;
+}
+
+// ---- Team Workspace types ---------------------------------------------------
+
+export interface TeamWorkspace {
+  id?: string;
+  name: string;
+  collections?: string[];
+  environments?: string[];
+  members?: string[];
+}
+
+// ---- MCP types --------------------------------------------------------------
+
+export interface McpTool {
+  name: string;
+  description: string;
+  input_schema: Record<string, unknown>;
+}
+
+export interface McpManifest {
+  name: string;
+  version: string;
+  tools: McpTool[];
+}
+
+export interface McpInvokeOutput {
+  result: Record<string, unknown>;
+  error?: string | null;
+}
+
+// ---- AI Chat types ----------------------------------------------------------
+
+export interface AiChatContext {
+  collections?: string[];
+  environment?: string;
+  recent_responses?: string[];
+}
+
+export interface AiSuggestion {
+  action: string;
+  label: string;
+}
+
+export interface AiChatOutput {
+  response: string;
+  suggestions: AiSuggestion[];
+  error?: string | null;
 }
