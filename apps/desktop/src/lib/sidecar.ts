@@ -167,6 +167,8 @@ export interface CollectionItem {
   auth?: AuthConfig | null;
   assertions?: Assertion[];
   pre_request_script?: string | null;
+  examples?: RequestExample[];
+  captures?: CaptureRule[];
   // folder field (when is_folder=true)
   items?: CollectionItem[];
 }
@@ -179,6 +181,7 @@ export interface StoredCollection {
   name: string;
   version: number;
   items: CollectionItem[];
+  variables?: CollectionVariable[];
 }
 
 export interface CollectionSummary {
@@ -197,6 +200,8 @@ export interface SaveRequestInput {
   auth?: AuthConfig | null;
   assertions?: Assertion[];
   pre_request_script?: string | null;
+  examples?: RequestExample[];
+  captures?: CaptureRule[];
   parent_folder_id?: string | null;
 }
 
@@ -332,6 +337,27 @@ export const sidecar = {
       { method: "POST", body: JSON.stringify({ content, format: format ?? "auto" }) },
     ),
 
+  testgenParse: (input: { content: string; base_url?: string | null }) =>
+    call<TestgenParseOutput>("/api/testgen/parse", {
+      method: "POST",
+      body: JSON.stringify({ content: input.content, base_url: input.base_url ?? null }),
+    }),
+  testgenGenerate: (input: {
+    content: string;
+    base_url?: string | null;
+    collection_name?: string | null;
+    categories: TestgenCategory[];
+  }) =>
+    call<TestgenGenerateOutput>("/api/testgen/generate", {
+      method: "POST",
+      body: JSON.stringify({
+        content: input.content,
+        base_url: input.base_url ?? null,
+        collection_name: input.collection_name ?? null,
+        categories: input.categories,
+      }),
+    }),
+
   generateCode: (input: {
     method: string; url: string; headers: Record<string, string>;
     body: string | null; language: string;
@@ -462,6 +488,109 @@ export const sidecar = {
     call<StoredCollection>(`/api/collections/${collectionId}/variables`, {
       method: "PATCH",
       body: JSON.stringify({ variables }),
+    }),
+
+  // ---- Advanced lifecycle tools ------------------------------------------
+  openApiImport: (input: OpenApiImportInput) =>
+    call<OpenApiImportOutput>("/api/advanced/openapi/import", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  openApiExport: (collectionId: string) =>
+    call<OpenApiExportOutput>(`/api/advanced/openapi/export/${collectionId}`),
+  validateContract: (input: ContractValidateInput) =>
+    call<ContractValidateOutput>("/api/advanced/contracts/validate", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  detectContractDrift: (input: ContractDriftInput) =>
+    call<ContractDriftOutput>("/api/advanced/contracts/drift", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  updateRequestExamples: (collectionId: string, requestId: string, examples: RequestExampleInput[]) =>
+    call<StoredCollection>(
+      `/api/advanced/collections/${collectionId}/requests/${requestId}/examples`,
+      { method: "PATCH", body: JSON.stringify({ examples }) },
+    ),
+  listSecrets: () => call<VaultListOutput>("/api/advanced/secrets"),
+  writeSecret: (name: string, input: VaultWriteInput) =>
+    call<VaultEntrySummary>(`/api/advanced/secrets/${encodeURIComponent(name)}`, {
+      method: "PUT",
+      body: JSON.stringify(input),
+    }),
+  revealSecret: (name: string, passphrase: string) =>
+    call<VaultRevealOutput>(`/api/advanced/secrets/${encodeURIComponent(name)}/reveal`, {
+      method: "POST",
+      body: JSON.stringify({ passphrase }),
+    }),
+  deleteSecret: async (name: string) => {
+    const baseUrl = await getSidecarBaseUrl();
+    const r = await fetch(`${baseUrl}/api/advanced/secrets/${encodeURIComponent(name)}`, {
+      method: "DELETE",
+    });
+    if (!r.ok && r.status !== 204) throw new Error(`delete secret ${r.status}`);
+  },
+  inspectVariables: (input: VariableInspectInput) =>
+    call<VariableInspectOutput>("/api/advanced/variables/inspect", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  dependencyGraph: (collectionId: string) =>
+    call<DependencyGraphOutput>(`/api/advanced/collections/${collectionId}/dependency-graph`),
+  diffJson: (input: JsonDiffInput) =>
+    call<JsonDiffOutput>("/api/advanced/diff/json", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  saveSnapshot: (name: string, input: SnapshotWriteInput) =>
+    call<{ name: string; status: string }>(`/api/advanced/snapshots/${encodeURIComponent(name)}`, {
+      method: "PUT",
+      body: JSON.stringify(input),
+    }),
+  compareSnapshot: (name: string, input: SnapshotCompareInput) =>
+    call<SnapshotCompareOutput>(`/api/advanced/snapshots/${encodeURIComponent(name)}/compare`, {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  runFlow: (input: FlowRunInput) =>
+    call<FlowRunOutput>("/api/advanced/flows/run", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  importHar: (input: HarImportInput) =>
+    call<HarImportOutput>("/api/advanced/har/import", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  exportHar: (collectionId: string) =>
+    call<Record<string, unknown>>(`/api/advanced/har/export/${collectionId}`),
+  inspectTls: (input: TlsInspectInput) =>
+    call<TlsInspectOutput>("/api/advanced/tls/inspect", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  proxyStart: (input: ProxyStartInput) =>
+    call<ProxyStartOutput>("/api/advanced/proxy/start", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  proxyStatus: () => call<ProxyStatusOutput>("/api/advanced/proxy/status"),
+  proxyStop: (sessionId: string) =>
+    call<{ status: string; session_id: string }>(`/api/advanced/proxy/${sessionId}/stop`, {
+      method: "POST",
+    }),
+  proxyHar: (sessionId: string) =>
+    call<Record<string, unknown>>(`/api/advanced/proxy/${sessionId}/har`),
+  mockStartFromCollection: (collectionId: string, port?: number) =>
+    call<MockStartOutput>(
+      `/api/advanced/mock/start-from-collection/${collectionId}${port ? `?port=${port}` : ""}`,
+      { method: "POST" },
+    ),
+  gitReview: (repoPath: string) =>
+    call<GitReviewOutput>("/api/advanced/git/review", {
+      method: "POST",
+      body: JSON.stringify({ repo_path: repoPath }),
     }),
 };
 
@@ -744,4 +873,303 @@ export interface CollectionVariable {
   name: string;
   value: string;
   enabled: boolean;
+}
+
+// ---- Advanced lifecycle types --------------------------------------------
+
+export interface RequestExample {
+  id: string;
+  name: string;
+  method: ExecuteRequestInput["method"];
+  url: string;
+  headers: Record<string, string>;
+  body?: string | null;
+  auth?: AuthConfig | null;
+  notes?: string | null;
+}
+
+export type RequestExampleInput = Omit<RequestExample, "id"> & { id?: string | null };
+
+export interface OpenApiImportInput {
+  content: string;
+  format?: "auto" | "json" | "yaml";
+  collection_name?: string | null;
+  base_url?: string | null;
+}
+
+export interface OpenApiImportOutput {
+  collection_id: string;
+  collection_name: string;
+  request_count: number;
+}
+
+export interface OpenApiExportOutput {
+  openapi: Record<string, unknown>;
+}
+
+export interface ContractValidateInput {
+  openapi_content: string;
+  method: ExecuteRequestInput["method"];
+  path: string;
+  status?: number;
+  headers?: Record<string, string>;
+  body?: string;
+}
+
+export interface ContractViolation {
+  path: string;
+  message: string;
+}
+
+export interface ContractValidateOutput {
+  passed: boolean;
+  operation_id?: string | null;
+  expected_statuses: string[];
+  violations: ContractViolation[];
+}
+
+export interface ObservedResponse {
+  method: ExecuteRequestInput["method"];
+  path: string;
+  status: number;
+  body?: string;
+  headers?: Record<string, string>;
+}
+
+export interface ContractDriftInput {
+  openapi_content: string;
+  collection_id?: string | null;
+  observed?: ObservedResponse[];
+}
+
+export interface ContractDriftOutput {
+  missing_in_collection: string[];
+  undocumented_requests: string[];
+  failing_observations: ContractValidateOutput[];
+  passed_observations: number;
+}
+
+export interface VaultEntrySummary {
+  name: string;
+  updated_at: string;
+}
+
+export interface VaultListOutput {
+  entries: VaultEntrySummary[];
+}
+
+export interface VaultWriteInput {
+  passphrase: string;
+  value: string;
+}
+
+export interface VaultRevealOutput {
+  name: string;
+  value: string;
+}
+
+export interface VariableInspectInput {
+  text: string;
+  environment_id?: string | null;
+  collection_id?: string | null;
+  runtime?: Record<string, string>;
+}
+
+export interface VariableResolution {
+  name: string;
+  source: "runtime" | "environment" | "collection" | "global" | "builtin" | "unresolved";
+  value?: string | null;
+  resolved: boolean;
+}
+
+export interface VariableInspectOutput {
+  resolved_text: string;
+  variables: VariableResolution[];
+}
+
+export interface DependencyNode {
+  id: string;
+  name: string;
+  produces: string[];
+  consumes: string[];
+}
+
+export interface DependencyEdge {
+  from_id: string;
+  to_id: string;
+  variable: string;
+}
+
+export interface DependencyGraphOutput {
+  nodes: DependencyNode[];
+  edges: DependencyEdge[];
+  unresolved_variables: string[];
+}
+
+export interface JsonDiffInput {
+  left: string;
+  right: string;
+  ignore_paths?: string[];
+  unordered_arrays?: boolean;
+}
+
+export interface JsonDifference {
+  path: string;
+  kind: "added" | "removed" | "changed";
+  left?: unknown;
+  right?: unknown;
+}
+
+export interface JsonDiffOutput {
+  equal: boolean;
+  differences: JsonDifference[];
+}
+
+export interface SnapshotWriteInput {
+  value: string;
+  metadata?: Record<string, string>;
+}
+
+export interface SnapshotCompareInput {
+  value: string;
+  ignore_paths?: string[];
+  unordered_arrays?: boolean;
+}
+
+export interface SnapshotCompareOutput {
+  exists: boolean;
+  diff?: JsonDiffOutput | null;
+}
+
+export interface FlowStep {
+  id?: string | null;
+  name?: string;
+  method?: ExecuteRequestInput["method"];
+  url: string;
+  headers?: Record<string, string>;
+  body?: string | null;
+  auth?: AuthConfig | null;
+  assertions?: Assertion[];
+  captures?: CaptureRule[];
+  timeout_seconds?: number;
+}
+
+export interface FlowRunInput {
+  environment_id?: string | null;
+  dataset?: Record<string, string>[];
+  steps: FlowStep[];
+  cleanup_steps?: FlowStep[];
+}
+
+export interface FlowStepResult {
+  step_id: string;
+  name: string;
+  status?: number | null;
+  elapsed_ms: number;
+  error?: string | null;
+  captured_values: Record<string, string>;
+  assertion_results: AssertionResult[];
+}
+
+export interface FlowTraceEvent {
+  dataset_index: number;
+  step_id: string;
+  phase: "request" | "assertions" | "capture" | "cleanup";
+  started_at: string;
+  ended_at: string;
+  elapsed_ms: number;
+  status?: number | null;
+  error?: string | null;
+}
+
+export interface FlowDatasetResult {
+  index: number;
+  runtime: Record<string, string>;
+  steps: FlowStepResult[];
+  cleanup: FlowStepResult[];
+}
+
+export interface FlowRunOutput {
+  datasets: FlowDatasetResult[];
+  trace: FlowTraceEvent[];
+  passed_assertions: number;
+  failed_assertions: number;
+}
+
+export interface HarImportInput {
+  content: string;
+  collection_name?: string;
+}
+
+export interface HarImportOutput {
+  collection_id: string;
+  request_count: number;
+}
+
+export interface TlsInspectInput {
+  url: string;
+  timeout_seconds?: number;
+}
+
+export interface TlsInspectOutput {
+  host: string;
+  port: number;
+  subject: Record<string, string>;
+  issuer: Record<string, string>;
+  not_before?: string | null;
+  not_after?: string | null;
+  san: string[];
+  tls_version?: string | null;
+  cipher?: string | null;
+}
+
+export interface ProxyStartInput {
+  target_base_url: string;
+  port?: number | null;
+}
+
+export interface ProxyStartOutput {
+  session_id: string;
+  port: number;
+  target_base_url: string;
+}
+
+export interface ProxyStatusOutput {
+  sessions: ProxyStartOutput[];
+}
+
+export interface GitReviewChange {
+  file: string;
+  summary: string;
+  details: string[];
+}
+
+export interface GitReviewOutput {
+  changes: GitReviewChange[];
+}
+
+// ---- Testgen types -------------------------------------------------------
+
+export type TestgenCategory = "is_alive" | "smoke" | "regression";
+
+export interface TestgenOperationSummary {
+  method: string;
+  path: string;
+  summary: string;
+  has_path_params: boolean;
+  has_request_body: boolean;
+}
+
+export interface TestgenParseOutput {
+  kind: "openapi" | "wsdl" | "unknown";
+  service_name: string;
+  base_url: string;
+  operations: TestgenOperationSummary[];
+  expected_counts: Record<string, number>;
+}
+
+export interface TestgenGenerateOutput {
+  collection_id: string;
+  collection_name: string;
+  counts: Record<string, number>;
 }

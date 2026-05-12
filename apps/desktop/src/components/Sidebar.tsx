@@ -10,6 +10,7 @@ import {
   Plus,
   RefreshCw,
   Search,
+  Sparkles,
   Trash2,
 } from "lucide-react";
 import { HTTP_METHOD_COLOR } from "../state/types";
@@ -20,6 +21,7 @@ interface Props {
   loading: boolean;
   onOpen: (collectionId: string, item: CollectionItem) => void;
   onNewCollection: () => void;
+  onGenerateTests: () => void;
   onNewFolder: (collectionId: string, parentFolderId: string | null) => void;
   onDeleteCollection: (id: string) => void;
   onDeleteRequest: (collectionId: string, requestId: string) => void;
@@ -34,6 +36,7 @@ export function Sidebar({
   loading,
   onOpen,
   onNewCollection,
+  onGenerateTests,
   onNewFolder,
   onDeleteCollection,
   onDeleteRequest,
@@ -62,6 +65,14 @@ export function Sidebar({
           ) : (
             <RefreshCw className="h-3.5 w-3.5" />
           )}
+        </button>
+        <button
+          type="button"
+          onClick={onGenerateTests}
+          className="rounded p-1 text-neutral-500 transition hover:bg-neutral-800 hover:text-cobweb-300"
+          title="Generate tests from a service definition (OpenAPI / WSDL)"
+        >
+          <Sparkles className="h-3.5 w-3.5" />
         </button>
         <button
           type="button"

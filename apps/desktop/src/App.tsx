@@ -26,6 +26,7 @@ import { SavePopover } from "./components/SavePopover";
 import { EnvManagerModal } from "./components/EnvManagerModal";
 import { CodegenModal } from "./components/CodegenModal";
 import { CurlImportModal } from "./components/CurlImportModal";
+import { TestGenModal } from "./components/TestGenModal";
 import { DiffModal } from "./components/DiffModal";
 import { GraphQLModal } from "./components/GraphQLModal";
 import { KafkaModal } from "./components/KafkaModal";
@@ -66,6 +67,7 @@ export default function App() {
   const [kafkaOpen, setKafkaOpen] = useState(false);
   const [diffOpen, setDiffOpen] = useState(false);
   const [codegenOpen, setCodegenOpen] = useState(false);
+  const [testGenOpen, setTestGenOpen] = useState(false);
   const [previousResponse, setPreviousResponse] = useState<import("./lib/sidecar").ExecuteResponse | null>(null);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -461,6 +463,7 @@ export default function App() {
           loading={collectionsLoading}
           onOpen={openSaved}
           onNewCollection={newCollection}
+          onGenerateTests={() => setTestGenOpen(true)}
           onNewFolder={newFolder}
           onDeleteCollection={deleteCollection}
           onDeleteRequest={deleteRequest}
@@ -591,6 +594,13 @@ export default function App() {
         previousResponse={previousResponse}
       />
       <SoapModal open={soapModalOpen} onClose={() => setSoapModalOpen(false)} />
+      <TestGenModal
+        open={testGenOpen}
+        onClose={() => setTestGenOpen(false)}
+        onCreated={() => {
+          void refreshCollections();
+        }}
+      />
       <CommandPalette
         open={cmdPaletteOpen}
         onClose={() => setCmdPaletteOpen(false)}
