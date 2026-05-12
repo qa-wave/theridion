@@ -833,6 +833,12 @@ export const sidecar = {
       method: "POST",
       body: JSON.stringify(input),
     }),
+
+  universalImport: (content: string, filename?: string, format?: string) =>
+    call<UniversalImportResult>("/api/import/universal", {
+      method: "POST",
+      body: JSON.stringify({ content, filename, format: format ?? "auto" }),
+    }),
 };
 
 // ---- Assertion types ----------------------------------------------------
@@ -2020,4 +2026,14 @@ export interface SensitiveDataResult {
   findings: SensitiveFinding[];
   count: number;
   risk_level: "none" | "low" | "medium" | "high";
+}
+
+// ---- Universal Import types -------------------------------------------------
+
+export interface UniversalImportResult {
+  format_detected: string;
+  collection_id: string;
+  collection_name: string;
+  request_count: number;
+  warnings: string[];
 }
