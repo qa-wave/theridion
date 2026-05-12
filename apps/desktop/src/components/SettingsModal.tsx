@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Check, Info, Keyboard, Loader2, Monitor, Radio, Settings2, Sparkles, X } from "lucide-react";
+import { Check, Globe, Info, Keyboard, Loader2, Monitor, Plus, Radio, Settings2, Sparkles, Trash2, X } from "lucide-react";
 import { sidecar } from "../lib/sidecar";
 import { THEMES, applyTheme, loadTheme, type ThemeId } from "../state/theme";
 
@@ -157,6 +157,10 @@ export function SettingsModal({ open, onClose }: Props) {
                       </label>
                     </div>
                   </div>
+                </Section>
+
+                <Section title="Global Variables">
+                  <GlobalVarsEditor />
                 </Section>
 
                 <Section title="Data">
@@ -344,6 +348,153 @@ function Shortcut({ keys, action }: { keys: string; action: string }) {
       <kbd className="rounded-md border border-glass bg-neutral-900/50 px-2 py-0.5 font-mono text-[10px] text-neutral-400 shadow-inner-glow">
         {keys}
       </kbd>
+    </div>
+  );
+}
+
+interface GlobalVar {
+  name: string;
+  value: string;
+  enabled: boolean;
+}
+
+function GlobalVarsEditor() {
+  const [vars, setVars] = useState<GlobalVar[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [dirty, setDirty] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [savedMsg, setSavedMsg] = useState(false);
+
+  useEffect(() => {
+    setLoading(true);
+    sidecar
+      .getGlobals()
+      .then((res) => setVars(res.variables))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  function update(idx: number, field: keyof GlobalVar, val: string | boolean) {
+    setVars((prev) => prev.map((v, i) => (i === idx ? { ...v, [field]: val } : v)));
+    setDirty(true);
+  }
+
+  function add() {
+    setVars((prev) => [...prev, { name: "", value: "", enabled: true }]);
+    setDirty(true);
+  }
+
+  function remove(idx: number) {
+    setVars((prev) => prev.filter((_, i) => i !== idx));
+    setDirty(true);
+  }
+
+  async function save() {
+    setSaving(true);
+    try {
+      const res = await sidecar.putGlobals(vars);
+      setVars(res.variables);
+      setDirty(false);
+      setSavedMsg(true);
+      setTimeout(() => setSavedMsg(false), 1500);
+    } catch {
+      /* ignore */
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const inputClass =
+    "w-full rounded-md border border-glass bg-neutral-900/50 px-2 py-1 text-xs text-neutral-100 placeholder-neutral-600 focus:border-cobweb-500/40 focus:outline-none";
+  const checkClass = "h-3.5 w-3.5 cursor-pointer accent-cobweb-500";
+
+  if (loading) {
+    return <p className="text-[11px] text-neutral-500">Loading...</p>;
+  }
+
+  return (
+    <div className="space-y-2">
+      <p className="text-[11px] text-neutral-500">
+        <Globe className="mr-1 inline h-3 w-3" />
+        Variables available in all requests, lowest priority in the resolution chain.
+      </p>
+      {vars.length > 0 && (
+        <div className="overflow-hidden rounded border border-glass">
+          <table className="w-full text-xs">
+            <thead className="bg-neutral-900/60 text-neutral-500">
+              <tr>
+                <th className="w-6 px-2 py-1 text-center font-medium">On</th>
+                <th className="px-2 py-1 text-left font-medium">Name</th>
+                <th className="px-2 py-1 text-left font-medium">Value</th>
+                <th className="w-8" />
+              </tr>
+            </thead>
+            <tbody>
+              {vars.map((v, idx) => (
+                <tr key={idx} className="border-t border-glass">
+                  <td className="px-2 py-1 text-center">
+                    <input
+                      type="checkbox"
+                      checked={v.enabled}
+                      onChange={(e) => update(idx, "enabled", e.target.checked)}
+                      className={checkClass}
+                    />
+                  </td>
+                  <td className="px-1 py-1">
+                    <input
+                      value={v.name}
+                      onChange={(e) => update(idx, "name", e.target.value)}
+                      placeholder="name"
+                      className={inputClass}
+                      spellCheck={false}
+                    />
+                  </td>
+                  <td className="px-1 py-1">
+                    <input
+                      value={v.value}
+                      onChange={(e) => update(idx, "value", e.target.value)}
+                      placeholder="value"
+                      className={inputClass}
+                      spellCheck={false}
+                    />
+                  </td>
+                  <td className="px-1 py-1 text-center">
+                    <button
+                      type="button"
+                      onClick={() => remove(idx)}
+                      className="rounded p-0.5 text-neutral-600 transition hover:text-rose-400"
+                      title="Remove"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      <div className="flex items-center gap-2">
+        <button type="button" onClick={add} className="inline-flex items-center gap-1 text-xs text-cobweb-400 hover:text-cobweb-300">
+          <Plus className="h-3 w-3" /> Add variable
+        </button>
+        {dirty && (
+          <button
+            type="button"
+            onClick={save}
+            disabled={saving}
+            className="ml-auto inline-flex items-center gap-1 rounded-md border border-glass px-2 py-0.5 text-xs text-neutral-400 transition hover:bg-white/[0.04] hover:text-neutral-200 disabled:opacity-40"
+          >
+            {savedMsg ? (
+              <><Check className="h-3 w-3 text-emerald-400" /> Saved</>
+            ) : saving ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : (
+              "Save globals"
+            )}
+          </button>
+        )}
+      </div>
     </div>
   );
 }

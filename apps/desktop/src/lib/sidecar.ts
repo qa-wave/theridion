@@ -91,6 +91,7 @@ export interface ExecuteRequestInput {
   timeout_seconds?: number;
   follow_redirects?: boolean;
   environment_id?: string | null;
+  collection_id?: string | null;
 }
 
 export interface TimingBreakdown {
@@ -212,6 +213,13 @@ export interface CreateFolderInput {
 
 export const sidecar = {
   health: () => call<HealthResponse>("/api/health"),
+  getGlobals: () =>
+    call<{ variables: Array<{ name: string; value: string; enabled: boolean }> }>("/api/globals"),
+  putGlobals: (variables: Array<{ name: string; value: string; enabled: boolean }>) =>
+    call<{ variables: Array<{ name: string; value: string; enabled: boolean }> }>("/api/globals", {
+      method: "PUT",
+      body: JSON.stringify({ variables }),
+    }),
   execute: (input: ExecuteRequestInput) =>
     call<ExecuteResponse>("/api/requests/execute", {
       method: "POST",

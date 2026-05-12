@@ -218,6 +218,7 @@ export default function App() {
         body: active.body.length > 0 ? active.body : null,
         auth: active.auth.type !== "none" ? active.auth : null,
         environment_id: activeEnvId,
+        collection_id: active.savedAs?.collectionId ?? null,
       };
       const response = await sidecar.execute(input);
       setPreviousResponse(active.response);

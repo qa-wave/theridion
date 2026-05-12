@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import type { Assertion, AssertionResult, AuthConfig } from "../state/types";
-import type { RequestExample } from "../lib/sidecar";
+import type { CollectionVariable, RequestExample, StoredCollection } from "../lib/sidecar";
 import { sidecar } from "../lib/sidecar";
 import { CodeEditor } from "./CodeEditor";
 import type { Method } from "../state/types";
@@ -112,6 +112,8 @@ export function RequestPanel({
           />
         )}
       </div>
+
+      {savedAs && <CollectionVarsIndicator collectionId={savedAs.collectionId} />}
 
       <div className="min-h-0 flex-1 overflow-auto p-4">
         {tab === "params" && <ParamsView url={url} onUrlChange={onUrlChange} />}
@@ -879,6 +881,44 @@ function ExamplesDropdown({
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function CollectionVarsIndicator({ collectionId }: { collectionId: string }) {
+  const [info, setInfo] = useState<{ names: string[]; collName: string } | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    sidecar
+      .getCollection(collectionId)
+      .then((coll: StoredCollection) => {
+        if (!alive) return;
+        const enabled = (coll.variables ?? []).filter((v: CollectionVariable) => v.enabled);
+        if (enabled.length > 0) {
+          setInfo({
+            names: enabled.map((v: CollectionVariable) => v.name),
+            collName: coll.name,
+          });
+        } else {
+          setInfo(null);
+        }
+      })
+      .catch(() => {
+        if (alive) setInfo(null);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [collectionId]);
+
+  if (!info) return null;
+
+  return (
+    <div className="border-b border-glass bg-cobweb-950/10 px-3 py-1 text-[11px] text-neutral-500">
+      Collection variables:{" "}
+      <span className="font-mono text-cobweb-400">{info.names.join(", ")}</span>
+      <span className="ml-1 text-neutral-600">(from &ldquo;{info.collName}&rdquo;)</span>
     </div>
   );
 }
