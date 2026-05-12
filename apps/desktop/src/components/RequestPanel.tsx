@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import type { Assertion, AssertionResult, AuthConfig } from "../state/types";
-import type { CollectionVariable, RequestExample, StoredCollection } from "../lib/sidecar";
+import type { CollectionVariable, ExecuteResponse, HealCandidate, RequestExample, StoredCollection } from "../lib/sidecar";
 import { sidecar } from "../lib/sidecar";
 import { CodeEditor } from "./CodeEditor";
 import type { Method } from "../state/types";
@@ -35,6 +35,7 @@ interface Props {
   savedAs?: { collectionId: string; requestId: string } | null;
   method?: Method;
   onMethodChange?: (m: Method) => void;
+  response?: ExecuteResponse | null;
 }
 
 export function RequestPanel({
@@ -54,6 +55,7 @@ export function RequestPanel({
   savedAs,
   method,
   onMethodChange,
+  response,
 }: Props) {
   const [tab, setTab] = useState<Tab>("params");
 
@@ -152,6 +154,7 @@ export function RequestPanel({
             assertions={assertions}
             results={assertionResults}
             onChange={onAssertionsChange}
+            response={response ?? null}
           />
         )}
       </div>
@@ -551,11 +554,53 @@ function TestsView({
   assertions,
   results,
   onChange,
+  response,
 }: {
   assertions: Assertion[];
   results: AssertionResult[] | null;
   onChange: (a: Assertion[]) => void;
+  response: ExecuteResponse | null;
 }) {
+  const [healingIdx, setHealingIdx] = useState<number | null>(null);
+  const [healCandidates, setHealCandidates] = useState<HealCandidate[]>([]);
+  const [healLoading, setHealLoading] = useState(false);
+
+  async function suggestFix(idx: number) {
+    if (!response) return;
+    const a = assertions[idx];
+    setHealingIdx(idx);
+    setHealLoading(true);
+    setHealCandidates([]);
+    try {
+      const result = await sidecar.healAssertion({
+        assertion: a,
+        response_body: response.body,
+        response_headers: response.headers,
+        response_status: response.status,
+      });
+      setHealCandidates(result.candidates);
+    } catch {
+      setHealCandidates([]);
+    } finally {
+      setHealLoading(false);
+    }
+  }
+
+  function applyCandidate(idx: number, candidate: HealCandidate) {
+    const a = assertions[idx];
+    // For json_path / header: update the path.
+    // For status: update the expected value.
+    if (a.type === "status") {
+      const match = candidate.suggested_path.match(/status=(\d+)/);
+      if (match) {
+        updateAssertion(idx, { expected: match[1] });
+      }
+    } else {
+      updateAssertion(idx, { path: candidate.suggested_path });
+    }
+    setHealingIdx(null);
+    setHealCandidates([]);
+  }
   const inputClass =
     "w-full rounded border border-glass bg-neutral-900/50 px-2 py-1 font-mono text-xs text-neutral-100 placeholder-neutral-600 focus:border-cobweb-500/40 focus:outline-none";
 
@@ -688,9 +733,44 @@ function TestsView({
               </button>
             </div>
             {result && (
-              <p className={`mt-1 text-[11px] ${result.passed ? "text-emerald-400" : "text-rose-400"}`}>
-                {result.passed ? "✓" : "✗"} {result.message}
-              </p>
+              <div className="mt-1 flex items-center gap-2">
+                <p className={`text-[11px] ${result.passed ? "text-emerald-400" : "text-rose-400"}`}>
+                  {result.passed ? "✓" : "✗"} {result.message}
+                </p>
+                {!result.passed && response && (
+                  <button
+                    type="button"
+                    onClick={() => suggestFix(idx)}
+                    className="shrink-0 rounded border border-amber-700/40 bg-amber-950/30 px-1.5 py-0.5 text-[10px] text-amber-400 transition hover:bg-amber-900/40"
+                  >
+                    Fix
+                  </button>
+                )}
+              </div>
+            )}
+            {healingIdx === idx && (
+              <div className="mt-1 space-y-1">
+                {healLoading && (
+                  <p className="text-[10px] text-neutral-500">Analyzing...</p>
+                )}
+                {!healLoading && healCandidates.length === 0 && (
+                  <p className="text-[10px] text-neutral-600">No suggestions found.</p>
+                )}
+                {healCandidates.map((c, ci) => (
+                  <button
+                    key={ci}
+                    type="button"
+                    onClick={() => applyCandidate(idx, c)}
+                    className="flex w-full items-center gap-2 rounded border border-neutral-700 bg-neutral-800/60 px-2 py-1 text-left text-[10px] transition hover:bg-neutral-700/60"
+                  >
+                    <span className="font-mono text-amber-300">{c.suggested_path}</span>
+                    <span className="text-neutral-500">{c.reason}</span>
+                    <span className="ml-auto tabular-nums text-neutral-400">
+                      {Math.round(c.confidence * 100)}%
+                    </span>
+                  </button>
+                ))}
+              </div>
             )}
           </div>
         );

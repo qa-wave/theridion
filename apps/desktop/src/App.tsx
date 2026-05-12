@@ -615,6 +615,7 @@ export default function App() {
               savedAs={active.savedAs}
               method={active.method}
               onMethodChange={(method) => patchActive({ method })}
+              response={active.response}
             />
           </div>
           <div className="min-h-0 overflow-hidden">
