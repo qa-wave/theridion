@@ -152,6 +152,11 @@ export function useDefaultActions(callbacks: {
   openSoap: () => void;
   manageEnvs: () => void;
   openCodegen: () => void;
+  openGrpc?: () => void;
+  openMock?: () => void;
+  openLoadTest?: () => void;
+  openSettings?: () => void;
+  importCollection?: () => void;
 }): CommandAction[] {
   return useMemo(
     () => [
@@ -204,6 +209,21 @@ export function useDefaultActions(callbacks: {
         icon: <Beaker size={14} />,
         onSelect: callbacks.openCodegen,
       },
+      ...(callbacks.openGrpc ? [{
+        id: "open-grpc", label: "Open gRPC", icon: <Zap size={14} />, onSelect: callbacks.openGrpc,
+      }] : []),
+      ...(callbacks.openMock ? [{
+        id: "open-mock", label: "Mock Server", icon: <Globe size={14} />, onSelect: callbacks.openMock,
+      }] : []),
+      ...(callbacks.openLoadTest ? [{
+        id: "load-test", label: "Load Test", icon: <Zap size={14} />, onSelect: callbacks.openLoadTest,
+      }] : []),
+      ...(callbacks.openSettings ? [{
+        id: "settings", label: "Settings", shortcut: "Cmd+,", icon: <Settings size={14} />, onSelect: callbacks.openSettings,
+      }] : []),
+      ...(callbacks.importCollection ? [{
+        id: "import-collection", label: "Import Collection (Postman/Insomnia)", icon: <Upload size={14} />, onSelect: callbacks.importCollection,
+      }] : []),
     ],
     [callbacks],
   );

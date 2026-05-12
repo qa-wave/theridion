@@ -1,4 +1,4 @@
-import { Braces, Clock, Database, Globe, Plus, Terminal, Wifi, X } from "lucide-react";
+import { Activity, Braces, Clock, Database, Globe, Plus, Server, Terminal, Wifi, X } from "lucide-react";
 import { HTTP_METHOD_COLOR, isDirty } from "../state/types";
 import type { RequestTab } from "../state/types";
 import type { EnvironmentSummary } from "../lib/sidecar";
@@ -15,6 +15,9 @@ interface Props {
   onOpenGraphQL: () => void;
   onOpenWebSocket: () => void;
   onOpenKafka: () => void;
+  onOpenGrpc: () => void;
+  onOpenMock: () => void;
+  onOpenLoadTest: () => void;
   onToggleHistory: () => void;
   historyOpen: boolean;
   historyCount: number;
@@ -35,6 +38,9 @@ export function RequestTabBar({
   onOpenGraphQL,
   onOpenWebSocket,
   onOpenKafka,
+  onOpenGrpc,
+  onOpenMock,
+  onOpenLoadTest,
   onToggleHistory,
   historyOpen,
   historyCount,
@@ -107,6 +113,18 @@ export function RequestTabBar({
         <BarButton onClick={onOpenKafka} title="Kafka">
           <Database className="h-3.5 w-3.5" />
           <span className="text-[11px]">Kafka</span>
+        </BarButton>
+        <BarButton onClick={onOpenGrpc} title="gRPC">
+          <Server className="h-3.5 w-3.5" />
+          <span className="text-[11px]">gRPC</span>
+        </BarButton>
+        <BarButton onClick={onOpenMock} title="Mock Server">
+          <Server className="h-3.5 w-3.5" />
+          <span className="text-[11px]">Mock</span>
+        </BarButton>
+        <BarButton onClick={onOpenLoadTest} title="Load Test">
+          <Activity className="h-3.5 w-3.5" />
+          <span className="text-[11px]">Load</span>
         </BarButton>
         <BarButton onClick={onOpenSoap} title="SOAP / WSDL">
           <Globe className="h-3.5 w-3.5" />

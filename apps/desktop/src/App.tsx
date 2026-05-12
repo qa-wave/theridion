@@ -29,7 +29,12 @@ import { CurlImportModal } from "./components/CurlImportModal";
 import { TestGenModal } from "./components/TestGenModal";
 import { DiffModal } from "./components/DiffModal";
 import { GraphQLModal } from "./components/GraphQLModal";
+import { GrpcModal } from "./components/GrpcModal";
+import { ImportModal } from "./components/ImportModal";
 import { KafkaModal } from "./components/KafkaModal";
+import { LoadTestModal } from "./components/LoadTestModal";
+import { MockServerModal } from "./components/MockServerModal";
+import { SettingsModal } from "./components/SettingsModal";
 import { WebSocketModal } from "./components/WebSocketModal";
 import { HistoryPanel, type HistoryEntry } from "./components/HistoryPanel";
 import { SoapModal } from "./components/SoapModal";
@@ -72,6 +77,11 @@ export default function App() {
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [cmdPaletteOpen, setCmdPaletteOpen] = useState(false);
+  const [grpcOpen, setGrpcOpen] = useState(false);
+  const [mockOpen, setMockOpen] = useState(false);
+  const [loadTestOpen, setLoadTestOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
 
   // ---- sidecar health polling ---------------------------------------------
   useEffect(() => {
@@ -421,6 +431,11 @@ export default function App() {
     openSoap: () => setSoapModalOpen(true),
     manageEnvs: () => setEnvManagerOpen(true),
     openCodegen: () => setCodegenOpen(true),
+    openGrpc: () => setGrpcOpen(true),
+    openMock: () => setMockOpen(true),
+    openLoadTest: () => setLoadTestOpen(true),
+    openSettings: () => setSettingsOpen(true),
+    importCollection: () => setImportOpen(true),
   });
 
   // ---- keyboard shortcuts -------------------------------------------------
@@ -430,6 +445,9 @@ export default function App() {
       if (cmd && e.key === "k") {
         e.preventDefault();
         setCmdPaletteOpen((o) => !o);
+      } else if (cmd && e.key === ",") {
+        e.preventDefault();
+        setSettingsOpen(true);
       } else if (cmd && e.key === "s") {
         e.preventDefault();
         // Cmd+Shift+S = always show picker (Save As); Cmd+S alone = save in
@@ -485,6 +503,9 @@ export default function App() {
           onOpenGraphQL={() => setGraphqlOpen(true)}
           onOpenWebSocket={() => setWsOpen(true)}
           onOpenKafka={() => setKafkaOpen(true)}
+          onOpenGrpc={() => setGrpcOpen(true)}
+          onOpenMock={() => setMockOpen(true)}
+          onOpenLoadTest={() => setLoadTestOpen(true)}
           onToggleHistory={() => setHistoryOpen((o) => !o)}
           historyOpen={historyOpen}
           historyCount={history.length}
@@ -593,6 +614,18 @@ export default function App() {
         currentResponse={active.response}
         previousResponse={previousResponse}
       />
+      <GrpcModal open={grpcOpen} onClose={() => setGrpcOpen(false)} />
+      <MockServerModal open={mockOpen} onClose={() => setMockOpen(false)} />
+      <LoadTestModal
+        open={loadTestOpen}
+        onClose={() => setLoadTestOpen(false)}
+        method={active.method}
+        url={active.url}
+        headers={parseHeadersText(active.headersRaw)}
+        body={active.body || null}
+      />
+      <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      <ImportModal open={importOpen} onClose={() => setImportOpen(false)} onImported={refreshCollections} />
       <SoapModal open={soapModalOpen} onClose={() => setSoapModalOpen(false)} />
       <TestGenModal
         open={testGenOpen}
