@@ -664,6 +664,175 @@ export const sidecar = {
       method: "POST",
       body: JSON.stringify({ repo_path: repoPath }),
     }),
+
+  // ---- Response & Analysis --------------------------------------------------
+  responseTrends: (input: { request_id: string; max_snapshots?: number }) =>
+    call<ResponseTrendsResult>("/api/analysis/response-trends", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  securityAudit: (headers: Record<string, string>) =>
+    call<SecurityAuditResult>("/api/analysis/security-audit", {
+      method: "POST",
+      body: JSON.stringify({ headers }),
+    }),
+  sslInspect: (input: { hostname: string; port?: number }) =>
+    call<SslInspectResult>("/api/analysis/ssl-inspect", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  dnsInspect: (hostname: string) =>
+    call<DnsInspectResult>("/api/analysis/dns-inspect", {
+      method: "POST",
+      body: JSON.stringify({ hostname }),
+    }),
+  compressionStats: (input: { url: string; headers?: Record<string, string> }) =>
+    call<CompressionResult>("/api/analysis/compression", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  redirectChain: (input: { url: string; max_hops?: number; headers?: Record<string, string> }) =>
+    call<RedirectChainResult>("/api/analysis/redirect-chain", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  contentTypeValidator: (input: { content_type: string; body: string }) =>
+    call<ContentTypeResult>("/api/analysis/content-type", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+
+  // ---- Performance Testing --------------------------------------------------
+  loadTestPattern: (input: PatternLoadTestInput) =>
+    call<PatternLoadTestResult>("/api/loadtest/run-pattern", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  latencyHistogram: (input: { latency_ms: number[]; buckets?: number }) =>
+    call<LatencyHistogramResult>("/api/analysis/latency-histogram", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  throughputTimeline: (entries: Array<{ timestamp: number; latency_ms: number; success: boolean }>) =>
+    call<ThroughputTimelineResult>("/api/analysis/throughput-timeline", {
+      method: "POST",
+      body: JSON.stringify({ entries }),
+    }),
+  connectionStats: (input: { url: string; num_requests?: number; headers?: Record<string, string> }) =>
+    call<ConnectionStatsResult>("/api/analysis/connection-stats", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  simulateUsers: (input: UserSimulationInput) =>
+    call<UserSimulationResult>("/api/loadtest/simulate-users", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  slaCheck: (input: SlaCheckInput) =>
+    call<SlaCheckResult>("/api/analysis/sla-check", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  compareRuns: (input: { left: RunStats; right: RunStats }) =>
+    call<CompareRunsResult>("/api/analysis/compare-runs", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+
+  // ---- Integration Testing --------------------------------------------------
+  flowVisualize: (nodes: Array<{ name: string; depends_on: string[] }>) =>
+    call<FlowGraphResult>("/api/flows/visualize", {
+      method: "POST",
+      body: JSON.stringify({ nodes }),
+    }),
+  retryTest: (input: RetryTestInput) =>
+    call<RetryTestResult>("/api/test/retry", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  rateLimitDetect: (input: { url: string; method?: string; headers?: Record<string, string>; max_requests?: number }) =>
+    call<RateLimitResult>("/api/test/ratelimit", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  idempotencyCheck: (input: { url: string; method?: string; headers?: Record<string, string>; body?: string | null }) =>
+    call<IdempotencyResult>("/api/test/idempotency", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  paginationWalker: (input: PaginationInput) =>
+    call<PaginationResult>("/api/test/pagination", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  contractDriftCheck: (input: { current_body: string; baseline_body: string }) =>
+    call<ContractDriftCheckResult>("/api/test/contract-drift", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  multiEnvRun: (input: { collection_id: string; environment_ids: string[] }) =>
+    call<MultiEnvResult>("/api/test/multi-env", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  generateFake: (type: string, count?: number) =>
+    call<{ values: string[] }>(`/api/generate/fake?type=${type}&count=${count ?? 1}`),
+
+  // ---- Observability & Debugging --------------------------------------------
+  waterfall: (input: { url: string; method?: string; headers?: Record<string, string>; body?: string | null }) =>
+    call<WaterfallResult>("/api/analysis/waterfall", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  logCurl: (input: { method: string; url: string; headers?: Record<string, string>; body?: string | null }) =>
+    call<CurlLogEntry>("/api/log/curl", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  getCurlLog: (limit?: number) =>
+    call<CurlLogResult>(`/api/log/curl?limit=${limit ?? 50}`),
+  mockDiff: (input: MockDiffInput) =>
+    call<MockDiffResult>("/api/analysis/mock-diff", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  errorPatterns: (entries: Array<{ timestamp: number; url: string; status: number; error?: string | null }>) =>
+    call<ErrorPatternsResult>("/api/analysis/error-patterns", {
+      method: "POST",
+      body: JSON.stringify({ entries }),
+    }),
+  computeDashboard: (input: DashboardInput) =>
+    call<DashboardResult>("/api/dashboard/compute", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+
+  // ---- Security Testing -----------------------------------------------------
+  jwtInspect: (token: string) =>
+    call<JwtInspectResult>("/api/security/jwt-inspect", {
+      method: "POST",
+      body: JSON.stringify({ token }),
+    }),
+  autoRefreshToken: (input: TokenRefreshInput) =>
+    call<TokenRefreshResult>("/api/auth/auto-refresh", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  corsTest: (input: { url: string; origin?: string }) =>
+    call<CorsTestResult>("/api/security/cors-test", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  injectionScan: (input: { url: string; method?: string; params: Record<string, string>; headers?: Record<string, string> }) =>
+    call<InjectionScanResult>("/api/security/injection-scan", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  sensitiveScan: (input: { body: string; headers?: Record<string, string> }) =>
+    call<SensitiveDataResult>("/api/security/sensitive-scan", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
 };
 
 // ---- Assertion types ----------------------------------------------------
@@ -1309,4 +1478,546 @@ export interface TestgenGenerateOutput {
   collection_id: string;
   collection_name: string;
   counts: Record<string, number>;
+}
+
+// ---- Response Trends types --------------------------------------------------
+
+export interface ResponseTrendsResult {
+  sizes: number[];
+  timestamps: number[];
+  trend: "growing" | "stable" | "shrinking";
+}
+
+// ---- Security Audit types ---------------------------------------------------
+
+export interface SecurityAuditFinding {
+  header: string;
+  status: "pass" | "warn" | "fail";
+  message: string;
+}
+
+export interface SecurityAuditResult {
+  score: number;
+  findings: SecurityAuditFinding[];
+}
+
+// ---- SSL Inspect types ------------------------------------------------------
+
+export interface SslChainEntry {
+  subject: string;
+  issuer: string;
+}
+
+export interface SslInspectResult {
+  subject: string;
+  issuer: string;
+  not_before: string;
+  not_after: string;
+  serial: string;
+  tls_version: string | null;
+  cipher: string | null;
+  chain: SslChainEntry[];
+  days_until_expiry: number;
+}
+
+// ---- DNS Inspect types ------------------------------------------------------
+
+export interface DnsAddress {
+  ip: string;
+  family: string;
+}
+
+export interface DnsInspectResult {
+  hostname: string;
+  addresses: DnsAddress[];
+  resolved_in_ms: number;
+}
+
+// ---- Compression types ------------------------------------------------------
+
+export interface CompressionResult {
+  encoding: string | null;
+  wire_size: number;
+  decoded_size: number;
+  ratio: number;
+  compressed: boolean;
+}
+
+// ---- Redirect Chain types ---------------------------------------------------
+
+export interface RedirectHop {
+  status: number;
+  url: string;
+  elapsed_ms: number;
+  headers: Record<string, string>;
+}
+
+export interface RedirectChainResult {
+  hops: RedirectHop[];
+  total_hops: number;
+  total_ms: number;
+}
+
+// ---- Content Type Validator types -------------------------------------------
+
+export interface ContentTypeResult {
+  declared: string;
+  detected: string;
+  match: boolean;
+  details: string;
+}
+
+// ---- Load Test Pattern types ------------------------------------------------
+
+export interface PatternLoadTestInput {
+  url: string;
+  method?: ExecuteRequestInput["method"];
+  headers?: Record<string, string>;
+  body?: string | null;
+  ramp_pattern?: "linear" | "step" | "spike" | "soak";
+  max_concurrency?: number;
+  duration_seconds?: number;
+}
+
+export interface LoadTestPhase {
+  name: string;
+  concurrency: number;
+  duration_s: number;
+  rps: number;
+}
+
+export interface PatternLoadTestResult {
+  total_requests: number;
+  successful: number;
+  failed: number;
+  error_count: number;
+  avg_latency_ms: number;
+  min_latency_ms: number;
+  max_latency_ms: number;
+  p50_ms: number;
+  p95_ms: number;
+  p99_ms: number;
+  actual_rps: number;
+  duration_seconds: number;
+  errors: Record<string, number>;
+  pattern: string;
+  phases: LoadTestPhase[];
+}
+
+// ---- Latency Histogram types ------------------------------------------------
+
+export interface HistogramBucket {
+  min: number;
+  max: number;
+  count: number;
+}
+
+export interface LatencyHistogramResult {
+  buckets: HistogramBucket[];
+  total: number;
+  mean: number;
+  stddev: number;
+}
+
+// ---- Throughput Timeline types ----------------------------------------------
+
+export interface ThroughputWindow {
+  timestamp: number;
+  rps: number;
+  avg_latency: number;
+  error_count: number;
+}
+
+export interface ThroughputTimelineResult {
+  windows: ThroughputWindow[];
+}
+
+// ---- Connection Stats types -------------------------------------------------
+
+export interface ConnectionStatsResult {
+  total_requests: number;
+  connections_opened: number;
+  reuse_rate: number;
+  avg_latency_ms: number;
+}
+
+// ---- User Simulation types --------------------------------------------------
+
+export interface UserSimulationInput {
+  url: string;
+  method?: ExecuteRequestInput["method"];
+  headers?: Record<string, string>;
+  body?: string | null;
+  num_users?: number;
+  duration_s?: number;
+  think_time_ms?: number;
+}
+
+export interface UserStats {
+  user_id: number;
+  requests: number;
+  avg_latency_ms: number;
+  errors: number;
+}
+
+export interface UserSimulationResult {
+  total_requests: number;
+  total_errors: number;
+  avg_latency_ms: number;
+  duration_seconds: number;
+  per_user: UserStats[];
+}
+
+// ---- SLA Check types --------------------------------------------------------
+
+export interface SlaRule {
+  metric: "p95" | "p99" | "p50" | "avg" | "max" | "error_rate";
+  operator: "lt" | "gt" | "lte" | "gte";
+  value: number;
+}
+
+export interface SlaCheckInput {
+  latencies: number[];
+  error_count: number;
+  total: number;
+  rules: SlaRule[];
+}
+
+export interface SlaRuleResult {
+  rule: SlaRule;
+  actual: number;
+  passed: boolean;
+}
+
+export interface SlaCheckResult {
+  passed: boolean;
+  results: SlaRuleResult[];
+}
+
+// ---- Compare Runs types -----------------------------------------------------
+
+export interface RunStats {
+  total_requests: number;
+  successful: number;
+  failed: number;
+  avg_latency_ms: number;
+  min_latency_ms: number;
+  max_latency_ms: number;
+  p50_ms: number;
+  p95_ms: number;
+  p99_ms: number;
+  actual_rps: number;
+  duration_seconds: number;
+}
+
+export interface MetricDelta {
+  name: string;
+  left: number;
+  right: number;
+  delta: number;
+  delta_pct: number;
+  improved: boolean;
+}
+
+export interface CompareRunsResult {
+  metrics: MetricDelta[];
+}
+
+// ---- Flow Graph types -------------------------------------------------------
+
+export interface FlowVisualNode {
+  name: string;
+  level: number;
+  dependencies: string[];
+}
+
+export interface FlowGraphResult {
+  nodes: FlowVisualNode[];
+  order: string[];
+  has_cycle: boolean;
+}
+
+// ---- Retry Tester types -----------------------------------------------------
+
+export interface RetryTestInput {
+  url: string;
+  method?: string;
+  headers?: Record<string, string>;
+  body?: string | null;
+  attempts?: number;
+  delay_ms?: number;
+  expected_recovery_after?: number;
+}
+
+export interface AttemptResult {
+  attempt: number;
+  status: number | null;
+  elapsed_ms: number;
+  error: string | null;
+}
+
+export interface RetryTestResult {
+  attempts: AttemptResult[];
+  recovered: boolean;
+  recovered_at: number | null;
+}
+
+// ---- Rate Limit types -------------------------------------------------------
+
+export interface RateLimitResult {
+  limit: number | null;
+  window_seconds: number | null;
+  requests_sent: number;
+  first_429_at: number | null;
+  headers_found: Record<string, string>;
+}
+
+// ---- Idempotency types ------------------------------------------------------
+
+export interface IdempotencySnapshot {
+  status: number;
+  body_hash: string;
+}
+
+export interface IdempotencyResult {
+  first: IdempotencySnapshot;
+  second: IdempotencySnapshot;
+  idempotent: boolean;
+  differences: string[];
+}
+
+// ---- Pagination types -------------------------------------------------------
+
+export interface PaginationInput {
+  url: string;
+  headers?: Record<string, string>;
+  strategy?: "link" | "offset" | "cursor";
+  limit_param?: string;
+  offset_param?: string;
+  cursor_param?: string;
+  page_size?: number;
+  max_pages?: number;
+}
+
+export interface PageResult {
+  page: number;
+  status: number;
+  item_count: number;
+  url: string;
+}
+
+export interface PaginationResult {
+  pages: PageResult[];
+  total_items: number;
+  total_pages: number;
+  consistent: boolean;
+}
+
+// ---- Contract Drift Check types ---------------------------------------------
+
+export interface ContractDriftEntry {
+  path: string;
+  type: "added" | "removed" | "type_changed";
+  old_type: string | null;
+  new_type: string | null;
+}
+
+export interface ContractDriftCheckResult {
+  drifts: ContractDriftEntry[];
+  breaking: boolean;
+  drift_count: number;
+}
+
+// ---- Multi Env Runner types -------------------------------------------------
+
+export interface EnvRunResult {
+  env_name: string;
+  env_id: string;
+  passed: number;
+  failed: number;
+  errors: number;
+  elapsed_ms: number;
+}
+
+export interface RequestStatusRow {
+  request_name: string;
+  statuses: Record<string, number>;
+}
+
+export interface MultiEnvResult {
+  results: EnvRunResult[];
+  comparison: RequestStatusRow[];
+}
+
+// ---- Waterfall types --------------------------------------------------------
+
+export interface WaterfallPhase {
+  name: string;
+  start_ms: number;
+  duration_ms: number;
+}
+
+export interface WaterfallResult {
+  phases: WaterfallPhase[];
+  total_ms: number;
+  url: string;
+}
+
+// ---- cURL Log types ---------------------------------------------------------
+
+export interface CurlLogEntry {
+  timestamp: string;
+  curl: string;
+}
+
+export interface CurlLogResult {
+  entries: CurlLogEntry[];
+}
+
+// ---- Mock Diff types --------------------------------------------------------
+
+export interface MockDiffEntry {
+  path: string;
+  expected: string | null;
+  actual: string | null;
+}
+
+export interface MockDiffInput {
+  actual_body: string;
+  mock_body: string;
+  actual_headers?: Record<string, string>;
+  mock_headers?: Record<string, string>;
+}
+
+export interface MockDiffResult {
+  body_diffs: MockDiffEntry[];
+  header_diffs: MockDiffEntry[];
+  match: boolean;
+}
+
+// ---- Error Patterns types ---------------------------------------------------
+
+export interface ErrorPattern {
+  type: string;
+  count: number;
+  urls: string[];
+  first_seen: number;
+  last_seen: number;
+  burst: boolean;
+}
+
+export interface ErrorPatternsResult {
+  patterns: ErrorPattern[];
+  total_errors: number;
+  error_rate: number;
+}
+
+// ---- Dashboard types --------------------------------------------------------
+
+export interface DashboardMetricFilter {
+  status_gte?: number;
+  status_lt?: number;
+  url_pattern?: string;
+}
+
+export interface DashboardMetricDef {
+  name: string;
+  type: "avg" | "count" | "p95" | "max" | "min" | "sum";
+  field: "elapsed_ms" | "status" | "body_size";
+  filter?: DashboardMetricFilter;
+}
+
+export interface DashboardDataPoint {
+  elapsed_ms: number;
+  status: number;
+  body_size: number;
+  url: string;
+  timestamp: number;
+}
+
+export interface DashboardInput {
+  metrics: DashboardMetricDef[];
+  data: DashboardDataPoint[];
+}
+
+export interface DashboardMetricResult {
+  name: string;
+  value: number;
+}
+
+export interface DashboardResult {
+  results: DashboardMetricResult[];
+}
+
+// ---- JWT Inspect types ------------------------------------------------------
+
+export interface JwtInspectResult {
+  header: Record<string, unknown>;
+  payload: Record<string, unknown>;
+  expired: boolean;
+  expires_at: string | null;
+  issued_at: string | null;
+}
+
+// ---- Token Refresh types ----------------------------------------------------
+
+export interface TokenRefreshInput {
+  url: string;
+  method?: string;
+  headers?: Record<string, string>;
+  body?: string | null;
+  refresh_url: string;
+  refresh_body?: Record<string, unknown> | null;
+  token_field?: string;
+  auth_header?: string;
+}
+
+export interface TokenRefreshResult {
+  original_status: number;
+  refreshed: boolean;
+  final_status: number;
+  final_body: string;
+  new_token: string | null;
+}
+
+// ---- CORS Test types --------------------------------------------------------
+
+export interface CorsTestResult {
+  allowed: boolean;
+  allow_origin: string | null;
+  allow_methods: string | null;
+  allow_headers: string | null;
+  allow_credentials: string | null;
+  max_age: string | null;
+  issues: string[];
+}
+
+// ---- Injection Scan types ---------------------------------------------------
+
+export interface InjectionFinding {
+  param: string;
+  payload: string;
+  response_status: number;
+  suspicious: boolean;
+  evidence: string;
+}
+
+export interface InjectionScanResult {
+  vulnerable: boolean;
+  findings: InjectionFinding[];
+}
+
+// ---- Sensitive Data types ---------------------------------------------------
+
+export interface SensitiveFinding {
+  type: string;
+  value_preview: string;
+  location: string;
+  line: number;
+}
+
+export interface SensitiveDataResult {
+  findings: SensitiveFinding[];
+  count: number;
+  risk_level: "none" | "low" | "medium" | "high";
 }
