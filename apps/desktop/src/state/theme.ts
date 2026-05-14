@@ -1,6 +1,6 @@
 export type ThemeId =
   | "cobweb" | "violet" | "amber" | "arctic"
-  | "noir" | "neon" | "frosted" | "brutalist" | "warm";
+  | "noir" | "neon" | "frosted" | "brutalist" | "warm" | "metal";
 
 export interface ThemeDef {
   id: ThemeId;
@@ -21,6 +21,7 @@ export const THEMES: ThemeDef[] = [
   { id: "frosted", label: "Frosted Aurora", dot: "bg-pink-400", group: "style" },
   { id: "brutalist", label: "Brutalist", dot: "bg-white", group: "style" },
   { id: "warm", label: "Warm Parchment", dot: "bg-orange-300", group: "style" },
+  { id: "metal", label: "Frosted Metal", dot: "bg-slate-400", group: "style" },
 ];
 
 const STORAGE_KEY = "theridion.theme";

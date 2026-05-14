@@ -373,6 +373,45 @@ html.theme-warm ::-webkit-scrollbar-thumb { background: rgba(180,150,110,0.12) !
 html.theme-warm ::-webkit-scrollbar-thumb:hover { background: rgba(180,150,110,0.22) !important; }
 html.theme-warm ::selection { background: rgba(194,114,78,0.25) !important; }
 
+/* ════════════════════════════════════════════════════════════════════
+   10. FROSTED METAL — brushed metal texture, slate tones, industrial glass
+   ════════════════════════════════════════════════════════════════════ */
+html.theme-metal {
+  --accent-50: 241 245 249; --accent-100: 226 232 240; --accent-200: 203 213 225;
+  --accent-300: 148 163 184; --accent-400: 100 116 139; --accent-500: 71 85 105;
+  --accent-600: 51 65 85; --accent-700: 30 41 59; --accent-800: 15 23 42;
+  --accent-900: 2 6 23; --accent-950: 0 0 0;
+  --accent-glow: 148 163 184; --gradient-end: 100 116 139;
+  --canvas-bg: #0c0e12; --panel-bg: rgba(15,18,25,0.8);
+  --mesh-a: rgba(148,163,184,0.03); --mesh-b: rgba(100,116,139,0.02);
+  --border-alpha: 0.08; --status-dot: #94a3b8;
+}
+/* Brushed metal texture */
+html.theme-metal .glass {
+  background: rgba(15,18,25,0.7) !important;
+  backdrop-filter: blur(20px) saturate(1.3) !important;
+}
+html.theme-metal .border-glass { border-color: rgba(148,163,184,0.1) !important; }
+html.theme-metal .border-glass-light { border-color: rgba(148,163,184,0.15) !important; }
+html.theme-metal aside {
+  background: rgba(12,14,18,0.9) !important;
+  border-right: 1px solid rgba(148,163,184,0.08) !important;
+}
+html.theme-metal .text-neutral-100 { color: #cbd5e1 !important; }
+html.theme-metal .text-neutral-400 { color: #64748b !important; }
+html.theme-metal .text-neutral-500 { color: #475569 !important; }
+html.theme-metal input, html.theme-metal textarea, html.theme-metal select {
+  background: rgba(148,163,184,0.04) !important;
+  border-color: rgba(148,163,184,0.1) !important;
+}
+/* Subtle metallic gradient on panels */
+html.theme-metal .stat-card {
+  background: linear-gradient(135deg, rgba(148,163,184,0.04), rgba(100,116,139,0.02)) !important;
+}
+html.theme-metal .bg-accent-gradient {
+  background: linear-gradient(to right, #475569, #64748b) !important;
+}
+
 /* ═══════════════════════════════════════════════════════════════════ */
 
 html, body, #root { height: 100%; margin: 0; }
@@ -577,4 +616,40 @@ input:focus, textarea:focus, select:focus {
 @keyframes folder-expand {
   0% { max-height: 0; opacity: 0; }
   100% { max-height: 2000px; opacity: 1; }
+}
+
+/* Toast progress bar */
+@keyframes toast-progress {
+  from { width: 100%; }
+  to { width: 0%; }
+}
+
+/* Animated gradient for branding text */
+@keyframes gradient-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+.brand-gradient {
+  background: linear-gradient(90deg, rgb(var(--accent-400)), rgb(var(--gradient-end)), rgb(var(--accent-400)));
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: gradient-shift 6s ease infinite;
+}
+
+/* Secondary button press effect */
+button.rounded-md:active, button.rounded-lg:active {
+  transform: scale(0.98);
+}
+button:active {
+  transition: transform 50ms ease;
+}
+
+/* Tooltip fade-in */
+.tooltip-enter { animation: fadeIn 0.15s ease-out; }
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(2px); }
+  to { opacity: 1; transform: translateY(0); }
 }

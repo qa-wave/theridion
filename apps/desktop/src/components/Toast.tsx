@@ -24,6 +24,12 @@ const TONE = {
   info: "border-cobweb-600/30 bg-neutral-800/95 text-cobweb-300",
 } as const;
 
+const PROGRESS_COLOR = {
+  success: "bg-emerald-500",
+  error: "bg-rose-500",
+  info: "bg-cyan-500",
+} as const;
+
 const ICON_COLOR = {
   success: "text-emerald-400",
   error: "text-rose-400",
@@ -58,12 +64,18 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: (id: string)
 
   return (
     <div
-      className={`pointer-events-auto flex items-center gap-2 rounded-lg border px-4 py-2 text-xs font-medium shadow-xl backdrop-blur ${
+      className={`pointer-events-auto overflow-hidden rounded-lg border text-xs font-medium shadow-xl backdrop-blur ${
         TONE[toast.type]
       } ${exiting ? "toast-exit" : "toast-enter"}`}
     >
-      <Icon className={`h-3.5 w-3.5 shrink-0 ${ICON_COLOR[toast.type]}`} />
-      {toast.message}
+      <div className="flex items-center gap-2 px-4 py-2">
+        <Icon className={`h-3.5 w-3.5 shrink-0 ${ICON_COLOR[toast.type]}`} />
+        {toast.message}
+      </div>
+      <div
+        className={`h-[2px] ${PROGRESS_COLOR[toast.type]}`}
+        style={{ animation: "toast-progress 2s linear forwards" }}
+      />
     </div>
   );
 }

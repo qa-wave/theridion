@@ -825,17 +825,20 @@ function WelcomeScreen({
 
       <p className="mt-5 text-xs text-neutral-500">Or get started with:</p>
 
-      <div className="mt-3 flex w-full max-w-xs flex-col gap-1.5">
-        {actions.map((a) => (
+      <div className="mt-3 grid w-full max-w-xs grid-cols-2 gap-3">
+        {actions.map((a, i) => (
           <button
             key={a.label}
             type="button"
             onClick={a.onClick}
             disabled={!a.onClick}
-            className="flex w-full items-center gap-2.5 rounded-lg border border-glass bg-neutral-900/40 px-3 py-2 text-xs text-neutral-300 transition hover:bg-white/[0.05] hover:text-neutral-100 disabled:cursor-not-allowed disabled:opacity-40"
+            className={`group flex items-center gap-2.5 rounded-lg border border-glass bg-neutral-900/40 px-3 text-xs text-neutral-300 transition hover:bg-white/[0.05] hover:text-neutral-100 hover:-translate-y-0.5 hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-40 ${
+              i === 0 ? "col-span-2 py-4 flex-col items-center text-center" : "py-2.5"
+            }`}
           >
-            <a.icon className="h-3.5 w-3.5 shrink-0 text-neutral-500" />
-            {a.label}
+            <a.icon className={`shrink-0 text-neutral-500 group-hover:text-neutral-300 transition ${i === 0 ? "h-5 w-5" : "h-3.5 w-3.5"}`} />
+            <span>{a.label}</span>
+            {i === 0 && <span className="text-[10px] text-neutral-600">Import from Postman, Insomnia, or any cURL</span>}
           </button>
         ))}
       </div>

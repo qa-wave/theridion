@@ -19,6 +19,7 @@ import {
 import { HTTP_METHOD_COLOR } from "../state/types";
 import type { CollectionItem, StoredCollection, FavoriteItem } from "../lib/sidecar";
 import { sidecar } from "../lib/sidecar";
+import { Tooltip } from "./Tooltip";
 
 /** Stored in localStorage per request: last run result for hover preview. */
 interface LastResponseInfo {
@@ -169,7 +170,7 @@ export function Sidebar({
     <aside className="flex h-full flex-col border-r border-glass bg-neutral-925/90 transition-all duration-200 ease-in-out">
       {/* Branding header */}
       <div className="px-4 pt-4 pb-2">
-        <h1 className="text-gradient text-sm font-bold tracking-widest uppercase">Theridion</h1>
+        <h1 className="brand-gradient text-sm font-bold tracking-widest uppercase">Theridion</h1>
       </div>
 
       {/* Favorites section */}
@@ -208,34 +209,37 @@ export function Sidebar({
         <span className="text-[10px] font-semibold uppercase tracking-widest text-neutral-500">
           Collections
         </span>
-        <button
-          type="button"
-          onClick={onRefresh}
-          className="ml-auto rounded p-1 text-neutral-500 transition hover:bg-neutral-800 hover:text-neutral-200"
-          title="Refresh"
-        >
-          {loading ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          ) : (
-            <RefreshCw className="h-3.5 w-3.5" />
-          )}
-        </button>
-        <button
-          type="button"
-          onClick={onGenerateTests}
-          className="rounded p-1 text-neutral-500 transition hover:bg-neutral-800 hover:text-cobweb-300"
-          title="Generate tests from a service definition (OpenAPI / WSDL)"
-        >
-          <Sparkles className="h-3.5 w-3.5" />
-        </button>
-        <button
-          type="button"
-          onClick={onNewCollection}
-          className="rounded p-1 text-neutral-500 transition hover:bg-neutral-800 hover:text-neutral-200"
-          title="New collection"
-        >
-          <Plus className="h-3.5 w-3.5" />
-        </button>
+        <Tooltip content="Refresh" side="bottom">
+          <button
+            type="button"
+            onClick={onRefresh}
+            className="ml-auto rounded p-1 text-neutral-500 transition hover:bg-neutral-800 hover:text-neutral-200"
+          >
+            {loading ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <RefreshCw className="h-3.5 w-3.5" />
+            )}
+          </button>
+        </Tooltip>
+        <Tooltip content="Generate tests" shortcut="OpenAPI / WSDL" side="bottom">
+          <button
+            type="button"
+            onClick={onGenerateTests}
+            className="rounded p-1 text-neutral-500 transition hover:bg-neutral-800 hover:text-cobweb-300"
+          >
+            <Sparkles className="h-3.5 w-3.5" />
+          </button>
+        </Tooltip>
+        <Tooltip content="New collection" side="bottom">
+          <button
+            type="button"
+            onClick={onNewCollection}
+            className="rounded p-1 text-neutral-500 transition hover:bg-neutral-800 hover:text-neutral-200"
+          >
+            <Plus className="h-3.5 w-3.5" />
+          </button>
+        </Tooltip>
       </div>
 
       <div className="px-3 pb-2">
@@ -788,6 +792,11 @@ function FolderNode({
           >
             {folder.name}
           </button>
+        )}
+        {!renaming && countRequests(folder.items ?? []) > 0 && (
+          <span className="text-[10px] text-neutral-600 ml-auto mr-0.5">
+            {countRequests(folder.items ?? [])}
+          </span>
         )}
         <button
           type="button"

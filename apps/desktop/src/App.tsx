@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useModals } from "./hooks/useModals";
 import {
   sidecar,
@@ -125,6 +125,8 @@ export default function App() {
   const [shortcutOverlayOpen, setShortcutOverlayOpen] = useState(false);
   const [splitRatio, setSplitRatio] = useState(0.5);
   const splitDragging = useState(false);
+  const [networkHeight, setNetworkHeight] = useState(300);
+  const networkDragging = useRef(false);
 
   function addToast(type: Toast["type"], message: string) {
     const id = crypto.randomUUID();
@@ -648,6 +650,26 @@ export default function App() {
     window.addEventListener("mouseup", onUp);
   }, [splitRatio, splitDragging]);
 
+  const handleNetworkDragMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    networkDragging.current = true;
+    const startY = e.clientY;
+    const startH = networkHeight;
+
+    function onMove(ev: MouseEvent) {
+      const dy = startY - ev.clientY;
+      const newH = Math.min(600, Math.max(150, startH + dy));
+      setNetworkHeight(newH);
+    }
+    function onUp() {
+      networkDragging.current = false;
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    }
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  }, [networkHeight]);
+
   const isFirstRun = collections.length === 0 && !active.response;
 
   // ---- command palette actions ----------------------------------------------
@@ -743,7 +765,7 @@ export default function App() {
   }, [active, activeId, collections, sidecarStatus.state]);
 
   return (
-    <div className={`grid h-full ${sidebarCollapsed ? "grid-cols-[40px_64px_1fr]" : "grid-cols-[40px_260px_1fr]"} ${networkOpen && appMode === "requests" ? "grid-rows-[1fr_300px_auto]" : "grid-rows-[1fr_auto]"} relative bg-neutral-950 bg-mesh-gradient text-neutral-100 transition-[grid-template-columns] duration-200 ease-in-out`}>
+    <div className={`grid h-full ${sidebarCollapsed ? "grid-cols-[40px_64px_1fr]" : "grid-cols-[40px_260px_1fr]"} ${networkOpen && appMode === "requests" ? `grid-rows-[1fr_${networkHeight}px_auto]` : "grid-rows-[1fr_auto]"} relative bg-neutral-950 bg-mesh-gradient text-neutral-100 transition-[grid-template-columns] duration-200 ease-in-out`} style={networkOpen && appMode === "requests" ? { gridTemplateRows: `1fr ${networkHeight}px auto` } : undefined}>
       {/* Subtle accent radial glow -- top-right corner */}
       <div className="pointer-events-none absolute right-0 top-0 h-[500px] w-[500px] rounded-full bg-[radial-gradient(circle,rgb(var(--accent-500)/0.04)_0%,transparent_70%)]" aria-hidden />
       <div className="row-span-1 overflow-hidden">
@@ -981,7 +1003,14 @@ export default function App() {
       )}
 
       {networkOpen && appMode === "requests" && (
-        <div className="col-span-3 overflow-hidden">
+        <div className="col-span-3 overflow-hidden relative">
+          {/* Drag handle for resizing Network Console */}
+          <div
+            className="absolute inset-x-0 top-0 z-10 h-1 cursor-row-resize group"
+            onMouseDown={handleNetworkDragMouseDown}
+          >
+            <div className="mx-auto h-px w-16 bg-neutral-700 transition-colors group-hover:bg-neutral-500 mt-[1px]" />
+          </div>
           <NetworkConsole
             entries={networkEntries}
             recording={networkRecording}

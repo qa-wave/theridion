@@ -3,6 +3,7 @@ import { CheckCircle2, ChevronDown, ClipboardCopy, Loader2, Save, Send, XCircle 
 import { HTTP_METHOD_COLOR, METHODS } from "../state/types";
 import type { Method } from "../state/types";
 import { sidecar } from "../lib/sidecar";
+import { Tooltip } from "./Tooltip";
 
 /** Built-in template functions available in {{...}} expressions. */
 const BUILTIN_VARS: { name: string; label: string }[] = [
@@ -151,22 +152,24 @@ export function UrlBar({
     <div className="flex items-stretch gap-2.5 border-b border-glass bg-neutral-950/80 px-4 py-3">
       {/* Method + URL input group */}
       <div className="flex flex-1 items-stretch overflow-hidden rounded-xl border border-neutral-800/80 bg-neutral-900/60 shadow-[inset_0_1px_3px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.03)] transition-all duration-200 focus-within:border-cobweb-500/40 focus-within:shadow-glow-sm">
-        <div className="relative">
-          <select
-            value={method}
-            onChange={(e) => onMethodChange(e.target.value as Method)}
-            className={`appearance-none bg-transparent py-2.5 pl-3.5 pr-8 font-mono text-xs font-bold tracking-wide focus:outline-none ${HTTP_METHOD_COLOR[method]}`}
-          >
-            {METHODS.map((m) => (
-              <option key={m} value={m} className="bg-neutral-900">
-                {m}
-              </option>
-            ))}
-          </select>
-          <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-neutral-600">
-            &#x25BE;
-          </span>
-        </div>
+        <Tooltip content="HTTP Method" side="bottom">
+          <div className="relative">
+            <select
+              value={method}
+              onChange={(e) => onMethodChange(e.target.value as Method)}
+              className={`appearance-none bg-transparent py-2.5 pl-3.5 pr-8 font-mono text-xs font-bold tracking-wide focus:outline-none ${HTTP_METHOD_COLOR[method]}`}
+            >
+              {METHODS.map((m) => (
+                <option key={m} value={m} className="bg-neutral-900">
+                  {m}
+                </option>
+              ))}
+            </select>
+            <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-neutral-600">
+              &#x25BE;
+            </span>
+          </div>
+        </Tooltip>
         <div className="my-1.5 w-px bg-neutral-700/40" />
         <div className="relative flex-1">
           <input
