@@ -36,6 +36,7 @@ interface Props {
   method?: Method;
   onMethodChange?: (m: Method) => void;
   response?: ExecuteResponse | null;
+  breadcrumb?: string[] | null;
 }
 
 export function RequestPanel({
@@ -56,11 +57,22 @@ export function RequestPanel({
   method,
   onMethodChange,
   response,
+  breadcrumb,
 }: Props) {
   const [tab, setTab] = useState<Tab>("params");
 
   return (
     <div className="flex h-full min-h-0 flex-col">
+      {breadcrumb && breadcrumb.length > 0 && (
+        <div className="flex items-center gap-1 border-b border-glass/50 px-3 py-1">
+          {breadcrumb.map((segment, i) => (
+            <span key={i} className="flex items-center gap-1 text-[11px]">
+              {i > 0 && <span className="text-neutral-600">&rsaquo;</span>}
+              <span className="text-neutral-500">{segment}</span>
+            </span>
+          ))}
+        </div>
+      )}
       <div className="flex items-center gap-1 border-b border-glass px-2 py-1">
         {TABS.map((t) => {
           const active = tab === t.id;

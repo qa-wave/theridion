@@ -97,6 +97,8 @@ export default function App() {
   const [networkPreserveLog, setNetworkPreserveLog] = useState(false);
   const [appMode, setAppMode] = useState<AppMode>("requests");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [splitRatio, setSplitRatio] = useState(0.5);
+  const splitDragging = useState(false);
 
   // ---- sidecar health polling ---------------------------------------------
   useEffect(() => {
@@ -468,6 +470,58 @@ export default function App() {
     // null out tabs that lost their backing request.
   }
 
+  // ---- breadcrumb helper -------------------------------------------------
+  const activeBreadcrumb = (() => {
+    if (!active.savedAs) return null;
+    const col = collections.find((c) => c.id === active.savedAs!.collectionId);
+    if (!col) return null;
+    const path: string[] = [col.name];
+    function walk(items: CollectionItem[], target: string): boolean {
+      for (const item of items) {
+        if (item.id === target) return true;
+        if (item.is_folder && item.items) {
+          if (walk(item.items, target)) {
+            path.push(item.name);
+            return true;
+          }
+        }
+      }
+      return false;
+    }
+    walk(col.items, active.savedAs!.requestId);
+    return path;
+  })();
+
+  // ---- draggable split handler -------------------------------------------
+  const handleSplitMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    splitDragging[1](true);
+    const container = (e.target as HTMLElement).parentElement;
+    if (!container) return;
+    const startX = e.clientX;
+    const startRatio = splitRatio;
+    const containerWidth = container.getBoundingClientRect().width;
+    const minPx = 300;
+
+    function onMove(ev: MouseEvent) {
+      const dx = ev.clientX - startX;
+      let newRatio = startRatio + dx / containerWidth;
+      // Enforce min widths
+      if (newRatio * containerWidth < minPx) newRatio = minPx / containerWidth;
+      if ((1 - newRatio) * containerWidth < minPx) newRatio = 1 - minPx / containerWidth;
+      setSplitRatio(newRatio);
+    }
+    function onUp() {
+      splitDragging[1](false);
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    }
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  }, [splitRatio, splitDragging]);
+
+  const isFirstRun = collections.length === 0 && !active.response;
+
   // ---- command palette actions ----------------------------------------------
   const cmdActions = useDefaultActions({
     newTab: () => newTab(),
@@ -651,8 +705,8 @@ export default function App() {
             onCreateCollection={newCollectionFromPopover}
           />
         </div>
-        <div className={`grid min-h-0 flex-1 ${historyOpen ? "grid-cols-[1fr_1fr_240px]" : "grid-cols-2"}`}>
-          <div className="min-h-0 overflow-hidden border-r border-neutral-800">
+        <div className={`flex min-h-0 flex-1 ${historyOpen ? "" : ""}`}>
+          <div className="min-h-0 overflow-hidden border-r border-neutral-800" style={{ width: historyOpen ? `calc(${splitRatio * 100}% - 120px)` : `${splitRatio * 100}%` }}>
             <RequestPanel
               url={active.url}
               headersRaw={active.headersRaw}
@@ -671,9 +725,17 @@ export default function App() {
               method={active.method}
               onMethodChange={(method) => patchActive({ method })}
               response={active.response}
+              breadcrumb={activeBreadcrumb}
             />
           </div>
-          <div className="min-h-0 overflow-hidden">
+          {/* Draggable split divider */}
+          <div
+            className="group relative w-1 shrink-0 cursor-col-resize"
+            onMouseDown={handleSplitMouseDown}
+          >
+            <div className={`absolute inset-y-0 left-1/2 w-px -translate-x-1/2 transition-colors ${splitDragging[0] ? "bg-cobweb-500/60" : "bg-neutral-800 group-hover:bg-cobweb-500/40"}`} />
+          </div>
+          <div className="min-h-0 flex-1 overflow-hidden">
             <ResponsePanel
               busy={active.busy}
               response={active.response}
@@ -681,6 +743,11 @@ export default function App() {
               onDiff={() => modals.open("diff")}
               onCodegen={() => modals.open("codegen")}
               consoleEntries={consoleEntries}
+              isFirstRun={isFirstRun}
+              onImportCollection={() => modals.open("import")}
+              onOpenSwagger={() => modals.open("swagger")}
+              onOpenAgentExplorer={() => modals.open("agentExplorer")}
+              onNewCollection={newCollection}
             />
           </div>
           {historyOpen && (
@@ -752,6 +819,9 @@ export default function App() {
           networkOpen={networkOpen}
           networkEntryCount={networkEntries.length}
           onToggleNetwork={() => setNetworkOpen((o) => !o)}
+          activeEnvId={activeEnvId}
+          environments={environments}
+          onManageEnv={() => modals.open("envManager")}
         />
       </div>
 

@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Activity, Settings2 } from "lucide-react";
-import type { HealthResponse } from "../lib/sidecar";
+import type { EnvironmentSummary, HealthResponse } from "../lib/sidecar";
 import { applyTheme, loadTheme } from "../state/theme";
+import { envColor } from "./EnvDropdown";
 
 interface Props {
   sidecarStatus:
@@ -15,9 +16,12 @@ interface Props {
   networkOpen?: boolean;
   networkEntryCount?: number;
   onToggleNetwork?: () => void;
+  activeEnvId?: string | null;
+  environments?: EnvironmentSummary[];
+  onManageEnv?: () => void;
 }
 
-export function StatusBar({ sidecarStatus, appVersion, onOpenSettings, requestCount = 0, lastStatus = null, networkOpen = false, networkEntryCount = 0, onToggleNetwork }: Props) {
+export function StatusBar({ sidecarStatus, appVersion, onOpenSettings, requestCount = 0, lastStatus = null, networkOpen = false, networkEntryCount = 0, onToggleNetwork, activeEnvId, environments = [], onManageEnv }: Props) {
   const ok = sidecarStatus.state === "ok";
   const checking = sidecarStatus.state === "checking";
   const label = ok
@@ -108,6 +112,28 @@ export function StatusBar({ sidecarStatus, appVersion, onOpenSettings, requestCo
           )}
         </div>
       )}
+
+      {/* Active environment badge (#10) */}
+      {(() => {
+        const activeEnv = environments.find((e) => e.id === activeEnvId);
+        return (
+          <button
+            type="button"
+            onClick={onManageEnv}
+            className="stat-card !rounded-lg !px-2.5 !py-1 inline-flex items-center gap-1.5 text-neutral-400 transition hover:!bg-white/[0.05] hover:text-neutral-200"
+            title={activeEnv ? `Environment: ${activeEnv.name}` : "No environment selected"}
+          >
+            {activeEnv ? (
+              <>
+                <span className={`h-2 w-2 shrink-0 rounded-full ${envColor(activeEnv.name)}`} />
+                <span className="text-[11px]">{activeEnv.name}</span>
+              </>
+            ) : (
+              <span className="text-[11px] text-neutral-600">No env</span>
+            )}
+          </button>
+        );
+      })()}
 
       {/* Network toggle */}
       <span className="ml-auto flex items-center gap-1.5">

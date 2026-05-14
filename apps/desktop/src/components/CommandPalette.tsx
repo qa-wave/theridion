@@ -67,7 +67,24 @@ const GROUP_MAP: Record<string, string> = {
   "proxy-recorder": "TOOLS",
 };
 
-const GROUP_ORDER = ["NAVIGATION", "PROTOCOLS", "TOOLS", "REQUESTS"];
+const RECENT_KEY = "theridion.recentCommands";
+const MAX_RECENT = 5;
+
+function loadRecent(): string[] {
+  try {
+    return JSON.parse(localStorage.getItem(RECENT_KEY) ?? "[]");
+  } catch {
+    return [];
+  }
+}
+
+function pushRecent(id: string) {
+  const recent = loadRecent().filter((r) => r !== id);
+  recent.unshift(id);
+  localStorage.setItem(RECENT_KEY, JSON.stringify(recent.slice(0, MAX_RECENT)));
+}
+
+const GROUP_ORDER = ["RECENT", "NAVIGATION", "PROTOCOLS", "TOOLS", "REQUESTS"];
 
 type GroupedAction = {
   type: "header";
@@ -78,8 +95,22 @@ type GroupedAction = {
   flatIndex: number;
 }
 
-function groupActions(actions: CommandAction[]): GroupedAction[] {
+function groupActions(actions: CommandAction[], showRecent: boolean): GroupedAction[] {
   const groups: Record<string, CommandAction[]> = {};
+
+  // Build RECENT group from localStorage
+  if (showRecent) {
+    const recentIds = loadRecent();
+    const recentActions: CommandAction[] = [];
+    for (const rid of recentIds) {
+      const found = actions.find((a) => a.id === rid);
+      if (found) recentActions.push(found);
+    }
+    if (recentActions.length > 0) {
+      groups["RECENT"] = recentActions;
+    }
+  }
+
   for (const action of actions) {
     const group = action.id.startsWith("req-") ? "REQUESTS" : (GROUP_MAP[action.id] ?? "TOOLS");
     if (!groups[group]) groups[group] = [];
@@ -111,7 +142,8 @@ export function CommandPalette({ open, onClose, actions }: CommandPaletteProps) 
     return actions.filter((a) => a.label.toLowerCase().includes(q));
   }, [actions, query]);
 
-  const grouped = useMemo(() => groupActions(filtered), [filtered]);
+  const showRecent = !query.trim();
+  const grouped = useMemo(() => groupActions(filtered, showRecent), [filtered, showRecent]);
   const flatActions = useMemo(() =>
     grouped.filter((g): g is GroupedAction & { type: "action" } => g.type === "action"),
     [grouped],
@@ -140,6 +172,7 @@ export function CommandPalette({ open, onClose, actions }: CommandPaletteProps) 
         setSelectedIndex((i) => Math.max(i - 1, 0));
       } else if (e.key === "Enter" && flatActions[selectedIndex]) {
         e.preventDefault();
+        pushRecent(flatActions[selectedIndex].action.id);
         flatActions[selectedIndex].action.onSelect();
         onClose();
       } else if (e.key === "Escape") {
@@ -209,6 +242,7 @@ export function CommandPalette({ open, onClose, actions }: CommandPaletteProps) 
                       : "text-neutral-300 hover:bg-neutral-800"
                   }`}
                   onClick={() => {
+                    pushRecent(action.id);
                     action.onSelect();
                     onClose();
                   }}

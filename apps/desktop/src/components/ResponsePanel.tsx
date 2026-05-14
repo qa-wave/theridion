@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AlertTriangle, ArrowDown, ArrowUp, CheckCircle2, Code2, Copy, GitCompare, Inbox, Minus, Search, Terminal, XCircle } from "lucide-react";
+import { AlertTriangle, ArrowDown, ArrowUp, Bot, CheckCircle2, Code2, Copy, FileCode, FolderPlus, GitCompare, Inbox, Minus, Search, Terminal, Upload, XCircle, Zap } from "lucide-react";
 import type { ExecuteResponse, SchemaValidateOutput, TimingBreakdown } from "../lib/sidecar";
 import { sidecar } from "../lib/sidecar";
 import { CodeEditor } from "./CodeEditor";
@@ -19,12 +19,17 @@ interface Props {
   onDiff?: () => void;
   onCodegen?: () => void;
   consoleEntries?: ConsoleEntry[];
+  isFirstRun?: boolean;
+  onImportCollection?: () => void;
+  onOpenSwagger?: () => void;
+  onOpenAgentExplorer?: () => void;
+  onNewCollection?: () => void;
 }
 
 /** Keep last 5 response times for sparkline display. */
 const responseTimeHistory: number[] = [];
 
-export function ResponsePanel({ busy, response, error, onDiff, onCodegen, consoleEntries = [] }: Props) {
+export function ResponsePanel({ busy, response, error, onDiff, onCodegen, consoleEntries = [], isFirstRun, onImportCollection, onOpenSwagger, onOpenAgentExplorer, onNewCollection }: Props) {
   const [tab, setTab] = useState<Tab>("body");
   const panelRef = useRef<HTMLDivElement>(null);
   const [headerSearch, setHeaderSearch] = useState("");
@@ -65,6 +70,7 @@ export function ResponsePanel({ busy, response, error, onDiff, onCodegen, consol
 
   if (busy && !response) return <Loading />;
   if (error && !response) return <ErrorView error={error} />;
+  if (!response && isFirstRun) return <WelcomeScreen onImportCollection={onImportCollection} onOpenSwagger={onOpenSwagger} onOpenAgentExplorer={onOpenAgentExplorer} onNewCollection={onNewCollection} />;
   if (!response) return <Empty />;
 
   return (
@@ -311,7 +317,7 @@ function HeadersView({
       </div>
       <div className="flex-1 overflow-auto">
         <table className="w-full text-xs">
-          <thead className="sticky top-0 bg-neutral-925 text-[11px] uppercase tracking-wider text-neutral-500">
+          <thead className="sticky top-0 bg-neutral-925/80 text-[11px] uppercase tracking-wider text-neutral-500 backdrop-blur-md [&_tr]:border-b [&_tr]:border-cobweb-500/10">
             <tr>
               <th className="px-4 py-1.5 text-left font-medium">Name</th>
               <th className="px-4 py-1.5 text-left font-medium">Value</th>
@@ -373,7 +379,7 @@ function CookiesView({
       </div>
       <div className="flex-1 overflow-auto">
         <table className="w-full text-xs">
-          <thead className="sticky top-0 bg-neutral-925 text-[11px] uppercase tracking-wider text-neutral-500">
+          <thead className="sticky top-0 bg-neutral-925/80 text-[11px] uppercase tracking-wider text-neutral-500 backdrop-blur-md [&_tr]:border-b [&_tr]:border-cobweb-500/10">
             <tr>
               <th className="px-4 py-1.5 text-left font-medium">Name</th>
               <th className="px-4 py-1.5 text-left font-medium">Value</th>
@@ -554,6 +560,63 @@ function SchemaView({ res }: { res: ExecuteResponse }) {
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+function WelcomeScreen({
+  onImportCollection,
+  onOpenSwagger,
+  onOpenAgentExplorer,
+  onNewCollection,
+}: {
+  onImportCollection?: () => void;
+  onOpenSwagger?: () => void;
+  onOpenAgentExplorer?: () => void;
+  onNewCollection?: () => void;
+}) {
+  const actions = [
+    { label: "Import from Postman/Insomnia", icon: Upload, onClick: onImportCollection },
+    { label: "Load OpenAPI/Swagger Spec", icon: FileCode, onClick: onOpenSwagger },
+    { label: "AI: Explore an API", icon: Bot, onClick: onOpenAgentExplorer },
+    { label: "New Collection", icon: FolderPlus, onClick: onNewCollection },
+  ];
+  return (
+    <div className="flex h-full flex-col items-center justify-center px-6 text-center">
+      <div className="mb-5 rounded-full bg-cobweb-950/30 p-5">
+        <Zap className="h-10 w-10 text-cobweb-400" />
+      </div>
+      <h2 className="text-lg font-semibold text-neutral-200">Welcome to Theridion</h2>
+      <p className="mt-1.5 text-sm text-neutral-500">The privacy-first API testing tool</p>
+
+      <div className="mt-6 w-full max-w-xs rounded-lg border border-glass bg-neutral-900/40 px-4 py-3 text-left">
+        <p className="text-xs text-neutral-400">
+          <span className="mr-1.5 text-cobweb-400">1.</span>
+          Enter a URL above and hit <kbd className="rounded border border-glass bg-neutral-800 px-1 py-0.5 font-mono text-[10px] text-neutral-300">Send</kbd>
+        </p>
+      </div>
+
+      <p className="mt-5 text-xs text-neutral-500">Or get started with:</p>
+
+      <div className="mt-3 flex w-full max-w-xs flex-col gap-1.5">
+        {actions.map((a) => (
+          <button
+            key={a.label}
+            type="button"
+            onClick={a.onClick}
+            disabled={!a.onClick}
+            className="flex w-full items-center gap-2.5 rounded-lg border border-glass bg-neutral-900/40 px-3 py-2 text-xs text-neutral-300 transition hover:bg-white/[0.05] hover:text-neutral-100 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <a.icon className="h-3.5 w-3.5 shrink-0 text-neutral-500" />
+            {a.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="mt-6 space-y-1 text-[11px] text-neutral-600">
+        <p><kbd className="font-mono">&#x2318;T</kbd> new tab &middot; <kbd className="font-mono">&#x2318;K</kbd> commands</p>
+        <p><kbd className="font-mono">&#x2318;,</kbd> settings &middot; <kbd className="font-mono">&#x2318;&#x21E7;N</kbd> network</p>
+      </div>
     </div>
   );
 }

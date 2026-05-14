@@ -59,15 +59,34 @@ export function UrlBar({
           </span>
         </div>
         <div className="my-1.5 w-px bg-neutral-700/40" />
-        <input
-          value={url}
-          onChange={(e) => onUrlChange(e.target.value)}
-          onKeyDown={onKeyDown}
-          placeholder="https://api.example.com/v1/resource"
-          className="flex-1 bg-transparent px-3 py-2.5 font-mono text-[13px] text-neutral-100 placeholder-neutral-600 focus:outline-none"
-          autoComplete="off"
-          spellCheck={false}
-        />
+        <div className="relative flex-1">
+          <input
+            value={url}
+            onChange={(e) => onUrlChange(e.target.value)}
+            onKeyDown={onKeyDown}
+            placeholder="https://api.example.com/v1/resource"
+            className={`w-full bg-transparent px-3 py-2.5 font-mono text-[13px] placeholder-neutral-600 focus:outline-none ${url.includes("{{") ? "text-transparent caret-neutral-100" : "text-neutral-100"}`}
+            autoComplete="off"
+            spellCheck={false}
+            style={url.includes("{{") ? { caretColor: "rgb(245 245 245)" } : undefined}
+          />
+          {url.includes("{{") && (
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-0 flex items-center px-3 font-mono text-[13px]"
+            >
+              <span className="truncate">
+                {url.split(/(\{\{[^}]*\}\})/).map((part, i) =>
+                  /^\{\{[^}]*\}\}$/.test(part) ? (
+                    <span key={i} className="rounded-sm bg-cobweb-500/15 px-0.5 text-cobweb-400">{part}</span>
+                  ) : (
+                    <span key={i} className="text-neutral-100">{part}</span>
+                  ),
+                )}
+              </span>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Save button group */}

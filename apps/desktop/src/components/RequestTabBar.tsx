@@ -91,11 +91,34 @@ export function RequestTabBar({
                 {t.method}
               </span>
               <span className="truncate">{t.name}</span>
+              {/* Response metadata on active tab (#7) */}
+              {active && t.response && (
+                <span className="ml-1 flex items-center gap-1 font-mono text-[10px]">
+                  <span className={
+                    t.response.status >= 500 ? "text-rose-400"
+                    : t.response.status >= 400 ? "text-amber-400"
+                    : t.response.status >= 300 ? "text-cobweb-400"
+                    : "text-emerald-400"
+                  }>
+                    {t.response.status}
+                  </span>
+                  <span className="text-neutral-600">&middot;</span>
+                  <span className="text-neutral-500">{t.response.elapsed_ms < 1000 ? `${Math.round(t.response.elapsed_ms)}ms` : `${(t.response.elapsed_ms / 1000).toFixed(1)}s`}</span>
+                </span>
+              )}
               {isDirty(t) && (
                 <span
                   aria-label="unsaved"
                   className="h-1.5 w-1.5 rounded-full bg-cobweb-400 shadow-[0_0_4px_rgba(34,211,238,0.4)]"
                 />
+              )}
+              {/* Status dot (#9) */}
+              {!active && t.response && (
+                <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${
+                  t.response.status >= 500 ? "bg-rose-500"
+                  : t.response.status >= 300 ? "bg-amber-500"
+                  : "bg-emerald-500"
+                }`} />
               )}
               <span
                 role="button"

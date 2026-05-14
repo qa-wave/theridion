@@ -9,6 +9,26 @@ interface Props {
   onManage: () => void;
 }
 
+const ENV_COLORS: Record<string, string> = {
+  prod: "bg-rose-500",
+  production: "bg-rose-500",
+  staging: "bg-amber-500",
+  stage: "bg-amber-500",
+  dev: "bg-emerald-500",
+  development: "bg-emerald-500",
+  local: "bg-emerald-500",
+};
+const AUTO_COLORS = ["bg-sky-500", "bg-violet-500", "bg-pink-500", "bg-cyan-500", "bg-orange-500", "bg-lime-500"];
+
+export function envColor(name: string): string {
+  const lower = name.toLowerCase();
+  if (ENV_COLORS[lower]) return ENV_COLORS[lower];
+  // Simple hash-based assignment
+  let hash = 0;
+  for (let i = 0; i < lower.length; i++) hash = ((hash << 5) - hash + lower.charCodeAt(i)) | 0;
+  return AUTO_COLORS[Math.abs(hash) % AUTO_COLORS.length];
+}
+
 export function EnvDropdown({ environments, activeId, onSelect, onManage }: Props) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -46,7 +66,11 @@ export function EnvDropdown({ environments, activeId, onSelect, onManage }: Prop
         }`}
         title={active ? `Active environment: ${active.name}` : "No environment"}
       >
-        <Layers className="h-3 w-3" />
+        {active ? (
+          <span className={`h-2 w-2 shrink-0 rounded-full ${envColor(active.name)}`} />
+        ) : (
+          <Layers className="h-3 w-3" />
+        )}
         <span className="max-w-[110px] truncate">
           {active ? active.name : "No env"}
         </span>
@@ -85,7 +109,10 @@ export function EnvDropdown({ environments, activeId, onSelect, onManage }: Prop
                       : "text-neutral-400 hover:bg-white/[0.03] hover:text-neutral-200"
                   }`}
                 >
-                  <span className="truncate">{e.name}</span>
+                  <span className="flex items-center gap-1.5 truncate">
+                    <span className={`h-2 w-2 shrink-0 rounded-full ${envColor(e.name)}`} />
+                    {e.name}
+                  </span>
                   <span className="ml-2 shrink-0 text-[10px] text-neutral-600">
                     {e.variable_count} vars
                   </span>
