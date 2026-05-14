@@ -271,6 +271,16 @@ export const sidecar = {
       `/api/collections/${collectionId}/items/${itemId}/move`,
       { method: "PATCH", body: JSON.stringify({ target_folder_id: targetFolderId }) },
     ),
+  reorderItems: (collectionId: string, parentFolderId: string | null, itemIds: string[]) =>
+    call<StoredCollection>(
+      `/api/collections/${collectionId}/reorder`,
+      { method: "PATCH", body: JSON.stringify({ parent_folder_id: parentFolderId, item_ids: itemIds }) },
+    ),
+  exportCurl: (collectionId: string) =>
+    call<{ commands: string[]; count: number }>(
+      `/api/collections/${collectionId}/export-curl`,
+      { method: "POST" },
+    ),
   deleteFolder: (collectionId: string, folderId: string) =>
     call<StoredCollection>(
       `/api/collections/${collectionId}/folders/${folderId}`,

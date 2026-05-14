@@ -1,5 +1,5 @@
-import { Activity, BookOpen, Bot, Braces, Clock, Command, Database, Globe, MoreHorizontal, Plus, Server, Terminal, Wifi, X } from "lucide-react";
-import { useState, useRef, useEffect } from "react";
+import { Activity, BookOpen, Bot, Braces, Clock, Command, Database, Globe, MoreHorizontal, Pin, Plus, Server, Terminal, Wifi, X } from "lucide-react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { HTTP_METHOD_COLOR, isDirty } from "../state/types";
 import type { RequestTab } from "../state/types";
 import type { EnvironmentSummary } from "../lib/sidecar";
@@ -28,6 +28,12 @@ interface Props {
   onSelectEnv: (id: string | null) => void;
   onManageEnv: () => void;
   onOpenAgentExplorer?: () => void;
+  onDuplicateTab?: (id: string) => void;
+  onPinTab?: (id: string) => void;
+  onCloseOtherTabs?: (id: string) => void;
+  onCloseTabsToRight?: (id: string) => void;
+  onCopyUrl?: (id: string) => void;
+  onCopyAsCurl?: () => void;
 }
 
 export function RequestTabBar({
@@ -53,9 +59,41 @@ export function RequestTabBar({
   onSelectEnv,
   onManageEnv,
   onOpenAgentExplorer,
+  onDuplicateTab,
+  onPinTab,
+  onCloseOtherTabs,
+  onCloseTabsToRight,
+  onCopyUrl,
+  onCopyAsCurl,
 }: Props) {
   const [overflowOpen, setOverflowOpen] = useState(false);
   const overflowRef = useRef<HTMLDivElement>(null);
+  const [ctxMenu, setCtxMenu] = useState<{ open: boolean; x: number; y: number; tabId: string } | null>(null);
+  const ctxRef = useRef<HTMLDivElement>(null);
+
+  // Close context menu on outside click.
+  useEffect(() => {
+    if (!ctxMenu?.open) return;
+    function onMouseDown(e: MouseEvent) {
+      if (ctxRef.current && !ctxRef.current.contains(e.target as Node)) {
+        setCtxMenu(null);
+      }
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setCtxMenu(null);
+    }
+    document.addEventListener("mousedown", onMouseDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onMouseDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [ctxMenu?.open]);
+
+  const handleTabContextMenu = useCallback((e: React.MouseEvent, tabId: string) => {
+    e.preventDefault();
+    setCtxMenu({ open: true, x: e.clientX, y: e.clientY, tabId });
+  }, []);
 
   // Close overflow menu on outside click.
   useEffect(() => {
@@ -72,26 +110,38 @@ export function RequestTabBar({
   return (
     <div className="flex items-stretch gap-px border-b border-glass bg-neutral-925/80 pl-1">
       <div className="flex flex-1 items-stretch gap-0.5 overflow-x-auto py-1 pl-1">
-        {tabs.map((t) => {
+        {/* Pinned tabs first, then unpinned */}
+        {[...tabs].sort((a, b) => (a.pinned === b.pinned ? 0 : a.pinned ? -1 : 1)).map((t) => {
           const active = t.id === activeId;
+          const durationColor = t.response
+            ? t.response.elapsed_ms < 200 ? "text-emerald-400"
+            : t.response.elapsed_ms <= 1000 ? "text-amber-400"
+            : "text-rose-400"
+            : "text-neutral-500";
           return (
             <button
               key={t.id}
               type="button"
               onClick={() => onSelect(t.id)}
-              className={`group relative flex max-w-[240px] items-center gap-2 rounded-md px-3 py-1.5 text-xs transition-all duration-150 ${
+              onContextMenu={(e) => handleTabContextMenu(e, t.id)}
+              className={`group relative flex items-center gap-2 rounded-md py-1.5 text-xs transition-all duration-150 ${
+                t.pinned ? "max-w-[120px] px-2" : "max-w-[240px] px-3"
+              } ${
                 active
                   ? "bg-neutral-800/70 text-neutral-100 shadow-inner-glow"
                   : "text-neutral-500 hover:bg-neutral-800/40 hover:text-neutral-300"
               }`}
             >
+              {t.pinned && (
+                <Pin className="h-2.5 w-2.5 shrink-0 text-cobweb-400" />
+              )}
               <span
                 className={`shrink-0 font-mono text-[10px] font-bold tracking-wide ${HTTP_METHOD_COLOR[t.method]}`}
               >
                 {t.method}
               </span>
               <span className="truncate">{t.name}</span>
-              {/* Response metadata on active tab (#7) */}
+              {/* Response metadata on active tab with duration colors */}
               {active && t.response && (
                 <span className="ml-1 flex items-center gap-1 font-mono text-[10px]">
                   <span className={
@@ -103,7 +153,7 @@ export function RequestTabBar({
                     {t.response.status}
                   </span>
                   <span className="text-neutral-600">&middot;</span>
-                  <span className="text-neutral-500">{t.response.elapsed_ms < 1000 ? `${Math.round(t.response.elapsed_ms)}ms` : `${(t.response.elapsed_ms / 1000).toFixed(1)}s`}</span>
+                  <span className={durationColor}>{t.response.elapsed_ms < 1000 ? `${Math.round(t.response.elapsed_ms)}ms` : `${(t.response.elapsed_ms / 1000).toFixed(1)}s`}</span>
                 </span>
               )}
               {isDirty(t) && (
@@ -112,7 +162,7 @@ export function RequestTabBar({
                   className="h-1.5 w-1.5 rounded-full bg-cobweb-400 shadow-[0_0_4px_rgba(34,211,238,0.4)]"
                 />
               )}
-              {/* Status dot (#9) */}
+              {/* Status dot */}
               {!active && t.response && (
                 <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${
                   t.response.status >= 500 ? "bg-rose-500"
@@ -120,17 +170,19 @@ export function RequestTabBar({
                   : "bg-emerald-500"
                 }`} />
               )}
-              <span
-                role="button"
-                aria-label="Close tab"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onClose(t.id);
-                }}
-                className="ml-0.5 rounded p-0.5 text-neutral-600 opacity-0 transition hover:bg-neutral-700/60 hover:text-neutral-300 group-hover:opacity-100"
-              >
-                <X className="h-3 w-3" />
-              </span>
+              {!t.pinned && (
+                <span
+                  role="button"
+                  aria-label="Close tab"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onClose(t.id);
+                  }}
+                  className="ml-0.5 rounded p-0.5 text-neutral-600 opacity-0 transition hover:bg-neutral-700/60 hover:text-neutral-300 group-hover:opacity-100"
+                >
+                  <X className="h-3 w-3" />
+                </span>
+              )}
             </button>
           );
         })}
@@ -194,7 +246,45 @@ export function RequestTabBar({
           />
         </div>
       </div>
+
+      {/* Tab context menu */}
+      {ctxMenu?.open && (() => {
+        const ctxTab = tabs.find((t) => t.id === ctxMenu.tabId);
+        const safeX = Math.min(ctxMenu.x, window.innerWidth - 200);
+        const safeY = Math.min(ctxMenu.y, window.innerHeight - 240);
+        return (
+          <div
+            ref={ctxRef}
+            className="fixed z-[60] min-w-[180px] animate-slide-in rounded-lg border border-glass-light bg-neutral-900 py-1 shadow-2xl shadow-black/60"
+            style={{ left: safeX, top: safeY }}
+          >
+            <TabCtxItem label={ctxTab?.pinned ? "Unpin tab" : "Pin tab"} onClick={() => { onPinTab?.(ctxMenu.tabId); setCtxMenu(null); }} />
+            <TabCtxItem label="Duplicate tab" onClick={() => { onDuplicateTab?.(ctxMenu.tabId); setCtxMenu(null); }} />
+            <div className="mx-2 my-1 border-t border-neutral-800" />
+            <TabCtxItem label="Copy URL" onClick={() => { onCopyUrl?.(ctxMenu.tabId); setCtxMenu(null); }} />
+            <TabCtxItem label="Copy as cURL" onClick={() => { onCopyAsCurl?.(); setCtxMenu(null); }} />
+            <div className="mx-2 my-1 border-t border-neutral-800" />
+            {!ctxTab?.pinned && (
+              <TabCtxItem label="Close tab" onClick={() => { onClose(ctxMenu.tabId); setCtxMenu(null); }} />
+            )}
+            <TabCtxItem label="Close other tabs" onClick={() => { onCloseOtherTabs?.(ctxMenu.tabId); setCtxMenu(null); }} />
+            <TabCtxItem label="Close tabs to the right" onClick={() => { onCloseTabsToRight?.(ctxMenu.tabId); setCtxMenu(null); }} />
+          </div>
+        );
+      })()}
     </div>
+  );
+}
+
+function TabCtxItem({ label, onClick }: { label: string; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex w-full items-center px-3 py-1.5 text-xs text-neutral-300 transition hover:bg-neutral-800/60 hover:text-neutral-100"
+    >
+      {label}
+    </button>
   );
 }
 

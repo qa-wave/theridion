@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import {
   ChevronDown,
   ChevronLeft,
@@ -13,6 +13,7 @@ import {
   Search,
   Sparkles,
   Star,
+  Terminal,
   Trash2,
 } from "lucide-react";
 import { HTTP_METHOD_COLOR } from "../state/types";
@@ -35,6 +36,9 @@ interface Props {
   onRenameItem: (collectionId: string, itemId: string, name: string) => void;
   onRefresh: () => void;
   onContextMenu?: (e: React.MouseEvent, collectionId: string, item: CollectionItem) => void;
+  onReorder?: (collectionId: string, parentFolderId: string | null, itemIds: string[]) => void;
+  onMoveToFolder?: (collectionId: string, itemId: string, targetFolderId: string | null) => void;
+  onExportCurl?: (collectionId: string) => void;
 }
 
 export function Sidebar({
@@ -53,11 +57,24 @@ export function Sidebar({
   onRenameItem,
   onRefresh,
   onContextMenu,
+  onReorder,
+  onMoveToFolder,
+  onExportCurl,
 }: Props) {
   const [query, setQuery] = useState("");
   const filter = query.toLowerCase();
   const [favorites, setFavorites] = useState<FavoriteItem[]>([]);
   const [favOpen, setFavOpen] = useState(true);
+  const [dragItemId, setDragItemId] = useState<string | null>(null);
+  const [dropTargetId, setDropTargetId] = useState<string | null>(null);
+
+  const handleDragStart = useCallback((itemId: string) => {
+    setDragItemId(itemId);
+  }, []);
+  const handleDragEnd = useCallback(() => {
+    setDragItemId(null);
+    setDropTargetId(null);
+  }, []);
 
   useEffect(() => {
     sidecar.listFavorites().then((r) => setFavorites(r.items)).catch(() => {});
@@ -218,6 +235,14 @@ export function Sidebar({
               favorites={favorites}
               onToggleFavorite={(item) => toggleFavorite(c.id, item)}
               onContextMenu={onContextMenu ? (e, item) => onContextMenu(e, c.id, item) : undefined}
+              dragItemId={dragItemId}
+              dropTargetId={dropTargetId}
+              onDragStart={handleDragStart}
+              onDragEnd={handleDragEnd}
+              onDropTargetChange={setDropTargetId}
+              onReorder={onReorder ? (parentFolderId, itemIds) => onReorder(c.id, parentFolderId, itemIds) : undefined}
+              onMoveToFolder={onMoveToFolder ? (itemId, folderId) => onMoveToFolder(c.id, itemId, folderId) : undefined}
+              onExportCurl={onExportCurl ? () => onExportCurl(c.id) : undefined}
             />
           ))
         )}
@@ -362,6 +387,14 @@ function CollectionNode({
   favorites,
   onToggleFavorite,
   onContextMenu,
+  dragItemId,
+  dropTargetId,
+  onDragStart,
+  onDragEnd,
+  onDropTargetChange,
+  onReorder,
+  onMoveToFolder,
+  onExportCurl,
 }: {
   collection: StoredCollection;
   filter: string;
@@ -375,6 +408,14 @@ function CollectionNode({
   favorites?: FavoriteItem[];
   onToggleFavorite?: (item: CollectionItem) => void;
   onContextMenu?: (e: React.MouseEvent, item: CollectionItem) => void;
+  dragItemId?: string | null;
+  dropTargetId?: string | null;
+  onDragStart?: (itemId: string) => void;
+  onDragEnd?: () => void;
+  onDropTargetChange?: (id: string | null) => void;
+  onReorder?: (parentFolderId: string | null, itemIds: string[]) => void;
+  onMoveToFolder?: (itemId: string, targetFolderId: string | null) => void;
+  onExportCurl?: () => void;
 }) {
   const [open, setOpen] = useState(true);
   const [renaming, setRenaming] = useState(false);
@@ -438,6 +479,16 @@ function CollectionNode({
         >
           <FolderPlus className="h-3 w-3" />
         </button>
+        {onExportCurl && (
+          <button
+            type="button"
+            onClick={onExportCurl}
+            className="rounded p-0.5 text-neutral-600 opacity-0 transition hover:bg-neutral-800 hover:text-neutral-200 group-hover:opacity-100"
+            title="Export as cURL"
+          >
+            <Terminal className="h-3 w-3" />
+          </button>
+        )}
         <button
           type="button"
           onClick={() => {
@@ -464,6 +515,14 @@ function CollectionNode({
           onToggleFavorite={onToggleFavorite}
           collectionId={collection.id}
           onContextMenu={onContextMenu}
+          parentFolderId={null}
+          dragItemId={dragItemId}
+          dropTargetId={dropTargetId}
+          onDragStart={onDragStart}
+          onDragEnd={onDragEnd}
+          onDropTargetChange={onDropTargetChange}
+          onReorder={onReorder}
+          onMoveToFolder={onMoveToFolder}
         />
       )}
       {open && collection.items.length === 0 && (
@@ -487,6 +546,14 @@ function ItemList({
   onToggleFavorite,
   collectionId,
   onContextMenu,
+  parentFolderId,
+  dragItemId,
+  dropTargetId,
+  onDragStart,
+  onDragEnd,
+  onDropTargetChange,
+  onReorder,
+  onMoveToFolder,
 }: {
   items: CollectionItem[];
   depth: number;
@@ -499,10 +566,28 @@ function ItemList({
   onToggleFavorite?: (item: CollectionItem) => void;
   collectionId?: string;
   onContextMenu?: (e: React.MouseEvent, item: CollectionItem) => void;
+  parentFolderId?: string | null;
+  dragItemId?: string | null;
+  dropTargetId?: string | null;
+  onDragStart?: (itemId: string) => void;
+  onDragEnd?: () => void;
+  onDropTargetChange?: (id: string | null) => void;
+  onReorder?: (parentFolderId: string | null, itemIds: string[]) => void;
+  onMoveToFolder?: (itemId: string, targetFolderId: string | null) => void;
 }) {
+  const handleDrop = useCallback((targetIndex: number) => {
+    if (!dragItemId || !onReorder) return;
+    const currentIndex = items.findIndex((it) => it.id === dragItemId);
+    if (currentIndex === -1 || currentIndex === targetIndex) return;
+    const ids = items.map((it) => it.id);
+    ids.splice(currentIndex, 1);
+    ids.splice(targetIndex > currentIndex ? targetIndex - 1 : targetIndex, 0, dragItemId);
+    onReorder(parentFolderId ?? null, ids);
+  }, [dragItemId, items, onReorder, parentFolderId]);
+
   return (
     <>
-      {items.map((it) =>
+      {items.map((it, idx) =>
         it.is_folder ? (
           <FolderNode
             key={it.id}
@@ -517,6 +602,14 @@ function ItemList({
             onToggleFavorite={onToggleFavorite}
             collectionId={collectionId}
             onContextMenu={onContextMenu}
+            dragItemId={dragItemId}
+            dropTargetId={dropTargetId}
+            onDragStart={onDragStart}
+            onDragEnd={onDragEnd}
+            onDropTargetChange={onDropTargetChange}
+            onReorder={onReorder}
+            onMoveToFolder={onMoveToFolder}
+            onDropBefore={() => handleDrop(idx)}
           />
         ) : (
           <RequestRow
@@ -529,6 +622,13 @@ function ItemList({
             isFavorite={favorites?.some((f) => f.collection_id === collectionId && f.request_id === it.id)}
             onToggleFavorite={onToggleFavorite ? () => onToggleFavorite(it) : undefined}
             onContextMenu={onContextMenu ? (e) => onContextMenu(e, it) : undefined}
+            isDragging={dragItemId === it.id}
+            isDropTarget={dropTargetId === it.id}
+            onDragStart={onDragStart ? () => onDragStart(it.id) : undefined}
+            onDragEnd={onDragEnd}
+            onDropBefore={() => handleDrop(idx)}
+            onDropTargetChange={onDropTargetChange}
+            itemId={it.id}
           />
         ),
       )}
@@ -548,6 +648,14 @@ function FolderNode({
   onToggleFavorite,
   collectionId,
   onContextMenu,
+  dragItemId,
+  dropTargetId,
+  onDragStart,
+  onDragEnd,
+  onDropTargetChange,
+  onReorder,
+  onMoveToFolder,
+  onDropBefore: _onDropBefore,
 }: {
   folder: CollectionItem;
   depth: number;
@@ -560,15 +668,41 @@ function FolderNode({
   onToggleFavorite?: (item: CollectionItem) => void;
   collectionId?: string;
   onContextMenu?: (e: React.MouseEvent, item: CollectionItem) => void;
+  dragItemId?: string | null;
+  dropTargetId?: string | null;
+  onDragStart?: (itemId: string) => void;
+  onDragEnd?: () => void;
+  onDropTargetChange?: (id: string | null) => void;
+  onReorder?: (parentFolderId: string | null, itemIds: string[]) => void;
+  onMoveToFolder?: (itemId: string, targetFolderId: string | null) => void;
+  onDropBefore?: () => void;
 }) {
   const [open, setOpen] = useState(true);
   const [renaming, setRenaming] = useState(false);
+  const [folderHighlight, setFolderHighlight] = useState(false);
   const padLeft = `${0.5 + depth * 0.75}rem`;
   return (
     <div>
       <div
-        className="group flex items-center rounded text-xs hover:bg-neutral-800/60"
+        className={`group flex items-center rounded text-xs hover:bg-neutral-800/60 ${folderHighlight ? "ring-1 ring-cobweb-500/50 bg-cobweb-500/10" : ""}`}
         style={{ paddingLeft: padLeft }}
+        onDragOver={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          if (dragItemId && dragItemId !== folder.id) {
+            setFolderHighlight(true);
+          }
+        }}
+        onDragLeave={() => setFolderHighlight(false)}
+        onDrop={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setFolderHighlight(false);
+          if (dragItemId && dragItemId !== folder.id && onMoveToFolder) {
+            onMoveToFolder(dragItemId, folder.id);
+          }
+          onDragEnd?.();
+        }}
       >
         <button
           type="button"
@@ -640,6 +774,14 @@ function FolderNode({
           onToggleFavorite={onToggleFavorite}
           collectionId={collectionId}
           onContextMenu={onContextMenu}
+          parentFolderId={folder.id}
+          dragItemId={dragItemId}
+          dropTargetId={dropTargetId}
+          onDragStart={onDragStart}
+          onDragEnd={onDragEnd}
+          onDropTargetChange={onDropTargetChange}
+          onReorder={onReorder}
+          onMoveToFolder={onMoveToFolder}
         />
       )}
     </div>
@@ -655,6 +797,13 @@ function RequestRow({
   isFavorite,
   onToggleFavorite,
   onContextMenu,
+  isDragging,
+  isDropTarget,
+  onDragStart,
+  onDragEnd,
+  onDropBefore,
+  onDropTargetChange,
+  itemId,
 }: {
   request: CollectionItem;
   depth: number;
@@ -664,11 +813,44 @@ function RequestRow({
   isFavorite?: boolean;
   onToggleFavorite?: () => void;
   onContextMenu?: (e: React.MouseEvent) => void;
+  isDragging?: boolean;
+  isDropTarget?: boolean;
+  onDragStart?: () => void;
+  onDragEnd?: () => void;
+  onDropBefore?: () => void;
+  onDropTargetChange?: (id: string | null) => void;
+  itemId?: string;
 }) {
   const [renaming, setRenaming] = useState(false);
   const padLeft = `${1.25 + depth * 0.75}rem`;
   return (
-    <div className="group flex items-center rounded text-xs hover:bg-neutral-800/60" onContextMenu={onContextMenu}>
+    <div
+      className={`group flex items-center rounded text-xs hover:bg-neutral-800/60 ${isDragging ? "opacity-50" : ""} ${isDropTarget ? "border-t-2 border-cobweb-500" : ""}`}
+      onContextMenu={onContextMenu}
+      draggable={!renaming}
+      onDragStart={(e) => {
+        e.dataTransfer.effectAllowed = "move";
+        e.dataTransfer.setData("text/plain", request.id);
+        onDragStart?.();
+      }}
+      onDragEnd={() => {
+        onDragEnd?.();
+      }}
+      onDragOver={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onDropTargetChange?.(itemId ?? null);
+      }}
+      onDragLeave={() => {
+        onDropTargetChange?.(null);
+      }}
+      onDrop={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onDropBefore?.();
+        onDragEnd?.();
+      }}
+    >
       {renaming ? (
         <div className="flex flex-1 items-center gap-2 py-0.5" style={{ paddingLeft: padLeft }}>
           <span

@@ -60,6 +60,7 @@ import { ActivityBar, type AppMode } from "./components/ActivityBar";
 
 const APP_VERSION = "0.0.1";
 const ACTIVE_ENV_KEY = "theridion.activeEnvironmentId";
+const DRAFT_TABS_KEY = "theridion.draft-tabs";
 
 type SidecarStatus =
   | { state: "checking" }
@@ -72,7 +73,29 @@ export default function App() {
   const [collections, setCollections] = useState<StoredCollection[]>([]);
   const [collectionsLoading, setCollectionsLoading] = useState(false);
 
-  const [tabs, setTabs] = useState<RequestTab[]>([newRequestTab()]);
+  const [tabs, setTabs] = useState<RequestTab[]>(() => {
+    if (typeof window !== "undefined") {
+      const saved = window.localStorage.getItem(DRAFT_TABS_KEY);
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved) as RequestTab[];
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            // Restore tabs but clear transient state.
+            return parsed.map((t) => ({
+              ...newRequestTab(),
+              ...t,
+              busy: false,
+              response: null,
+              error: null,
+              assertionResults: null,
+              pinned: t.pinned ?? false,
+            }));
+          }
+        } catch { /* ignore corrupt data */ }
+      }
+    }
+    return [newRequestTab()];
+  });
   const [activeId, setActiveId] = useState<string>(tabs[0].id);
   const [savePopoverOpen, setSavePopoverOpen] = useState(false);
 
@@ -97,6 +120,7 @@ export default function App() {
   const [networkPreserveLog, setNetworkPreserveLog] = useState(false);
   const [appMode, setAppMode] = useState<AppMode>("requests");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [envToast, setEnvToast] = useState<string | null>(null);
   const [splitRatio, setSplitRatio] = useState(0.5);
   const splitDragging = useState(false);
 
@@ -170,6 +194,32 @@ export default function App() {
     }
   }, [activeEnvId]);
 
+  // ---- auto-save draft tabs to localStorage every 5 seconds --------------
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (typeof window !== "undefined") {
+        // Save tab state (excluding transient response data to keep it small).
+        const draft = tabs.map((t) => ({
+          id: t.id,
+          savedAs: t.savedAs,
+          name: t.name,
+          method: t.method,
+          url: t.url,
+          headersRaw: t.headersRaw,
+          body: t.body,
+          auth: t.auth,
+          assertions: t.assertions,
+          preRequestScript: t.preRequestScript,
+          cleanSignature: t.cleanSignature,
+          lastRunAt: t.lastRunAt,
+          pinned: t.pinned,
+        }));
+        window.localStorage.setItem(DRAFT_TABS_KEY, JSON.stringify(draft));
+      }
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, [tabs]);
+
   // ---- tab helpers --------------------------------------------------------
   const active = tabs.find((t) => t.id === activeId) ?? tabs[0];
 
@@ -186,6 +236,9 @@ export default function App() {
   }
 
   function closeTab(id: string) {
+    // Don't close pinned tabs.
+    const tab = tabs.find((t) => t.id === id);
+    if (tab?.pinned) return;
     setTabs((curr) => {
       const idx = curr.findIndex((t) => t.id === id);
       const next = curr.filter((t) => t.id !== id);
@@ -196,6 +249,51 @@ export default function App() {
       }
       return ensured;
     });
+  }
+
+  function duplicateTab(id: string) {
+    const src = tabs.find((t) => t.id === id);
+    if (!src) return;
+    const dup = newRequestTab({
+      name: `${src.name} (copy)`,
+      method: src.method,
+      url: src.url,
+      headersRaw: src.headersRaw,
+      body: src.body,
+      auth: src.auth,
+      assertions: src.assertions,
+      preRequestScript: src.preRequestScript,
+    });
+    setTabs((curr) => [...curr, dup]);
+    setActiveId(dup.id);
+  }
+
+  function pinTab(id: string) {
+    setTabs((curr) =>
+      curr.map((t) => (t.id === id ? { ...t, pinned: !t.pinned } : t)),
+    );
+  }
+
+  function closeOtherTabs(id: string) {
+    setTabs((curr) => {
+      const keep = curr.filter((t) => t.id === id || t.pinned);
+      return keep.length > 0 ? keep : [newRequestTab()];
+    });
+    setActiveId(id);
+  }
+
+  function closeTabsToRight(id: string) {
+    setTabs((curr) => {
+      const idx = curr.findIndex((t) => t.id === id);
+      if (idx === -1) return curr;
+      const keep = curr.filter((t, i) => i <= idx || t.pinned);
+      return keep.length > 0 ? keep : [newRequestTab()];
+    });
+  }
+
+  function copyTabUrl(id: string) {
+    const tab = tabs.find((t) => t.id === id);
+    if (tab?.url) void navigator.clipboard.writeText(tab.url);
   }
 
   function openSaved(collectionId: string, item: CollectionItem) {
@@ -583,6 +681,22 @@ export default function App() {
       } else if (cmd && e.shiftKey && e.key === "N") {
         e.preventDefault();
         setNetworkOpen((o) => !o);
+      } else if (cmd && e.key === "e") {
+        e.preventDefault();
+        // Cycle through environments.
+        if (environments.length === 0) return;
+        const currentIdx = environments.findIndex((env) => env.id === activeEnvId);
+        const nextIdx = (currentIdx + 1) % (environments.length + 1);
+        if (nextIdx === environments.length) {
+          // Wrap to "no environment".
+          setActiveEnvId(null);
+          setEnvToast("Switched to: No environment");
+        } else {
+          setActiveEnvId(environments[nextIdx].id);
+          setEnvToast(`Switched to: ${environments[nextIdx].name}`);
+        }
+        // Auto-dismiss toast.
+        setTimeout(() => setEnvToast(null), 1500);
       } else if (cmd && e.key === "Enter") {
         e.preventDefault();
         void send();
@@ -622,6 +736,32 @@ export default function App() {
           onRenameCollection={renameCollection}
           onRenameItem={renameItem}
           onRefresh={refreshCollections}
+          onReorder={async (collectionId, parentFolderId, itemIds) => {
+            try {
+              await sidecar.reorderItems(collectionId, parentFolderId, itemIds);
+              await refreshCollections();
+            } catch (e) {
+              console.error("reorder failed", e);
+            }
+          }}
+          onExportCurl={async (collectionId) => {
+            try {
+              const result = await sidecar.exportCurl(collectionId);
+              await navigator.clipboard.writeText(result.commands.join("\n\n"));
+              setEnvToast(`Copied ${result.count} cURL command${result.count !== 1 ? "s" : ""}`);
+              setTimeout(() => setEnvToast(null), 1500);
+            } catch (e) {
+              console.error("export curl failed", e);
+            }
+          }}
+          onMoveToFolder={async (collectionId, itemId, targetFolderId) => {
+            try {
+              await sidecar.moveItem(collectionId, itemId, targetFolderId);
+              await refreshCollections();
+            } catch (e) {
+              console.error("move failed", e);
+            }
+          }}
           onContextMenu={(e, collectionId, item) => {
             e.preventDefault();
             setCtxMenu({
@@ -677,6 +817,12 @@ export default function App() {
           onSelectEnv={setActiveEnvId}
           onManageEnv={() => modals.open("envManager")}
           onOpenAgentExplorer={() => modals.open("agentExplorer")}
+          onDuplicateTab={duplicateTab}
+          onPinTab={pinTab}
+          onCloseOtherTabs={closeOtherTabs}
+          onCloseTabsToRight={closeTabsToRight}
+          onCopyUrl={copyTabUrl}
+          onCopyAsCurl={copyAsCurl}
         />
         <div className="relative">
           <UrlBar
@@ -824,6 +970,13 @@ export default function App() {
           onManageEnv={() => modals.open("envManager")}
         />
       </div>
+
+      {/* Toast notification */}
+      {envToast && (
+        <div className="pointer-events-none fixed bottom-16 left-1/2 z-[70] -translate-x-1/2 animate-slide-in rounded-lg border border-glass bg-neutral-800/95 px-4 py-2 text-xs font-medium text-neutral-100 shadow-xl backdrop-blur">
+          {envToast}
+        </div>
+      )}
 
       <EnvManagerModal
         open={modals.isOpen("envManager")}

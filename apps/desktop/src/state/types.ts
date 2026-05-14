@@ -39,6 +39,7 @@ export interface RequestTab {
   /** Snapshot of saved-on-disk state — used to compute the dirty bit. */
   cleanSignature: string;
   lastRunAt: number | null;
+  pinned: boolean;
 }
 
 export const HTTP_METHOD_COLOR: Record<Method, string> = {
@@ -69,6 +70,7 @@ export function newRequestTab(partial?: Partial<RequestTab>): RequestTab {
     busy: false,
     cleanSignature: "",
     lastRunAt: null,
+    pinned: false,
   };
   const merged = { ...base, ...partial };
   return { ...merged, cleanSignature: signatureOf(merged) };
