@@ -1319,6 +1319,46 @@ export const sidecar = {
       method: "POST",
       body: JSON.stringify(input),
     }),
+
+  // ---- Trace Viewer ---------------------------------------------------------
+  runWithTrace: (collectionId: string, environmentId?: string) =>
+    call<RunWithTraceOutput>(`/api/runner/${collectionId}/run-with-trace`, {
+      method: "POST",
+      body: JSON.stringify({ environment_id: environmentId ?? null }),
+    }),
+
+  // ---- Contract Guard -------------------------------------------------------
+  contractValidate: (input: ContractValidateGuardInput) =>
+    call<ContractGuardOutput>("/api/contract/validate", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  contractValidateCollection: (collectionId: string, specContent: string) =>
+    call<ContractCollectionOutput>("/api/contract/validate-collection", {
+      method: "POST",
+      body: JSON.stringify({ collection_id: collectionId, spec_content: specContent }),
+    }),
+
+  // ---- Variable Inspector ---------------------------------------------------
+  resolveVariables: (input: { text: string; environment_id?: string | null; collection_id?: string | null }) =>
+    call<VariableResolveOutput>("/api/variables/resolve", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+
+  // ---- Semantic Diff --------------------------------------------------------
+  semanticDiff: (input: SemanticDiffInput) =>
+    call<SemanticDiffOutput>("/api/diff/semantic", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+
+  // ---- Smart Assert (heuristic) ---------------------------------------------
+  smartSuggest: (input: SmartSuggestInput) =>
+    call<SmartSuggestOutput>("/api/ai/suggest-from-response", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
 };
 
 // ---- Assertion types ----------------------------------------------------
@@ -3030,4 +3070,127 @@ export interface ExploreApiResult {
   endpoints: ExploredEndpoint[];
   collection_id: string | null;
   elapsed_ms: number;
+}
+
+// ---- Trace Viewer types ---------------------------------------------------
+
+export interface RunRequestResult {
+  request_id: string;
+  request_name: string;
+  method: string;
+  url: string;
+  status: number | null;
+  elapsed_ms: number;
+  error: string | null;
+  assertion_results: AssertionResult[];
+  assertions_passed: number;
+  assertions_failed: number;
+}
+
+export interface RunCollectionOutput {
+  collection_id: string;
+  collection_name: string;
+  results: RunRequestResult[];
+  total_requests: number;
+  successful_requests: number;
+  failed_requests: number;
+  total_assertions: number;
+  passed_assertions: number;
+  failed_assertions: number;
+  total_elapsed_ms: number;
+}
+
+export interface RunWithTraceOutput {
+  run: RunCollectionOutput;
+  trace_html: string;
+}
+
+// ---- Contract Guard types -------------------------------------------------
+
+export interface ContractGuardViolation {
+  path: string;
+  expected: string;
+  actual: string;
+  message: string;
+}
+
+export interface ContractValidateGuardInput {
+  response_body: string;
+  response_status: number;
+  response_headers?: Record<string, string>;
+  openapi_spec: string;
+  path: string;
+  method: string;
+}
+
+export interface ContractGuardOutput {
+  valid: boolean;
+  violations: ContractGuardViolation[];
+}
+
+export interface PerRequestValidation {
+  request_name: string;
+  method: string;
+  url: string;
+  status: number | null;
+  valid: boolean;
+  violations: ContractGuardViolation[];
+  error: string | null;
+}
+
+export interface ContractCollectionOutput {
+  results: PerRequestValidation[];
+  total: number;
+  valid_count: number;
+  invalid_count: number;
+}
+
+// ---- Variable Inspector types ---------------------------------------------
+
+export interface ResolvedVariableItem {
+  name: string;
+  value: string;
+  source: "global" | "collection" | "environment" | "builtin" | "unresolved";
+  overridden_by: string | null;
+}
+
+export interface VariableResolveOutput {
+  variables: ResolvedVariableItem[];
+  resolved_text: string;
+}
+
+// ---- Semantic Diff types --------------------------------------------------
+
+export interface SemanticDiffChange {
+  path: string;
+  type: "added" | "removed" | "changed";
+  old_value: unknown;
+  new_value: unknown;
+}
+
+export interface SemanticDiffInput {
+  body_a: string;
+  body_b: string;
+  ignore_keys?: string[];
+  ignore_array_order?: boolean;
+}
+
+export interface SemanticDiffOutput {
+  identical: boolean;
+  changes: SemanticDiffChange[];
+}
+
+// ---- Smart Assert types ---------------------------------------------------
+
+export interface SmartSuggestInput {
+  method: string;
+  url: string;
+  status: number;
+  response_body: string;
+  response_headers?: Record<string, string>;
+  response_time_ms?: number | null;
+}
+
+export interface SmartSuggestOutput {
+  assertions: Assertion[];
 }
