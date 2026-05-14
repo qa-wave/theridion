@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "theridion": {
+      "command": "uv",
+      "args": ["--directory", "/path/to/theridion/apps/sidecar", "run", "theridion-mcp"],
+      "env": {
+        "THERIDION_HOME": "~/.theridion"
+      }
+    }
+  }
+}
