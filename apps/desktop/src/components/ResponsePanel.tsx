@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AlertTriangle, CheckCircle2, Code2, Copy, GitCompare, Inbox, Search, Terminal, XCircle } from "lucide-react";
+import { AlertTriangle, ArrowDown, ArrowUp, CheckCircle2, Code2, Copy, GitCompare, Inbox, Minus, Search, Terminal, XCircle } from "lucide-react";
 import type { ExecuteResponse, SchemaValidateOutput, TimingBreakdown } from "../lib/sidecar";
 import { sidecar } from "../lib/sidecar";
 import { CodeEditor } from "./CodeEditor";
@@ -21,6 +21,9 @@ interface Props {
   consoleEntries?: ConsoleEntry[];
 }
 
+/** Keep last 5 response times for sparkline display. */
+const responseTimeHistory: number[] = [];
+
 export function ResponsePanel({ busy, response, error, onDiff, onCodegen, consoleEntries = [] }: Props) {
   const [tab, setTab] = useState<Tab>("body");
   const panelRef = useRef<HTMLDivElement>(null);
@@ -28,6 +31,19 @@ export function ResponsePanel({ busy, response, error, onDiff, onCodegen, consol
   const [cookieSearch, setCookieSearch] = useState("");
   const headerSearchRef = useRef<HTMLInputElement | null>(null);
   const cookieSearchRef = useRef<HTMLInputElement | null>(null);
+  const lastTrackedRef = useRef<string | null>(null);
+
+  // Track response time history for sparkline
+  useEffect(() => {
+    if (response) {
+      const key = `${response.status}-${response.elapsed_ms}-${response.body_size_bytes}`;
+      if (lastTrackedRef.current !== key) {
+        lastTrackedRef.current = key;
+        responseTimeHistory.push(response.elapsed_ms);
+        if (responseTimeHistory.length > 5) responseTimeHistory.shift();
+      }
+    }
+  }, [response]);
 
   // Ctrl+F handler to focus search when response panel is active
   useEffect(() => {
@@ -147,56 +163,85 @@ function StatusRow({ res, onDiff, onCodegen }: { res: ExecuteResponse; onDiff?: 
     warn: "text-amber-300",
     bad: "text-rose-300",
   };
+
+  // Track response time history for sparkline
+  const prevMs = responseTimeHistory.length >= 2 ? responseTimeHistory[responseTimeHistory.length - 2] : null;
+  const timeTrend = prevMs !== null
+    ? res.elapsed_ms > prevMs ? "slower" : res.elapsed_ms < prevMs ? "faster" : "same"
+    : "same";
+
+  // Sparkline bars from history
+  const sparkData = responseTimeHistory.slice(-5);
+  const sparkMax = Math.max(...sparkData, 1);
+
   return (
-    <div className="flex items-stretch gap-2.5 border-b border-glass bg-neutral-950/60 px-4 py-2.5">
+    <div className="grid grid-cols-4 gap-3 border-b border-glass bg-neutral-950/60 px-4 py-2.5">
       {/* Status card */}
       <div className={`stat-card !py-2 !px-4 flex flex-col items-center justify-center ${toneGlow[tone]} ${toneBorder[tone]}`}>
-        <span className={`font-mono text-lg font-bold leading-none ${toneText[tone]}`}>
+        <span className={`metric-value !text-[28px] font-mono ${toneText[tone]}`}>
           {res.status}
         </span>
-        <span className="metric-label !mt-1">
+        <span className="metric-label">
           {res.status_text || statusName(res.status)}
         </span>
       </div>
-      {/* Time card */}
+      {/* Time card with trend + sparkline */}
       <div className="stat-card !py-2 !px-4 flex flex-col items-center justify-center">
-        <span className="font-mono text-lg font-bold leading-none text-neutral-100">
-          {formatMs(res.elapsed_ms)}
-        </span>
-        <span className="metric-label !mt-1">Time</span>
+        <div className="flex items-center gap-1">
+          <span className="metric-value !text-[28px] font-mono text-neutral-100">
+            {formatMs(res.elapsed_ms)}
+          </span>
+          {timeTrend === "faster" && <ArrowDown className="h-3.5 w-3.5 text-emerald-400" />}
+          {timeTrend === "slower" && <ArrowUp className="h-3.5 w-3.5 text-rose-400" />}
+          {timeTrend === "same" && prevMs !== null && <Minus className="h-3 w-3 text-neutral-500" />}
+        </div>
+        <span className="metric-label">Time</span>
+        {sparkData.length > 1 && (
+          <div className="mt-1.5 flex items-end gap-[2px]" title={`Last ${sparkData.length} responses`}>
+            {sparkData.map((v, i) => (
+              <div
+                key={i}
+                className="w-[6px] rounded-sm bg-neutral-600"
+                style={{ height: `${Math.max(3, (v / sparkMax) * 16)}px` }}
+              />
+            ))}
+          </div>
+        )}
       </div>
       {/* Size card */}
       <div className="stat-card !py-2 !px-4 flex flex-col items-center justify-center">
-        <span className="font-mono text-lg font-bold leading-none text-neutral-100">
+        <span className="metric-value !text-[28px] font-mono text-neutral-100">
           {formatBytes(res.body_size_bytes)}
         </span>
-        <span className="metric-label !mt-1">Size</span>
+        <span className="metric-label">Size</span>
       </div>
       {/* Action buttons + URL */}
-      <div className="stat-card !py-2 !px-4 flex flex-1 items-center gap-2 overflow-hidden">
-        {onCodegen && (
-          <button
-            type="button"
-            onClick={onCodegen}
-            className="inline-flex items-center gap-1 rounded-lg border border-glass px-2.5 py-1 text-[10px] text-neutral-500 transition hover:bg-white/[0.06] hover:text-neutral-300"
-            title="Generate code snippet"
-          >
-            <Code2 className="h-3 w-3" />
-            Code
-          </button>
-        )}
-        {onDiff && (
-          <button
-            type="button"
-            onClick={onDiff}
-            className="inline-flex items-center gap-1 rounded-lg border border-glass px-2.5 py-1 text-[10px] text-neutral-500 transition hover:bg-white/[0.06] hover:text-neutral-300"
-            title="Compare with previous response"
-          >
-            <GitCompare className="h-3 w-3" />
-            Diff
-          </button>
-        )}
-        <span className="ml-auto truncate font-mono text-[10px] text-neutral-600">
+      <div className="stat-card !py-2 !px-4 flex flex-col items-center justify-center gap-1.5 overflow-hidden">
+        <div className="flex items-center gap-1.5">
+          {onCodegen && (
+            <button
+              type="button"
+              onClick={onCodegen}
+              className="inline-flex items-center gap-1 rounded-lg border border-glass px-2.5 py-1 text-[10px] text-neutral-500 transition hover:bg-white/[0.06] hover:text-neutral-300"
+              title="Generate code snippet"
+            >
+              <Code2 className="h-3 w-3" />
+              Code
+            </button>
+          )}
+          {onDiff && (
+            <button
+              type="button"
+              onClick={onDiff}
+              className="inline-flex items-center gap-1 rounded-lg border border-glass px-2.5 py-1 text-[10px] text-neutral-500 transition hover:bg-white/[0.06] hover:text-neutral-300"
+              title="Compare with previous response"
+            >
+              <GitCompare className="h-3 w-3" />
+              Diff
+            </button>
+          )}
+        </div>
+        <span className="truncate font-mono text-[10px] text-neutral-600">
           {res.final_url}
         </span>
       </div>
@@ -515,33 +560,79 @@ function SchemaView({ res }: { res: ExecuteResponse }) {
 
 function Empty() {
   return (
-    <div className="flex h-full flex-col items-center justify-center text-center">
-      <div className="mb-4 rounded-full bg-neutral-900/60 p-4">
-        <Inbox className="h-8 w-8 text-neutral-700" />
+    <div className="relative flex h-full flex-col">
+      {/* Ghost skeleton preview of what response will look like */}
+      <div className="pointer-events-none opacity-[0.35]">
+        {/* Ghost status row */}
+        <div className="grid grid-cols-4 gap-3 border-b border-glass bg-neutral-950/60 px-4 py-2.5">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="stat-card !py-3 !px-4 flex flex-col items-center gap-2">
+              <div className="h-7 w-16 rounded bg-neutral-800/40" />
+              <div className="h-3 w-10 rounded bg-neutral-800/30" />
+            </div>
+          ))}
+        </div>
+        {/* Ghost tab bar */}
+        <div className="flex items-center gap-1 border-b border-glass px-2 py-1.5">
+          {[48, 56, 44, 52].map((w, i) => (
+            <div key={i} className="h-7 rounded-lg bg-neutral-800/30" style={{ width: w }} />
+          ))}
+        </div>
+        {/* Ghost code lines */}
+        <div className="space-y-2 px-4 py-4">
+          {[85, 60, 92, 45, 78, 55].map((pct, i) => (
+            <div key={i} className="h-4 rounded bg-neutral-800/25" style={{ width: `${pct}%` }} />
+          ))}
+        </div>
       </div>
-      <p className="text-sm font-medium text-neutral-400">No response yet</p>
-      <p className="mt-2 text-xs text-neutral-600">
-        Hit{" "}
-        <kbd className="rounded-md border border-glass bg-neutral-900/80 px-1.5 py-0.5 font-mono text-[10px] text-neutral-400 shadow-inner-glow">
-          Send
-        </kbd>{" "}
-        or press{" "}
-        <kbd className="rounded-md border border-glass bg-neutral-900/80 px-1.5 py-0.5 font-mono text-[10px] text-neutral-400 shadow-inner-glow">
-          &#x2318;&#x23CE;
-        </kbd>
-      </p>
+      {/* Overlay CTA */}
+      <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+        <div className="mb-4 rounded-full bg-neutral-900/80 p-4">
+          <Inbox className="h-8 w-8 text-neutral-600" />
+        </div>
+        <p className="text-sm font-medium text-neutral-400">No response yet</p>
+        <p className="mt-2 text-xs text-neutral-600">
+          Hit{" "}
+          <kbd className="rounded-md border border-glass bg-neutral-900/80 px-1.5 py-0.5 font-mono text-[10px] text-neutral-400 shadow-inner-glow">
+            Send
+          </kbd>{" "}
+          or press{" "}
+          <kbd className="rounded-md border border-glass bg-neutral-900/80 px-1.5 py-0.5 font-mono text-[10px] text-neutral-400 shadow-inner-glow">
+            &#x2318;&#x23CE;
+          </kbd>
+        </p>
+      </div>
     </div>
   );
 }
 
 function Loading() {
   return (
-    <div className="flex h-full flex-col items-center justify-center text-center text-xs text-neutral-500">
-      <div className="mb-4 h-1 w-40 overflow-hidden rounded-full bg-neutral-900">
-        <div className="h-full w-1/3 animate-[loading_1.4s_ease-in-out_infinite] rounded-full bg-accent-gradient-bar" />
+    <div className="flex h-full flex-col">
+      {/* Skeleton status row (4 cards) */}
+      <div className="grid grid-cols-4 gap-3 border-b border-glass bg-neutral-950/60 px-4 py-2.5">
+        {[1, 2, 3, 4].map((i) => (
+          <div key={i} className="stat-card !py-3 !px-4 flex flex-col items-center gap-2">
+            <div className="skeleton h-7 w-16" />
+            <div className="skeleton h-3 w-10" />
+          </div>
+        ))}
       </div>
-      <span className="tracking-wide">Sending request&hellip;</span>
-      <style>{`@keyframes loading{0%{transform:translateX(-100%)}100%{transform:translateX(400%)}}`}</style>
+      {/* Skeleton tab bar */}
+      <div className="flex items-center gap-1 border-b border-glass px-2 py-1.5">
+        {[48, 56, 44, 52, 48, 44].map((w, i) => (
+          <div key={i} className="skeleton h-7" style={{ width: w }} />
+        ))}
+      </div>
+      {/* Skeleton code lines */}
+      <div className="flex-1 space-y-2 px-4 py-4">
+        {[85, 60, 92, 45, 78, 55, 88, 40].map((pct, i) => (
+          <div key={i} className="skeleton h-4" style={{ width: `${pct}%` }} />
+        ))}
+      </div>
+      <div className="flex items-center justify-center pb-4 text-xs text-neutral-500 tracking-wide">
+        Sending request...
+      </div>
     </div>
   );
 }

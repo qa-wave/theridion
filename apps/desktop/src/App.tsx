@@ -96,6 +96,7 @@ export default function App() {
   const [networkRecording, setNetworkRecording] = useState(true);
   const [networkPreserveLog, setNetworkPreserveLog] = useState(false);
   const [appMode, setAppMode] = useState<AppMode>("requests");
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   // ---- sidecar health polling ---------------------------------------------
   useEffect(() => {
@@ -539,7 +540,7 @@ export default function App() {
   }, [active, activeId, collections, sidecarStatus.state]);
 
   return (
-    <div className={`grid h-full grid-cols-[40px_260px_1fr] ${networkOpen && appMode === "requests" ? "grid-rows-[1fr_300px_auto]" : "grid-rows-[1fr_auto]"} relative bg-neutral-950 bg-mesh-gradient text-neutral-100`}>
+    <div className={`grid h-full ${sidebarCollapsed ? "grid-cols-[40px_64px_1fr]" : "grid-cols-[40px_260px_1fr]"} ${networkOpen && appMode === "requests" ? "grid-rows-[1fr_300px_auto]" : "grid-rows-[1fr_auto]"} relative bg-neutral-950 bg-mesh-gradient text-neutral-100 transition-[grid-template-columns] duration-200 ease-in-out`}>
       {/* Subtle accent radial glow -- top-right corner */}
       <div className="pointer-events-none absolute right-0 top-0 h-[500px] w-[500px] rounded-full bg-[radial-gradient(circle,rgb(var(--accent-500)/0.04)_0%,transparent_70%)]" aria-hidden />
       <div className="row-span-1 overflow-hidden">
@@ -555,6 +556,8 @@ export default function App() {
         <Sidebar
           collections={collections}
           loading={collectionsLoading}
+          collapsed={sidebarCollapsed}
+          onToggleCollapse={() => setSidebarCollapsed((c) => !c)}
           onOpen={openSaved}
           onNewCollection={newCollection}
           onGenerateTests={() => modals.open("testGen")}

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
   ChevronDown,
+  ChevronLeft,
   ChevronRight,
   FolderClosed,
   FolderOpen,
@@ -21,6 +22,8 @@ import { sidecar } from "../lib/sidecar";
 interface Props {
   collections: StoredCollection[];
   loading: boolean;
+  collapsed: boolean;
+  onToggleCollapse: () => void;
   onOpen: (collectionId: string, item: CollectionItem) => void;
   onNewCollection: () => void;
   onGenerateTests: () => void;
@@ -37,6 +40,8 @@ interface Props {
 export function Sidebar({
   collections,
   loading,
+  collapsed,
+  onToggleCollapse,
   onOpen,
   onNewCollection,
   onGenerateTests,
@@ -79,8 +84,37 @@ export function Sidebar({
     }
   }
 
+  /* --- Collapsed (icon-only) sidebar --- */
+  if (collapsed) {
+    return (
+      <aside className="flex h-full w-16 flex-col items-center border-r border-glass bg-neutral-925/90 transition-all duration-200 ease-in-out">
+        <div className="pt-4 pb-3">
+          <span className="text-gradient text-sm font-bold">T</span>
+        </div>
+        <div className="flex-1 overflow-y-auto py-1">
+          {collections.map((c) => (
+            <CollapsedCollectionNode
+              key={c.id}
+              collection={c}
+              onOpen={(item) => onOpen(c.id, item)}
+            />
+          ))}
+        </div>
+        <button
+          type="button"
+          onClick={onToggleCollapse}
+          className="mb-3 flex h-8 w-8 items-center justify-center rounded-lg text-neutral-500 transition hover:bg-neutral-800 hover:text-neutral-200"
+          title="Expand sidebar"
+        >
+          <ChevronRight className="h-4 w-4" />
+        </button>
+      </aside>
+    );
+  }
+
+  /* --- Expanded sidebar --- */
   return (
-    <aside className="flex h-full flex-col border-r border-glass bg-neutral-925/90">
+    <aside className="flex h-full flex-col border-r border-glass bg-neutral-925/90 transition-all duration-200 ease-in-out">
       {/* Branding header */}
       <div className="px-4 pt-4 pb-2">
         <h1 className="text-gradient text-sm font-bold tracking-widest uppercase">Theridion</h1>
@@ -94,7 +128,7 @@ export function Sidebar({
               {favOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
             </button>
             <Star className="h-3 w-3 text-amber-500" />
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500">Favorites</span>
+            <span className="text-[10px] font-semibold uppercase tracking-widest text-neutral-500">Favorites</span>
             <span className="ml-auto text-[10px] text-neutral-600">{favorites.length}</span>
           </div>
           {favOpen && (
@@ -104,7 +138,7 @@ export function Sidebar({
                   key={`${f.collection_id}-${f.request_id}`}
                   type="button"
                   onClick={() => onOpen(f.collection_id, { id: f.request_id, name: f.name, is_folder: false, method: f.method as CollectionItem["method"], url: f.url })}
-                  className="group flex w-full items-center gap-2 rounded px-2 py-1 text-xs text-neutral-300 hover:bg-neutral-800/60"
+                  className="group flex h-9 w-full items-center gap-2 rounded px-2 text-xs text-neutral-300 hover:bg-neutral-800/60"
                 >
                   <Star className="h-2.5 w-2.5 fill-amber-500 text-amber-500" />
                   <span className={`w-9 shrink-0 font-mono text-[10px] font-bold tabular-nums ${HTTP_METHOD_COLOR[f.method as keyof typeof HTTP_METHOD_COLOR] ?? "text-neutral-400"}`}>
@@ -119,7 +153,7 @@ export function Sidebar({
       )}
 
       <div className="flex items-center gap-1 px-3 pt-3 pb-2">
-        <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500">
+        <span className="text-[10px] font-semibold uppercase tracking-widest text-neutral-500">
           Collections
         </span>
         <button
@@ -188,7 +222,67 @@ export function Sidebar({
           ))
         )}
       </div>
+
+      {/* Collapse toggle at bottom */}
+      <div className="border-t border-glass px-3 py-2">
+        <button
+          type="button"
+          onClick={onToggleCollapse}
+          className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-xs text-neutral-500 transition hover:bg-neutral-800 hover:text-neutral-200"
+          title="Collapse sidebar"
+        >
+          <ChevronLeft className="h-4 w-4" />
+          <span>Collapse</span>
+        </button>
+      </div>
     </aside>
+  );
+}
+
+/** Collapsed sidebar: show folder icon + method badges with tooltips. */
+function CollapsedCollectionNode({
+  collection,
+  onOpen,
+}: {
+  collection: StoredCollection;
+  onOpen: (item: CollectionItem) => void;
+}) {
+  function flatRequests(items: CollectionItem[]): CollectionItem[] {
+    const out: CollectionItem[] = [];
+    for (const it of items) {
+      if (it.is_folder) out.push(...flatRequests(it.items ?? []));
+      else out.push(it);
+    }
+    return out;
+  }
+  const requests = flatRequests(collection.items);
+  return (
+    <div className="mb-2 flex flex-col items-center gap-0.5">
+      <div className="group relative flex h-9 w-9 items-center justify-center rounded-lg text-neutral-400 hover:bg-neutral-800/60" title={collection.name}>
+        <FolderClosed className="h-4 w-4" />
+        <span className="pointer-events-none absolute left-full ml-2 hidden whitespace-nowrap rounded-md bg-neutral-800 px-2 py-1 text-xs text-neutral-100 shadow-lg group-hover:block">
+          {collection.name}
+        </span>
+      </div>
+      {requests.slice(0, 6).map((it) => (
+        <button
+          key={it.id}
+          type="button"
+          onClick={() => onOpen(it)}
+          className="group relative flex h-7 w-9 items-center justify-center rounded text-neutral-500 hover:bg-neutral-800/60"
+        >
+          <span className={`font-mono text-[9px] font-bold ${it.method ? HTTP_METHOD_COLOR[it.method] : "text-neutral-400"}`}>
+            {(it.method ?? "GET").slice(0, 3)}
+          </span>
+          <span className="pointer-events-none absolute left-full ml-2 hidden whitespace-nowrap rounded-md bg-neutral-800 px-2 py-1 text-xs text-neutral-100 shadow-lg group-hover:block">
+            {it.name}
+          </span>
+        </button>
+      ))}
+      {requests.length > 6 && (
+        <span className="text-[9px] text-neutral-600">+{requests.length - 6}</span>
+      )}
+    </div>
   );
 }
 

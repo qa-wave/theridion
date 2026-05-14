@@ -36,6 +36,70 @@ interface CommandPaletteProps {
   actions: CommandAction[];
 }
 
+/** Categorize actions into groups for display. */
+const GROUP_MAP: Record<string, string> = {
+  "new-tab": "NAVIGATION",
+  "settings": "NAVIGATION",
+  "import-curl": "NAVIGATION",
+  "import-collection": "NAVIGATION",
+  "open-graphql": "PROTOCOLS",
+  "open-websocket": "PROTOCOLS",
+  "open-grpc": "PROTOCOLS",
+  "open-kafka": "PROTOCOLS",
+  "open-soap": "PROTOCOLS",
+  "swagger-browser": "PROTOCOLS",
+  "codegen": "TOOLS",
+  "open-mock": "TOOLS",
+  "load-test": "TOOLS",
+  "security-scanner": "TOOLS",
+  "agent-explorer": "TOOLS",
+  "jwt-inspector": "TOOLS",
+  "batch-runner": "TOOLS",
+  "monitors": "TOOLS",
+  "manage-envs": "TOOLS",
+  "collection-vars": "TOOLS",
+  "secrets-vault": "TOOLS",
+  "webhooks": "TOOLS",
+  "multi-env": "TOOLS",
+  "flow-editor": "TOOLS",
+  "perf-dashboard": "TOOLS",
+  "service-map": "TOOLS",
+  "proxy-recorder": "TOOLS",
+};
+
+const GROUP_ORDER = ["NAVIGATION", "PROTOCOLS", "TOOLS", "REQUESTS"];
+
+type GroupedAction = {
+  type: "header";
+  label: string;
+} | {
+  type: "action";
+  action: CommandAction;
+  flatIndex: number;
+}
+
+function groupActions(actions: CommandAction[]): GroupedAction[] {
+  const groups: Record<string, CommandAction[]> = {};
+  for (const action of actions) {
+    const group = action.id.startsWith("req-") ? "REQUESTS" : (GROUP_MAP[action.id] ?? "TOOLS");
+    if (!groups[group]) groups[group] = [];
+    groups[group].push(action);
+  }
+
+  const result: GroupedAction[] = [];
+  let flatIndex = 0;
+  for (const groupName of GROUP_ORDER) {
+    const items = groups[groupName];
+    if (!items || items.length === 0) continue;
+    result.push({ type: "header", label: groupName });
+    for (const action of items) {
+      result.push({ type: "action", action, flatIndex });
+      flatIndex++;
+    }
+  }
+  return result;
+}
+
 export function CommandPalette({ open, onClose, actions }: CommandPaletteProps) {
   const [query, setQuery] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
@@ -46,6 +110,12 @@ export function CommandPalette({ open, onClose, actions }: CommandPaletteProps) 
     const q = query.toLowerCase();
     return actions.filter((a) => a.label.toLowerCase().includes(q));
   }, [actions, query]);
+
+  const grouped = useMemo(() => groupActions(filtered), [filtered]);
+  const flatActions = useMemo(() =>
+    grouped.filter((g): g is GroupedAction & { type: "action" } => g.type === "action"),
+    [grouped],
+  );
 
   useEffect(() => {
     if (open) {
@@ -64,20 +134,20 @@ export function CommandPalette({ open, onClose, actions }: CommandPaletteProps) 
     (e: React.KeyboardEvent) => {
       if (e.key === "ArrowDown") {
         e.preventDefault();
-        setSelectedIndex((i) => Math.min(i + 1, filtered.length - 1));
+        setSelectedIndex((i) => Math.min(i + 1, flatActions.length - 1));
       } else if (e.key === "ArrowUp") {
         e.preventDefault();
         setSelectedIndex((i) => Math.max(i - 1, 0));
-      } else if (e.key === "Enter" && filtered[selectedIndex]) {
+      } else if (e.key === "Enter" && flatActions[selectedIndex]) {
         e.preventDefault();
-        filtered[selectedIndex].onSelect();
+        flatActions[selectedIndex].action.onSelect();
         onClose();
       } else if (e.key === "Escape") {
         e.preventDefault();
         onClose();
       }
     },
-    [filtered, selectedIndex, onClose],
+    [flatActions, selectedIndex, onClose],
   );
 
   if (!open) return null;
@@ -112,40 +182,52 @@ export function CommandPalette({ open, onClose, actions }: CommandPaletteProps) 
           </kbd>
         </div>
 
-        {/* Results */}
-        <div className="max-h-[300px] overflow-y-auto py-1">
+        {/* Results — grouped with section headers */}
+        <div className="max-h-[360px] overflow-y-auto py-1">
           {filtered.length === 0 ? (
             <div className="px-4 py-6 text-center text-sm text-neutral-500">
               No matching commands
             </div>
           ) : (
-            filtered.map((action, idx) => (
-              <button
-                key={action.id}
-                className={`flex w-full items-center gap-3 px-4 py-2 text-left text-sm ${
-                  idx === selectedIndex
-                    ? "bg-emerald-600/20 text-emerald-400"
-                    : "text-neutral-300 hover:bg-neutral-800"
-                }`}
-                onClick={() => {
-                  action.onSelect();
-                  onClose();
-                }}
-                onMouseEnter={() => setSelectedIndex(idx)}
-              >
-                {action.icon && (
-                  <span className="flex-shrink-0 text-neutral-400">
-                    {action.icon}
-                  </span>
-                )}
-                <span className="flex-1">{action.label}</span>
-                {action.shortcut && (
-                  <kbd className="rounded border border-neutral-600 px-1.5 py-0.5 text-[10px] text-neutral-500">
-                    {action.shortcut}
-                  </kbd>
-                )}
-              </button>
-            ))
+            grouped.map((entry, i) => {
+              if (entry.type === "header") {
+                return (
+                  <div key={`hdr-${entry.label}`} className={`${i > 0 ? "mt-1 border-t border-neutral-800 pt-1" : ""}`}>
+                    <div className="px-4 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-neutral-600">
+                      {entry.label}
+                    </div>
+                  </div>
+                );
+              }
+              const { action, flatIndex } = entry;
+              return (
+                <button
+                  key={action.id}
+                  className={`flex w-full items-center gap-3 px-4 py-2 text-left text-sm ${
+                    flatIndex === selectedIndex
+                      ? "bg-emerald-600/20 text-emerald-400"
+                      : "text-neutral-300 hover:bg-neutral-800"
+                  }`}
+                  onClick={() => {
+                    action.onSelect();
+                    onClose();
+                  }}
+                  onMouseEnter={() => setSelectedIndex(flatIndex)}
+                >
+                  {action.icon && (
+                    <span className="flex-shrink-0 text-neutral-400">
+                      {action.icon}
+                    </span>
+                  )}
+                  <span className="flex-1">{action.label}</span>
+                  {action.shortcut && (
+                    <kbd className="rounded border border-neutral-600 px-1.5 py-0.5 text-[10px] text-neutral-500">
+                      {action.shortcut}
+                    </kbd>
+                  )}
+                </button>
+              );
+            })
           )}
         </div>
       </div>

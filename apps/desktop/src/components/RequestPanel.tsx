@@ -64,29 +64,33 @@ export function RequestPanel({
       <div className="flex items-center gap-1 border-b border-glass px-2 py-1">
         {TABS.map((t) => {
           const active = tab === t.id;
-          const count = t.id === "headers" ? countHeaders(headersRaw) : undefined;
+          const count =
+            t.id === "headers" ? countHeaders(headersRaw)
+            : t.id === "params" ? countParams(url)
+            : t.id === "tests" ? assertions.length
+            : undefined;
           const badge = t.id === "auth" && auth.type !== "none";
-          const testCount = t.id === "tests" ? assertions.length : undefined;
           return (
             <button
               key={t.id}
               type="button"
               onClick={() => !t.comingSoon && setTab(t.id)}
               disabled={t.comingSoon}
-              className={`relative rounded-lg px-3 py-1.5 text-xs font-medium transition-all duration-150 ${
+              className={`relative h-9 rounded-lg px-4 text-xs font-medium transition-all duration-150 ${
                 t.comingSoon
                   ? "cursor-not-allowed text-neutral-600"
                   : active
-                  ? "bg-white/[0.08] text-neutral-100 shadow-[0_1px_3px_rgba(0,0,0,0.2)]"
+                  ? "bg-white/[0.08] text-neutral-100 shadow-sm"
                   : "text-neutral-500 hover:text-neutral-300 hover:bg-white/[0.03]"
               }`}
             >
               {t.label}
               {typeof count === "number" && count > 0 && (
-                <span className="ml-1 text-neutral-500">{count}</span>
-              )}
-              {typeof testCount === "number" && testCount > 0 && (
-                <span className="ml-1 text-neutral-500">{testCount}</span>
+                <span className={`ml-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-bold ${
+                  active ? "bg-white/[0.1] text-neutral-300" : "bg-neutral-800/80 text-neutral-500"
+                }`}>
+                  {count}
+                </span>
               )}
               {badge && (
                 <span className="ml-1 inline-block h-1.5 w-1.5 rounded-full bg-cobweb-500" />
@@ -1004,6 +1008,12 @@ function countHeaders(raw: string): number {
   return raw
     .split(/\r?\n/)
     .filter((l) => l.trim() && !l.trim().startsWith("#") && l.includes(":")).length;
+}
+
+function countParams(url: string): number {
+  const idx = url.indexOf("?");
+  if (idx === -1) return 0;
+  return url.slice(idx + 1).split("&").filter(Boolean).length;
 }
 
 function parseQueryParams(url: string): {
