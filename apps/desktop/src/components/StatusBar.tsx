@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Activity, Settings2 } from "lucide-react";
 import type { HealthResponse } from "../lib/sidecar";
 import { applyTheme, loadTheme } from "../state/theme";
@@ -30,10 +30,29 @@ export function StatusBar({ sidecarStatus, appVersion, onOpenSettings, requestCo
   // Apply saved theme on mount.
   useEffect(() => { applyTheme(loadTheme()); }, []);
 
+  // Session duration tracker
+  const startRef = useRef(Date.now());
+  const [sessionDuration, setSessionDuration] = useState("0m");
+  useEffect(() => {
+    const id = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - startRef.current) / 1000);
+      setSessionDuration(formatUptime(elapsed));
+    }, 30_000);
+    return () => clearInterval(id);
+  }, []);
+
+  // Derive pass/fail counts from requestCount and lastStatus
+  const passedCount = requestCount > 0 && lastStatus !== null && lastStatus < 400
+    ? requestCount - (lastStatus >= 400 ? 1 : 0)
+    : requestCount;
+  const failedCount = requestCount - passedCount;
+
   return (
-    <footer className="glass relative flex shrink-0 items-center gap-4 border-t border-glass px-4 py-1.5 text-[11px] tracking-wide">
+    <footer className="glass noise-overlay relative flex shrink-0 items-center gap-1 border-t border-glass px-2 py-1.5 text-[11px] tracking-wide">
       <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cobweb-500/20 to-transparent" />
-      <span className="inline-flex items-center gap-2" title={title}>
+
+      {/* Sidecar status + session uptime */}
+      <div className="stat-card !rounded-lg !px-2.5 !py-1 flex items-center gap-2">
         <span className="relative flex h-2 w-2">
           {ok && (
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-40" />
@@ -48,17 +67,30 @@ export function StatusBar({ sidecarStatus, appVersion, onOpenSettings, requestCo
             }`}
           />
         </span>
-        <span className={ok ? "text-neutral-400" : "text-neutral-500"}>{label}</span>
+        <span className={ok ? "text-neutral-300" : "text-neutral-500"} title={title}>{label}</span>
         {ok && (
           <span className="text-neutral-600">
-            &middot; uptime {formatUptime(sidecarStatus.info.uptime_seconds)}
+            &middot; {formatUptime(sidecarStatus.info.uptime_seconds)}
           </span>
         )}
-      </span>
+        <span className="text-neutral-600">&middot; {sessionDuration}</span>
+      </div>
 
+      {/* Request stats */}
       {requestCount > 0 && (
-        <span className="inline-flex items-center gap-2 text-neutral-500">
-          <span className="font-mono">{requestCount} request{requestCount !== 1 ? "s" : ""}</span>
+        <div className="stat-card !rounded-lg !px-2.5 !py-1 flex items-center gap-2">
+          <span className="font-mono font-bold text-neutral-200">{requestCount}</span>
+          <span className="text-neutral-500">req</span>
+          <span className="text-neutral-700">&middot;</span>
+          <span className="font-mono font-bold text-emerald-400">{passedCount}</span>
+          <span className="text-emerald-500/60">&#10003;</span>
+          {failedCount > 0 && (
+            <>
+              <span className="text-neutral-700">&middot;</span>
+              <span className="font-mono font-bold text-rose-400">{failedCount}</span>
+              <span className="text-rose-500/60">&#10007;</span>
+            </>
+          )}
           {lastStatus !== null && (
             <span
               className={`inline-flex items-center rounded-md border px-1.5 py-0.5 font-mono text-[10px] font-bold ${
@@ -74,20 +106,21 @@ export function StatusBar({ sidecarStatus, appVersion, onOpenSettings, requestCo
               {lastStatus}
             </span>
           )}
-        </span>
+        </div>
       )}
 
-      <span className="ml-auto flex items-center gap-2">
+      {/* Network toggle */}
+      <span className="ml-auto flex items-center gap-1.5">
         {onToggleNetwork && (
           <button
             type="button"
             onClick={onToggleNetwork}
-            className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 transition ${
+            className={`stat-card !rounded-lg !px-2.5 !py-1 inline-flex items-center gap-1.5 transition ${
               networkOpen
-                ? "bg-cobweb-500/20 text-cobweb-400"
-                : "text-neutral-500 hover:bg-white/[0.05] hover:text-neutral-300"
+                ? "!bg-cobweb-500/15 !border-cobweb-500/20 text-cobweb-400"
+                : "text-neutral-500 hover:!bg-white/[0.05] hover:text-neutral-300"
             }`}
-            title="Network Console (⌘⇧N)"
+            title="Network Console"
           >
             <Activity className="h-3 w-3" />
             {networkEntryCount > 0 && (
@@ -100,13 +133,13 @@ export function StatusBar({ sidecarStatus, appVersion, onOpenSettings, requestCo
         <button
           type="button"
           onClick={onOpenSettings}
-          className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-neutral-500 transition hover:bg-white/[0.05] hover:text-neutral-300"
-          title="Settings (⌘,)"
+          className="stat-card !rounded-lg !px-2 !py-1 inline-flex items-center text-neutral-500 transition hover:!bg-white/[0.05] hover:text-neutral-300"
+          title="Settings"
         >
           <Settings2 className="h-3 w-3" />
         </button>
         <span className="font-mono text-[10px] text-neutral-600">
-          Theridion v{appVersion}
+          v{appVersion}
         </span>
       </span>
     </footer>

@@ -44,6 +44,15 @@ export default {
           "monospace",
         ],
       },
+      borderRadius: {
+        'xl': '12px',
+        '2xl': '16px',
+        '3xl': '20px',
+      },
+      backdropBlur: {
+        'xl': '24px',
+        '2xl': '40px',
+      },
       boxShadow: {
         glow: "0 0 20px -4px rgb(var(--accent-glow) / 0.25)",
         "glow-sm": "0 0 10px -2px rgb(var(--accent-glow) / 0.2)",

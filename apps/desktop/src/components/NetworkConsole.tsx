@@ -308,27 +308,27 @@ export function NetworkConsole({
                       : "border-l-2 border-transparent hover:bg-neutral-900/60"
                   } border-b border-b-glass/40`}
                 >
-                  <span className={`w-16 shrink-0 px-2 py-1.5 font-mono font-bold ${statusColor(entry.status)}`}>
+                  <span className={`w-16 shrink-0 px-2 py-2.5 font-mono font-bold ${statusColor(entry.status)}`}>
                     {entry.status}
                   </span>
-                  <span className="w-16 shrink-0 px-2 py-1.5 font-mono text-neutral-300">
+                  <span className="w-16 shrink-0 px-2 py-2.5 font-mono text-neutral-300">
                     {entry.method}
                   </span>
-                  <span className="min-w-0 flex-1 truncate px-2 py-1.5 font-mono text-neutral-400" title={entry.url}>
+                  <span className="min-w-0 flex-1 truncate px-2 py-2.5 font-mono text-neutral-400" title={entry.url}>
                     {entry.url}
                   </span>
-                  <span className="w-16 shrink-0 px-2 py-1.5">
+                  <span className="w-16 shrink-0 px-2 py-2.5">
                     <span className={`inline-flex rounded border px-1 py-0.5 text-[9px] font-bold ${typeBadgeClass(entry.type)}`}>
                       {typeLabel(entry.type)}
                     </span>
                   </span>
-                  <span className="w-20 shrink-0 px-2 py-1.5 text-right font-mono text-neutral-400">
+                  <span className="w-20 shrink-0 px-2 py-2.5 text-right font-mono text-neutral-400">
                     {formatBytes(entry.size)}
                   </span>
-                  <span className="w-20 shrink-0 px-2 py-1.5 text-right font-mono text-neutral-300">
+                  <span className="w-20 shrink-0 px-2 py-2.5 text-right font-mono text-neutral-300">
                     {formatMs(entry.elapsed_ms)}
                   </span>
-                  <span className="w-24 shrink-0 px-2 py-1.5">
+                  <span className="w-24 shrink-0 px-2 py-2.5">
                     <WaterfallBar entry={entry} maxElapsed={maxElapsed} />
                   </span>
                 </button>
@@ -393,33 +393,50 @@ function SortableHeader({
 // Waterfall bar
 // ---------------------------------------------------------------------------
 
+const WATERFALL_PHASES = [
+  { key: "dns_ms", label: "DNS", gradient: "from-cyan-400 to-cyan-500" },
+  { key: "connect_ms", label: "Connect", gradient: "from-emerald-400 to-green-500" },
+  { key: "tls_ms", label: "TLS", gradient: "from-amber-400 to-orange-500" },
+  { key: "ttfb_ms", label: "TTFB", gradient: "from-purple-400 to-violet-500" },
+  { key: "download_ms", label: "Download", gradient: "from-blue-400 to-cobweb-500" },
+] as const;
+
 function WaterfallBar({ entry, maxElapsed }: { entry: NetworkEntry; maxElapsed: number }) {
   const pct = Math.max(3, (entry.elapsed_ms / maxElapsed) * 100);
 
   if (entry.timing) {
     const total = entry.timing.dns_ms + entry.timing.connect_ms + entry.timing.tls_ms + entry.timing.ttfb_ms + entry.timing.download_ms || 1;
-    const segments = [
-      { ms: entry.timing.dns_ms, color: "bg-cyan-400" },
-      { ms: entry.timing.connect_ms, color: "bg-orange-400" },
-      { ms: entry.timing.tls_ms, color: "bg-violet-400" },
-      { ms: entry.timing.ttfb_ms, color: "bg-emerald-400" },
-      { ms: entry.timing.download_ms, color: "bg-cobweb-400" },
-    ];
+    const tooltipParts = WATERFALL_PHASES
+      .filter((p) => (entry.timing?.[p.key as keyof typeof entry.timing] ?? 0) > 0)
+      .map((p) => `${p.label}: ${formatMs(entry.timing![p.key as keyof typeof entry.timing] as number)}`)
+      .join(" | ");
     return (
-      <div className="flex h-2 w-full overflow-hidden rounded-full bg-neutral-800" style={{ width: `${pct}%` }}>
-        {segments.map((seg, i) =>
-          seg.ms > 0 ? (
-            <div key={i} className={`h-full ${seg.color}`} style={{ width: `${(seg.ms / total) * 100}%` }} />
-          ) : null,
-        )}
+      <div
+        className="group relative flex h-2.5 w-full overflow-hidden rounded-full bg-neutral-800"
+        style={{ width: `${pct}%` }}
+        title={tooltipParts}
+      >
+        {WATERFALL_PHASES.map((phase, i) => {
+          const val = entry.timing![phase.key as keyof typeof entry.timing] as number ?? 0;
+          if (val <= 0) return null;
+          return (
+            <div
+              key={i}
+              className={`h-full bg-gradient-to-r ${phase.gradient} transition-all duration-200 group-hover:brightness-110`}
+              style={{ width: `${(val / total) * 100}%` }}
+            />
+          );
+        })}
       </div>
     );
   }
 
-  const barColor = entry.status >= 400 ? "bg-rose-500/60" : "bg-cobweb-500/60";
+  const barGradient = entry.status >= 400
+    ? "from-rose-500/70 to-rose-400/50"
+    : "from-cobweb-500/70 to-cobweb-400/50";
   return (
-    <div className="h-2 w-full overflow-hidden rounded-full bg-neutral-800">
-      <div className={`h-full rounded-full ${barColor}`} style={{ width: `${pct}%` }} />
+    <div className="h-2.5 w-full overflow-hidden rounded-full bg-neutral-800" title={formatMs(entry.elapsed_ms)}>
+      <div className={`h-full rounded-full bg-gradient-to-r ${barGradient}`} style={{ width: `${pct}%` }} />
     </div>
   );
 }

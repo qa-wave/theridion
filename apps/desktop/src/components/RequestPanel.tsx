@@ -61,7 +61,7 @@ export function RequestPanel({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex items-center gap-px border-b border-glass px-2">
+      <div className="flex items-center gap-1 border-b border-glass px-2 py-1">
         {TABS.map((t) => {
           const active = tab === t.id;
           const count = t.id === "headers" ? countHeaders(headersRaw) : undefined;
@@ -73,12 +73,12 @@ export function RequestPanel({
               type="button"
               onClick={() => !t.comingSoon && setTab(t.id)}
               disabled={t.comingSoon}
-              className={`relative px-3 py-2 text-xs font-medium transition ${
+              className={`relative rounded-lg px-3 py-1.5 text-xs font-medium transition-all duration-150 ${
                 t.comingSoon
                   ? "cursor-not-allowed text-neutral-600"
                   : active
-                  ? "text-neutral-100"
-                  : "text-neutral-400 hover:text-neutral-200"
+                  ? "bg-white/[0.08] text-neutral-100 shadow-[0_1px_3px_rgba(0,0,0,0.2)]"
+                  : "text-neutral-500 hover:text-neutral-300 hover:bg-white/[0.03]"
               }`}
             >
               {t.label}
@@ -90,9 +90,6 @@ export function RequestPanel({
               )}
               {badge && (
                 <span className="ml-1 inline-block h-1.5 w-1.5 rounded-full bg-cobweb-500" />
-              )}
-              {active && (
-                <span className="absolute inset-x-2 bottom-0 h-0.5 rounded-full bg-accent-gradient-bar" aria-hidden />
               )}
             </button>
           );

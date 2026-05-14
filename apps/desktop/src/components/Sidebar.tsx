@@ -81,6 +81,11 @@ export function Sidebar({
 
   return (
     <aside className="flex h-full flex-col border-r border-glass bg-neutral-925/90">
+      {/* Branding header */}
+      <div className="px-4 pt-4 pb-2">
+        <h1 className="text-gradient text-sm font-bold tracking-widest uppercase">Theridion</h1>
+      </div>
+
       {/* Favorites section */}
       {favorites.length > 0 && (
         <div className="border-b border-glass">
@@ -189,21 +194,24 @@ export function Sidebar({
 
 function EmptyState({ onNewCollection }: { onNewCollection: () => void }) {
   return (
-    <div className="mx-2 mt-6 rounded-lg border border-dashed border-neutral-800/60 bg-neutral-900/20 px-4 py-8 text-center">
-      <div className="mx-auto mb-3 w-fit rounded-full bg-neutral-800/40 p-3">
-        <FolderClosed className="h-5 w-5 text-neutral-600" />
+    <div className="mx-2 mt-6 rounded-xl border border-dashed border-neutral-800/60 bg-neutral-900/20 px-5 py-10 text-center">
+      <div className="mx-auto mb-4 w-fit rounded-2xl bg-neutral-800/30 p-5">
+        <FolderClosed className="h-8 w-8 text-neutral-600" />
       </div>
-      <p className="text-xs font-medium text-neutral-400">No collections yet</p>
-      <p className="mt-1.5 text-[11px] text-neutral-600">
-        Save a request with{" "}
-        <kbd className="rounded border border-neutral-800 bg-neutral-900/80 px-1 py-0.5 font-mono text-[10px] shadow-inner-glow">
+      <p className="text-sm font-medium text-neutral-300">No collections yet</p>
+      <p className="mx-auto mt-2 max-w-[200px] text-xs leading-relaxed text-neutral-600">
+        Create your first collection to organize and save API requests.
+      </p>
+      <p className="mt-3 text-[11px] text-neutral-600">
+        Or save a request with{" "}
+        <kbd className="rounded-md border border-neutral-800 bg-neutral-900/80 px-1.5 py-0.5 font-mono text-[10px] shadow-inner-glow">
           &#x2318;S
         </kbd>
       </p>
       <button
         type="button"
         onClick={onNewCollection}
-        className="mt-3 rounded-md bg-cobweb-600/20 px-3 py-1.5 text-xs font-medium text-cobweb-400 transition hover:bg-cobweb-600/30"
+        className="mt-4 rounded-lg bg-accent-gradient px-4 py-2 text-xs font-semibold text-white shadow-glow-sm transition hover:shadow-glow"
       >
         + New collection
       </button>
@@ -282,8 +290,10 @@ function CollectionNode({
 
   if (filter && visibleItems.length === 0) return null;
 
+  const itemCount = countRequests(collection.items);
+
   return (
-    <div className="select-none">
+    <div className={`select-none ${open ? "border-l-2 border-cobweb-500/30" : "border-l-2 border-transparent"} ml-1 transition-colors`}>
       <div className="group flex items-center gap-1 rounded px-2 py-1 hover:bg-neutral-800/60">
         <button
           type="button"
@@ -312,6 +322,11 @@ function CollectionNode({
           >
             {collection.name}
           </button>
+        )}
+        {itemCount > 0 && !renaming && (
+          <span className="rounded-full bg-neutral-800/80 px-1.5 py-0.5 text-[9px] font-bold text-neutral-500">
+            {itemCount}
+          </span>
         )}
         <button
           type="button"
@@ -628,6 +643,19 @@ function RequestRow({
       </button>
     </div>
   );
+}
+
+/** Count non-folder requests in a tree recursively. */
+function countRequests(items: CollectionItem[]): number {
+  let count = 0;
+  for (const it of items) {
+    if (it.is_folder) {
+      count += countRequests(it.items ?? []);
+    } else {
+      count += 1;
+    }
+  }
+  return count;
 }
 
 /** Filter the tree, keeping any branch where some descendant matches. */

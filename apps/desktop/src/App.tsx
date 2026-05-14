@@ -539,7 +539,9 @@ export default function App() {
   }, [active, activeId, collections, sidecarStatus.state]);
 
   return (
-    <div className={`grid h-full grid-cols-[40px_260px_1fr] ${networkOpen && appMode === "requests" ? "grid-rows-[1fr_300px_auto]" : "grid-rows-[1fr_auto]"} bg-neutral-950 bg-mesh-gradient text-neutral-100`}>
+    <div className={`grid h-full grid-cols-[40px_260px_1fr] ${networkOpen && appMode === "requests" ? "grid-rows-[1fr_300px_auto]" : "grid-rows-[1fr_auto]"} relative bg-neutral-950 bg-mesh-gradient text-neutral-100`}>
+      {/* Subtle accent radial glow -- top-right corner */}
+      <div className="pointer-events-none absolute right-0 top-0 h-[500px] w-[500px] rounded-full bg-[radial-gradient(circle,rgb(var(--accent-500)/0.04)_0%,transparent_70%)]" aria-hidden />
       <div className="row-span-1 overflow-hidden">
         <ActivityBar
           mode={appMode}

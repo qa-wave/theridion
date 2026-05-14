@@ -41,12 +41,12 @@ export function UrlBar({
   return (
     <div className="flex items-stretch gap-2.5 border-b border-glass bg-neutral-950/80 px-4 py-3">
       {/* Method + URL input group */}
-      <div className="flex flex-1 items-stretch overflow-hidden rounded-lg border border-neutral-800/80 bg-neutral-900/60 shadow-inner-glow transition-all duration-200 focus-within:border-cobweb-500/40 focus-within:shadow-glow-sm">
+      <div className="flex flex-1 items-stretch overflow-hidden rounded-xl border border-neutral-800/80 bg-neutral-900/60 shadow-[inset_0_1px_3px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.03)] transition-all duration-200 focus-within:border-cobweb-500/40 focus-within:shadow-glow-sm">
         <div className="relative">
           <select
             value={method}
             onChange={(e) => onMethodChange(e.target.value as Method)}
-            className={`appearance-none border-r border-neutral-800/60 bg-transparent py-2 pl-3.5 pr-8 font-mono text-xs font-bold tracking-wide focus:outline-none ${HTTP_METHOD_COLOR[method]}`}
+            className={`appearance-none bg-transparent py-2.5 pl-3.5 pr-8 font-mono text-xs font-bold tracking-wide focus:outline-none ${HTTP_METHOD_COLOR[method]}`}
           >
             {METHODS.map((m) => (
               <option key={m} value={m} className="bg-neutral-900">
@@ -58,12 +58,13 @@ export function UrlBar({
             &#x25BE;
           </span>
         </div>
+        <div className="my-1.5 w-px bg-neutral-700/40" />
         <input
           value={url}
           onChange={(e) => onUrlChange(e.target.value)}
           onKeyDown={onKeyDown}
           placeholder="https://api.example.com/v1/resource"
-          className="flex-1 bg-transparent px-3 py-2 font-mono text-[13px] text-neutral-100 placeholder-neutral-600 focus:outline-none"
+          className="flex-1 bg-transparent px-3 py-2.5 font-mono text-[13px] text-neutral-100 placeholder-neutral-600 focus:outline-none"
           autoComplete="off"
           spellCheck={false}
         />
@@ -120,9 +121,9 @@ export function UrlBar({
         type="button"
         onClick={onSend}
         disabled={!canSend}
-        className={`inline-flex items-center gap-2 rounded-lg px-5 py-1.5 text-sm font-semibold tracking-wide text-white transition-all duration-200 disabled:cursor-not-allowed disabled:bg-neutral-800 disabled:text-neutral-500 disabled:shadow-none ${
+        className={`inline-flex items-center gap-2 rounded-xl px-6 py-2.5 text-sm font-semibold tracking-wide text-white transition-all duration-200 disabled:cursor-not-allowed disabled:bg-neutral-800 disabled:text-neutral-500 disabled:shadow-none ${
           canSend
-            ? "bg-accent-gradient shadow-glow-emerald hover:shadow-glow active:scale-[0.97]"
+            ? "bg-accent-gradient shadow-glow-emerald hover:shadow-glow hover:scale-[1.03] active:scale-[0.97]"
             : ""
         }`}
       >

@@ -54,7 +54,7 @@ export function ResponsePanel({ busy, response, error, onDiff, onCodegen, consol
   return (
     <div ref={panelRef} className="flex h-full min-h-0 flex-col">
       <StatusRow res={response} onDiff={onDiff} onCodegen={onCodegen} />
-      <div className="flex items-center gap-px border-b border-glass px-2">
+      <div className="flex items-center gap-1 border-b border-glass px-2 py-1">
         <TabButton active={tab === "body"} onClick={() => setTab("body")}>Body</TabButton>
         <TabButton active={tab === "headers"} onClick={() => setTab("headers")}>
           Headers <span className="ml-1 text-neutral-500">{Object.keys(response.headers).length}</span>
@@ -116,68 +116,91 @@ function TabButton({
     <button
       type="button"
       onClick={onClick}
-      className={`relative px-3 py-2 text-xs font-medium transition ${
-        active ? "text-neutral-100" : "text-neutral-400 hover:text-neutral-200"
+      className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all duration-150 ${
+        active
+          ? "bg-white/[0.08] text-neutral-100 shadow-[0_1px_3px_rgba(0,0,0,0.2)]"
+          : "text-neutral-500 hover:text-neutral-300 hover:bg-white/[0.03]"
       }`}
     >
       {children}
-      {active && (
-        <span className="absolute inset-x-2 bottom-0 h-0.5 rounded-full bg-accent-gradient-bar" aria-hidden />
-      )}
     </button>
   );
 }
 
 function StatusRow({ res, onDiff, onCodegen }: { res: ExecuteResponse; onDiff?: () => void; onCodegen?: () => void }) {
   const tone = statusTone(res.status);
-  const toneStyles = {
-    ok: "border-emerald-600/30 bg-emerald-500/10 text-emerald-300 shadow-[0_0_12px_-4px_rgba(52,211,153,0.3)]",
-    info: "border-cobweb-600/30 bg-cobweb-500/10 text-cobweb-300 shadow-[0_0_12px_-4px_rgba(6,182,212,0.3)]",
-    warn: "border-amber-600/30 bg-amber-500/10 text-amber-300 shadow-[0_0_12px_-4px_rgba(245,158,11,0.3)]",
-    bad: "border-rose-600/30 bg-rose-500/10 text-rose-300 shadow-[0_0_12px_-4px_rgba(244,63,94,0.3)]",
+  const toneGlow = {
+    ok: "shadow-[0_0_16px_-4px_rgba(52,211,153,0.35)]",
+    info: "shadow-[0_0_16px_-4px_rgba(6,182,212,0.35)]",
+    warn: "shadow-[0_0_16px_-4px_rgba(245,158,11,0.35)]",
+    bad: "shadow-[0_0_16px_-4px_rgba(244,63,94,0.35)]",
+  };
+  const toneBorder = {
+    ok: "border-emerald-500/20",
+    info: "border-cobweb-500/20",
+    warn: "border-amber-500/20",
+    bad: "border-rose-500/20",
+  };
+  const toneText = {
+    ok: "text-emerald-300",
+    info: "text-cobweb-300",
+    warn: "text-amber-300",
+    bad: "text-rose-300",
   };
   return (
-    <div className="flex items-center gap-3 border-b border-glass bg-neutral-950/60 px-4 py-2.5 text-xs">
-      <span className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 font-mono text-[11px] font-bold tracking-wide ${toneStyles[tone]}`}>
-        {res.status} {res.status_text || statusName(res.status)}
-      </span>
-      <Stat label="Time" value={formatMs(res.elapsed_ms)} />
-      <Stat label="Size" value={formatBytes(res.body_size_bytes)} />
-      {onCodegen && (
-        <button
-          type="button"
-          onClick={onCodegen}
-          className="inline-flex items-center gap-1 rounded-md border border-glass px-2 py-0.5 text-[10px] text-neutral-500 transition hover:bg-white/[0.04] hover:text-neutral-300"
-          title="Generate code snippet"
-        >
-          <Code2 className="h-3 w-3" />
-          Code
-        </button>
-      )}
-      {onDiff && (
-        <button
-          type="button"
-          onClick={onDiff}
-          className="inline-flex items-center gap-1 rounded-md border border-glass px-2 py-0.5 text-[10px] text-neutral-500 transition hover:bg-white/[0.04] hover:text-neutral-300"
-          title="Compare with previous response"
-        >
-          <GitCompare className="h-3 w-3" />
-          Diff
-        </button>
-      )}
-      <span className="ml-auto truncate font-mono text-[10px] text-neutral-600">
-        {res.final_url}
-      </span>
+    <div className="flex items-stretch gap-2.5 border-b border-glass bg-neutral-950/60 px-4 py-2.5">
+      {/* Status card */}
+      <div className={`stat-card !py-2 !px-4 flex flex-col items-center justify-center ${toneGlow[tone]} ${toneBorder[tone]}`}>
+        <span className={`font-mono text-lg font-bold leading-none ${toneText[tone]}`}>
+          {res.status}
+        </span>
+        <span className="metric-label !mt-1">
+          {res.status_text || statusName(res.status)}
+        </span>
+      </div>
+      {/* Time card */}
+      <div className="stat-card !py-2 !px-4 flex flex-col items-center justify-center">
+        <span className="font-mono text-lg font-bold leading-none text-neutral-100">
+          {formatMs(res.elapsed_ms)}
+        </span>
+        <span className="metric-label !mt-1">Time</span>
+      </div>
+      {/* Size card */}
+      <div className="stat-card !py-2 !px-4 flex flex-col items-center justify-center">
+        <span className="font-mono text-lg font-bold leading-none text-neutral-100">
+          {formatBytes(res.body_size_bytes)}
+        </span>
+        <span className="metric-label !mt-1">Size</span>
+      </div>
+      {/* Action buttons + URL */}
+      <div className="stat-card !py-2 !px-4 flex flex-1 items-center gap-2 overflow-hidden">
+        {onCodegen && (
+          <button
+            type="button"
+            onClick={onCodegen}
+            className="inline-flex items-center gap-1 rounded-lg border border-glass px-2.5 py-1 text-[10px] text-neutral-500 transition hover:bg-white/[0.06] hover:text-neutral-300"
+            title="Generate code snippet"
+          >
+            <Code2 className="h-3 w-3" />
+            Code
+          </button>
+        )}
+        {onDiff && (
+          <button
+            type="button"
+            onClick={onDiff}
+            className="inline-flex items-center gap-1 rounded-lg border border-glass px-2.5 py-1 text-[10px] text-neutral-500 transition hover:bg-white/[0.06] hover:text-neutral-300"
+            title="Compare with previous response"
+          >
+            <GitCompare className="h-3 w-3" />
+            Diff
+          </button>
+        )}
+        <span className="ml-auto truncate font-mono text-[10px] text-neutral-600">
+          {res.final_url}
+        </span>
+      </div>
     </div>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <span className="inline-flex items-baseline gap-1.5">
-      <span className="text-neutral-500">{label}</span>
-      <span className="font-mono text-neutral-200">{value}</span>
-    </span>
   );
 }
 
