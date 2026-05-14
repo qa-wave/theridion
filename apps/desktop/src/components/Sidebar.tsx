@@ -8,6 +8,7 @@ import {
   FolderPlus,
   Loader2,
   Pencil,
+  Play,
   Plus,
   RefreshCw,
   Search,
@@ -15,6 +16,7 @@ import {
   Star,
   Terminal,
   Trash2,
+  Upload,
 } from "lucide-react";
 import { HTTP_METHOD_COLOR } from "../state/types";
 import type { CollectionItem, StoredCollection, FavoriteItem } from "../lib/sidecar";
@@ -73,6 +75,11 @@ interface Props {
   onReorder?: (collectionId: string, parentFolderId: string | null, itemIds: string[]) => void;
   onMoveToFolder?: (collectionId: string, itemId: string, targetFolderId: string | null) => void;
   onExportCurl?: (collectionId: string) => void;
+  onImport?: () => void;
+  onRunCollection?: () => void;
+  inlineNewName?: { type: "collection" | "folder"; parentId?: string; collectionId?: string } | null;
+  onInlineNewCommit?: (name: string) => void;
+  onInlineNewCancel?: () => void;
 }
 
 export function Sidebar({
@@ -94,6 +101,11 @@ export function Sidebar({
   onReorder,
   onMoveToFolder,
   onExportCurl,
+  onImport,
+  onRunCollection,
+  inlineNewName,
+  onInlineNewCommit,
+  onInlineNewCancel,
 }: Props) {
   const [query, setQuery] = useState("");
   const filter = query.toLowerCase();
@@ -240,6 +252,17 @@ export function Sidebar({
             <Plus className="h-3.5 w-3.5" />
           </button>
         </Tooltip>
+        {onImport && (
+          <Tooltip content="Import collection" side="bottom">
+            <button
+              type="button"
+              onClick={onImport}
+              className="rounded p-1 text-neutral-500 transition hover:bg-neutral-800 hover:text-neutral-200"
+            >
+              <Upload className="h-3.5 w-3.5" />
+            </button>
+          </Tooltip>
+        )}
       </div>
 
       <div className="px-3 pb-2">
@@ -256,7 +279,16 @@ export function Sidebar({
       </div>
 
       <div className="flex-1 overflow-y-auto px-1 pb-3">
-        {collections.length === 0 ? (
+        {inlineNewName?.type === "collection" && onInlineNewCommit && onInlineNewCancel && (
+          <div className="px-2 py-1">
+            <InlineRenameInput
+              initial="New collection"
+              onCommit={onInlineNewCommit}
+              onCancel={onInlineNewCancel}
+            />
+          </div>
+        )}
+        {collections.length === 0 && !inlineNewName ? (
           <EmptyState onNewCollection={onNewCollection} />
         ) : (
           collections.map((c) => (
@@ -282,8 +314,12 @@ export function Sidebar({
               onReorder={onReorder ? (parentFolderId, itemIds) => onReorder(c.id, parentFolderId, itemIds) : undefined}
               onMoveToFolder={onMoveToFolder ? (itemId, folderId) => onMoveToFolder(c.id, itemId, folderId) : undefined}
               onExportCurl={onExportCurl ? () => onExportCurl(c.id) : undefined}
+              onRunCollection={onRunCollection}
               healthStatus={collectionHealthMap.get(c.id) ?? "gray"}
               lastResponses={lastResponses}
+              inlineNewFolder={inlineNewName?.type === "folder" && inlineNewName.collectionId === c.id ? { type: "folder" as const, parentId: inlineNewName.parentId, collectionId: inlineNewName.collectionId } : null}
+              onInlineNewCommit={onInlineNewCommit}
+              onInlineNewCancel={onInlineNewCancel}
             />
           ))
         )}
@@ -436,8 +472,12 @@ function CollectionNode({
   onReorder,
   onMoveToFolder,
   onExportCurl,
+  onRunCollection,
   healthStatus,
   lastResponses,
+  inlineNewFolder,
+  onInlineNewCommit,
+  onInlineNewCancel,
 }: {
   collection: StoredCollection;
   filter: string;
@@ -459,8 +499,12 @@ function CollectionNode({
   onReorder?: (parentFolderId: string | null, itemIds: string[]) => void;
   onMoveToFolder?: (itemId: string, targetFolderId: string | null) => void;
   onExportCurl?: () => void;
+  onRunCollection?: () => void;
   healthStatus?: HealthStatus;
   lastResponses?: Map<string, LastResponseInfo>;
+  inlineNewFolder?: { type: "folder"; parentId?: string; collectionId?: string } | null;
+  onInlineNewCommit?: (name: string) => void;
+  onInlineNewCancel?: () => void;
 }) {
   const [open, setOpen] = useState(true);
   const [renaming, setRenaming] = useState(false);
@@ -531,6 +575,16 @@ function CollectionNode({
         >
           <FolderPlus className="h-3 w-3" />
         </button>
+        {onRunCollection && (
+          <button
+            type="button"
+            onClick={onRunCollection}
+            className="rounded p-0.5 text-neutral-600 opacity-0 transition hover:bg-neutral-800 hover:text-emerald-400 group-hover:opacity-100"
+            title="Run collection"
+          >
+            <Play className="h-3 w-3" />
+          </button>
+        )}
         {onExportCurl && (
           <button
             type="button"
@@ -543,11 +597,7 @@ function CollectionNode({
         )}
         <button
           type="button"
-          onClick={() => {
-            if (confirm(`Delete collection "${collection.name}"? This cannot be undone.`)) {
-              onDeleteCollection();
-            }
-          }}
+          onClick={() => onDeleteCollection()}
           className="rounded p-0.5 text-neutral-600 opacity-0 transition hover:bg-neutral-800 hover:text-rose-400 group-hover:opacity-100"
           title="Delete collection"
         >
@@ -556,6 +606,15 @@ function CollectionNode({
       </div>
       {open && (
         <div className="folder-children-enter">
+        {inlineNewFolder && !inlineNewFolder.parentId && onInlineNewCommit && onInlineNewCancel && (
+          <div className="py-0.5" style={{ paddingLeft: "1.25rem" }}>
+            <InlineRenameInput
+              initial="New folder"
+              onCommit={onInlineNewCommit}
+              onCancel={onInlineNewCancel}
+            />
+          </div>
+        )}
         <ItemList
           items={visibleItems}
           depth={1}
@@ -816,11 +875,7 @@ function FolderNode({
         </button>
         <button
           type="button"
-          onClick={() => {
-            if (confirm(`Delete folder "${folder.name}" and everything inside? This cannot be undone.`)) {
-              onDeleteFolder(folder.id);
-            }
-          }}
+          onClick={() => onDeleteFolder(folder.id)}
           className="mr-1 rounded p-0.5 text-neutral-600 opacity-0 transition hover:bg-neutral-800 hover:text-rose-400 group-hover:opacity-100"
           title="Delete folder"
         >
@@ -892,13 +947,20 @@ function RequestRow({
   itemId?: string;
   lastResponseInfo?: LastResponseInfo;
 }) {
+  const methodBorderColor: Record<string, string> = {
+    GET: "border-l-sky-500", POST: "border-l-emerald-500",
+    PUT: "border-l-amber-500", PATCH: "border-l-violet-500",
+    DELETE: "border-l-rose-500", HEAD: "border-l-neutral-500",
+    OPTIONS: "border-l-neutral-500",
+  };
   const [renaming, setRenaming] = useState(false);
   const [hovering, setHovering] = useState(false);
   const hoverTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const padLeft = `${1.25 + depth * 0.75}rem`;
+  const borderClass = methodBorderColor[request.method ?? "GET"] ?? "border-l-neutral-500";
   return (
     <div
-      className={`group relative flex items-center rounded text-xs hover:bg-neutral-800/60 ${isDragging ? "opacity-50" : ""} ${isDropTarget ? "border-t-2 border-cobweb-500" : ""}`}
+      className={`group relative flex items-center rounded text-xs hover:bg-neutral-800/60 border-l-2 ${borderClass} ${isDragging ? "opacity-50" : ""} ${isDropTarget ? "border-t-2 border-cobweb-500" : ""}`}
       onContextMenu={onContextMenu}
       onMouseEnter={() => {
         if (lastResponseInfo) {
@@ -991,9 +1053,7 @@ function RequestRow({
       </button>
       <button
         type="button"
-        onClick={() => {
-          if (confirm(`Delete request "${request.name}"?`)) onDelete();
-        }}
+        onClick={() => onDelete()}
         className="mr-1 rounded p-0.5 text-neutral-600 opacity-0 transition hover:bg-neutral-800 hover:text-rose-400 group-hover:opacity-100"
         title="Delete request"
       >

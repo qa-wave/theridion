@@ -39,6 +39,7 @@ interface Props {
   onMethodChange?: (m: Method) => void;
   response?: ExecuteResponse | null;
   breadcrumb?: string[] | null;
+  onReEvaluate?: () => void;
 }
 
 export function RequestPanel({
@@ -62,6 +63,7 @@ export function RequestPanel({
   onMethodChange,
   response,
   breadcrumb,
+  onReEvaluate,
 }: Props) {
   const [tab, setTab] = useState<Tab>("params");
   const [notesOpen, setNotesOpen] = useState(false);
@@ -93,7 +95,7 @@ export function RequestPanel({
               type="button"
               onClick={() => !t.comingSoon && setTab(t.id)}
               disabled={t.comingSoon}
-              className={`relative h-9 rounded-lg px-4 text-xs font-medium transition-all duration-150 ${
+              className={`relative h-8 rounded-lg px-3 text-[11px] font-medium transition-all duration-150 ${
                 t.comingSoon
                   ? "cursor-not-allowed text-neutral-600"
                   : active
@@ -209,6 +211,7 @@ export function RequestPanel({
             results={assertionResults}
             onChange={onAssertionsChange}
             response={response ?? null}
+            onReEvaluate={onReEvaluate}
           />
         )}
       </div>
@@ -627,11 +630,13 @@ function TestsView({
   results,
   onChange,
   response,
+  onReEvaluate,
 }: {
   assertions: Assertion[];
   results: AssertionResult[] | null;
   onChange: (a: Assertion[]) => void;
   response: ExecuteResponse | null;
+  onReEvaluate?: () => void;
 }) {
   const [healingIdx, setHealingIdx] = useState<number | null>(null);
   const [healCandidates, setHealCandidates] = useState<HealCandidate[]>([]);
@@ -710,13 +715,25 @@ function TestsView({
             </span>
           )}
         </p>
-        <button
-          type="button"
-          onClick={addAssertion}
-          className="text-xs text-cobweb-400 hover:text-cobweb-300"
-        >
-          + Add assertion
-        </button>
+        <div className="flex items-center gap-2">
+          {onReEvaluate && response && assertions.length > 0 && (
+            <button
+              type="button"
+              onClick={onReEvaluate}
+              className="inline-flex items-center gap-1 text-xs text-neutral-500 hover:text-neutral-300"
+              title="Re-evaluate assertions against existing response"
+            >
+              &#8634; Re-evaluate
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={addAssertion}
+            className="text-xs text-cobweb-400 hover:text-cobweb-300"
+          >
+            + Add assertion
+          </button>
+        </div>
       </div>
 
       {assertions.length === 0 && (
@@ -972,9 +989,13 @@ function ExamplesDropdown({
     }
   }
 
+  const [exampleName, setExampleName] = useState("");
+  const [showNameInput, setShowNameInput] = useState(false);
+
   async function saveAsExample() {
-    const name = prompt("Example name:", "Example");
-    if (!name) return;
+    const name = exampleName.trim() || "Example";
+    setShowNameInput(false);
+    setExampleName("");
     setSaving(true);
     try {
       await sidecar.addExample(collectionId, requestId, {
@@ -1022,14 +1043,32 @@ function ExamplesDropdown({
             </button>
           ))}
           <div className="border-t border-neutral-700 mt-1 pt-1">
-            <button
-              type="button"
-              onClick={() => { void saveAsExample(); }}
-              disabled={saving}
-              className="w-full px-3 py-1.5 text-left text-xs text-cobweb-400 hover:bg-neutral-800 disabled:opacity-50"
-            >
-              {saving ? "Saving..." : "+ Save as Example"}
-            </button>
+            {showNameInput ? (
+              <div className="px-3 py-1.5">
+                <input
+                  autoFocus
+                  type="text"
+                  value={exampleName}
+                  onChange={(e) => setExampleName(e.target.value)}
+                  placeholder="Example name"
+                  className="w-full rounded border border-glass bg-neutral-900/50 px-2 py-1 text-xs text-neutral-100 focus:outline-none"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") void saveAsExample();
+                    if (e.key === "Escape") { setShowNameInput(false); setExampleName(""); }
+                  }}
+                  onBlur={() => { if (exampleName.trim()) void saveAsExample(); else { setShowNameInput(false); setExampleName(""); } }}
+                />
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setShowNameInput(true)}
+                disabled={saving}
+                className="w-full px-3 py-1.5 text-left text-xs text-cobweb-400 hover:bg-neutral-800 disabled:opacity-50"
+              >
+                {saving ? "Saving..." : "+ Save as Example"}
+              </button>
+            )}
           </div>
         </div>
       )}

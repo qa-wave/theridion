@@ -123,6 +123,7 @@ export default function App() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [shortcutOverlayOpen, setShortcutOverlayOpen] = useState(false);
+  const [inlineNewName, setInlineNewName] = useState<{type: "collection" | "folder"; parentId?: string; collectionId?: string} | null>(null);
   const [splitRatio, setSplitRatio] = useState(0.5);
   const splitDragging = useState(false);
   const [networkHeight, setNetworkHeight] = useState(300);
@@ -520,9 +521,12 @@ export default function App() {
   }
 
   // ---- collection ops -----------------------------------------------------
-  async function newCollection() {
-    const name = prompt("Collection name:", "New collection");
-    if (!name) return;
+  function newCollection() {
+    setInlineNewName({ type: "collection" });
+  }
+
+  async function commitNewCollection(name: string) {
+    setInlineNewName(null);
     await sidecar.createCollection(name);
     await refreshCollections();
   }
@@ -559,12 +563,15 @@ export default function App() {
     );
   }
 
-  async function newFolder(collectionId: string, parentFolderId: string | null) {
-    const name = prompt(
-      parentFolderId ? "Subfolder name:" : "Folder name:",
-      "New folder",
-    );
-    if (!name) return;
+  function newFolder(collectionId: string, parentFolderId: string | null) {
+    setInlineNewName({ type: "folder", collectionId, parentId: parentFolderId ?? undefined });
+  }
+
+  async function commitNewFolder(name: string) {
+    if (!inlineNewName || inlineNewName.type !== "folder" || !inlineNewName.collectionId) return;
+    const collectionId = inlineNewName.collectionId;
+    const parentFolderId = inlineNewName.parentId ?? null;
+    setInlineNewName(null);
     await sidecar.createFolder(collectionId, {
       name,
       parent_folder_id: parentFolderId,
@@ -765,7 +772,7 @@ export default function App() {
   }, [active, activeId, collections, sidecarStatus.state]);
 
   return (
-    <div className={`grid h-full ${sidebarCollapsed ? "grid-cols-[40px_64px_1fr]" : "grid-cols-[40px_260px_1fr]"} ${networkOpen && appMode === "requests" ? `grid-rows-[1fr_${networkHeight}px_auto]` : "grid-rows-[1fr_auto]"} relative bg-neutral-950 bg-mesh-gradient text-neutral-100 transition-[grid-template-columns] duration-200 ease-in-out`} style={networkOpen && appMode === "requests" ? { gridTemplateRows: `1fr ${networkHeight}px auto` } : undefined}>
+    <div className={`grid h-full ${sidebarCollapsed ? "grid-cols-[48px_64px_1fr]" : "grid-cols-[48px_260px_1fr]"} ${networkOpen && appMode === "requests" ? `grid-rows-[1fr_${networkHeight}px_auto]` : "grid-rows-[1fr_auto]"} relative bg-neutral-950 bg-mesh-gradient text-neutral-100 transition-[grid-template-columns] duration-200 ease-in-out`} style={networkOpen && appMode === "requests" ? { gridTemplateRows: `1fr ${networkHeight}px auto` } : undefined}>
       {/* Subtle accent radial glow -- top-right corner */}
       <div className="pointer-events-none absolute right-0 top-0 h-[500px] w-[500px] rounded-full bg-[radial-gradient(circle,rgb(var(--accent-500)/0.04)_0%,transparent_70%)]" aria-hidden />
       <div className="row-span-1 overflow-hidden">
@@ -792,6 +799,14 @@ export default function App() {
           onDeleteFolder={deleteFolder}
           onRenameCollection={renameCollection}
           onRenameItem={renameItem}
+          onImport={() => modals.open("import")}
+          onRunCollection={() => modals.open("batch")}
+          inlineNewName={inlineNewName}
+          onInlineNewCommit={(name) => {
+            if (inlineNewName?.type === "collection") void commitNewCollection(name);
+            else if (inlineNewName?.type === "folder") void commitNewFolder(name);
+          }}
+          onInlineNewCancel={() => setInlineNewName(null)}
           onRefresh={refreshCollections}
           onReorder={async (collectionId, parentFolderId, itemIds) => {
             try {
@@ -826,14 +841,14 @@ export default function App() {
               y: e.clientY,
               actions: buildSidebarActions({
                 onRename: () => {
-                  const name = prompt("Rename:", item.name);
-                  if (name) void renameItem(collectionId, item.id, name);
+                  // Handled by inline rename in Sidebar
+                  void renameItem(collectionId, item.id, item.name);
                 },
                 onDuplicate: () => {
                   void sidecar.duplicateRequest(collectionId, item.id).then(() => refreshCollections());
                 },
                 onDelete: () => {
-                  if (confirm(`Delete "${item.name}"?`)) void deleteRequest(collectionId, item.id);
+                  void deleteRequest(collectionId, item.id);
                 },
                 onCopyAsCurl: item.url ? () => {
                   void sidecar.generateCurl({
@@ -932,6 +947,23 @@ export default function App() {
               onMethodChange={(method) => patchActive({ method })}
               response={active.response}
               breadcrumb={activeBreadcrumb}
+              onReEvaluate={active.response && active.assertions.length > 0 ? async () => {
+                try {
+                  const evalResult = await sidecar.evaluateAssertions({
+                    assertions: active.assertions,
+                    response: {
+                      status: active.response!.status,
+                      headers: active.response!.headers,
+                      body: active.response!.body,
+                      elapsed_ms: active.response!.elapsed_ms,
+                    },
+                  });
+                  patchActive({ assertionResults: evalResult.results });
+                  addToast("info", "Assertions re-evaluated");
+                } catch {
+                  addToast("error", "Failed to re-evaluate assertions");
+                }
+              } : undefined}
             />
           </div>
           {/* Draggable split divider */}

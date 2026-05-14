@@ -9,7 +9,7 @@ export default {
   theme: {
     extend: {
       colors: {
-        "neutral-925": "#121214",
+        "neutral-925": "#161618",
         // Dynamic cobweb palette — driven by CSS variables so themes
         // can swap the entire accent spine by changing --accent-* vars.
         cobweb: {

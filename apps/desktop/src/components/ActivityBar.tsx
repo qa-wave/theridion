@@ -18,7 +18,7 @@ const modes: { id: AppMode; icon: typeof Zap; label: string }[] = [
 
 export function ActivityBar({ mode, onModeChange, networkEntryCount = 0 }: Props) {
   return (
-    <div className="flex h-full w-10 flex-col items-center border-r border-white/[0.06] bg-neutral-950 py-2 gap-1">
+    <div className="flex h-full w-12 flex-col items-center border-r border-white/[0.06] bg-neutral-950 py-2 gap-1">
       {modes.map((m) => {
         const active = mode === m.id;
         const Icon = m.icon;

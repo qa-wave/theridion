@@ -131,6 +131,20 @@ function groupActions(actions: CommandAction[], showRecent: boolean): GroupedAct
   return result;
 }
 
+function fuzzyScore(query: string, text: string): number {
+  const q = query.toLowerCase();
+  const t = text.toLowerCase();
+  if (t.startsWith(q)) return 100;
+  if (t.includes(q)) return 90;
+  // Subsequence match: "lu" matches "List Users"
+  let qi = 0;
+  for (let ti = 0; ti < t.length && qi < q.length; ti++) {
+    if (t[ti] === q[qi]) qi++;
+  }
+  if (qi === q.length) return 50 + (q.length / t.length) * 30;
+  return 0;
+}
+
 export function CommandPalette({ open, onClose, actions }: CommandPaletteProps) {
   const [query, setQuery] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
@@ -138,8 +152,11 @@ export function CommandPalette({ open, onClose, actions }: CommandPaletteProps) 
 
   const filtered = useMemo(() => {
     if (!query.trim()) return actions;
-    const q = query.toLowerCase();
-    return actions.filter((a) => a.label.toLowerCase().includes(q));
+    const scored = actions
+      .map((a) => ({ action: a, score: fuzzyScore(query, a.label) }))
+      .filter((s) => s.score > 0)
+      .sort((a, b) => b.score - a.score);
+    return scored.map((s) => s.action);
   }, [actions, query]);
 
   const showRecent = !query.trim();
@@ -281,10 +298,12 @@ function flattenCollectionRequests(
         if (item.items) walk(collectionId, collectionName, item.items);
       } else {
         const method = (item.method ?? "GET") as Method;
+        let urlPath = "";
+        try { urlPath = item.url ? new URL(item.url).pathname : ""; } catch { /* ignore */ }
         results.push({
           id: `req-${collectionId}-${item.id}`,
           label: `${method} ${item.name}`,
-          shortcut: collectionName,
+          shortcut: urlPath ? `${urlPath}  ${collectionName}` : collectionName,
           icon: (
             <span className={`text-[11px] font-bold ${HTTP_METHOD_COLOR[method] ?? "text-neutral-400"}`}>
               {method.slice(0, 3)}

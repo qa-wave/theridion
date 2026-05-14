@@ -123,7 +123,7 @@ export function ResponsePanel({ busy, response, error, onDiff, onCodegen, consol
           <button type="button" onClick={() => setViewingHistorical(null)} className="ml-auto text-amber-500 hover:text-amber-300">Show current</button>
         </div>
       )}
-      <div className="flex items-center gap-1 border-b border-glass px-2 py-1">
+      <div className="flex items-center gap-1 border-b border-neutral-800 px-2 py-0">
         <TabButton active={tab === "body"} onClick={() => setTab("body")}>Body</TabButton>
         <TabButton active={tab === "headers"} onClick={() => setTab("headers")}>
           Headers <span className="ml-1 text-neutral-500">{Object.keys(displayResponse.headers).length}</span>
@@ -185,10 +185,10 @@ function TabButton({
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all duration-150 ${
+      className={`px-3 py-1.5 text-xs font-medium transition-all duration-150 ${
         active
-          ? "bg-white/[0.08] text-neutral-100 shadow-[0_1px_3px_rgba(0,0,0,0.2)]"
-          : "text-neutral-500 hover:text-neutral-300 hover:bg-white/[0.03]"
+          ? "border-b-2 border-cobweb-500 text-neutral-100 bg-transparent"
+          : "border-b-2 border-transparent text-neutral-500 hover:text-neutral-300"
       }`}
     >
       {children}
@@ -930,14 +930,30 @@ function Loading() {
   );
 }
 
+function categorizeError(error: string): { icon: React.ReactNode; title: string; hint: string } {
+  if (error.includes("ECONNREFUSED") || error.includes("Connection refused"))
+    return { icon: <Inbox className="h-8 w-8 text-rose-500" />, title: "Connection refused", hint: "Is the server running? Check the URL and port." };
+  if (error.includes("timeout") || error.includes("Timeout"))
+    return { icon: <Clock className="h-8 w-8 text-amber-500" />, title: "Request timed out", hint: "The server took too long to respond. Try increasing the timeout in Settings." };
+  if (error.includes("ENOTFOUND") || error.includes("getaddrinfo"))
+    return { icon: <Upload className="h-8 w-8 text-rose-500" />, title: "DNS resolution failed", hint: "Check the hostname. Is it spelled correctly?" };
+  if (error.includes("SSL") || error.includes("certificate"))
+    return { icon: <AlertTriangle className="h-8 w-8 text-amber-500" />, title: "SSL/TLS error", hint: "Certificate issue. Try disabling SSL verification in Settings." };
+  return { icon: <AlertTriangle className="h-8 w-8 text-rose-500" />, title: "Request failed", hint: error };
+}
+
 function ErrorView({ error }: { error: string }) {
+  const cat = categorizeError(error);
   return (
     <div className="flex h-full flex-col items-center justify-center px-6 text-center">
       <div className="mb-4 rounded-full bg-rose-950/30 p-4">
-        <AlertTriangle className="h-8 w-8 text-rose-500" />
+        {cat.icon}
       </div>
-      <p className="text-sm font-semibold text-rose-300">Request failed</p>
-      <p className="mt-2 max-w-md break-words text-xs leading-relaxed text-neutral-400">{error}</p>
+      <p className="text-sm font-semibold text-rose-300">{cat.title}</p>
+      <p className="mt-2 max-w-md break-words text-xs leading-relaxed text-neutral-400">{cat.hint}</p>
+      {cat.title !== "Request failed" && (
+        <p className="mt-3 max-w-md break-words font-mono text-[10px] leading-relaxed text-neutral-600">{error}</p>
+      )}
     </div>
   );
 }
