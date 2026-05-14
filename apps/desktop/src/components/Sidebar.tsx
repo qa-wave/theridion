@@ -20,6 +20,39 @@ import { HTTP_METHOD_COLOR } from "../state/types";
 import type { CollectionItem, StoredCollection, FavoriteItem } from "../lib/sidecar";
 import { sidecar } from "../lib/sidecar";
 
+/** Stored in localStorage per request: last run result for hover preview. */
+interface LastResponseInfo {
+  status: number;
+  elapsed_ms: number;
+  preview: string;
+  timestamp: number;
+}
+
+const LAST_RESPONSES_KEY = "theridion.last-responses";
+const COLLECTION_HEALTH_KEY = "theridion.collection-health";
+
+type HealthStatus = "green" | "amber" | "red" | "gray";
+
+function getLastResponses(): Map<string, LastResponseInfo> {
+  try {
+    const raw = localStorage.getItem(LAST_RESPONSES_KEY);
+    if (!raw) return new Map();
+    return new Map(Object.entries(JSON.parse(raw)));
+  } catch {
+    return new Map();
+  }
+}
+
+function getCollectionHealth(): Map<string, HealthStatus> {
+  try {
+    const raw = localStorage.getItem(COLLECTION_HEALTH_KEY);
+    if (!raw) return new Map();
+    return new Map(Object.entries(JSON.parse(raw)));
+  } catch {
+    return new Map();
+  }
+}
+
 interface Props {
   collections: StoredCollection[];
   loading: boolean;
@@ -67,6 +100,8 @@ export function Sidebar({
   const [favOpen, setFavOpen] = useState(true);
   const [dragItemId, setDragItemId] = useState<string | null>(null);
   const [dropTargetId, setDropTargetId] = useState<string | null>(null);
+  const lastResponses = getLastResponses();
+  const collectionHealthMap = getCollectionHealth();
 
   const handleDragStart = useCallback((itemId: string) => {
     setDragItemId(itemId);
@@ -243,6 +278,8 @@ export function Sidebar({
               onReorder={onReorder ? (parentFolderId, itemIds) => onReorder(c.id, parentFolderId, itemIds) : undefined}
               onMoveToFolder={onMoveToFolder ? (itemId, folderId) => onMoveToFolder(c.id, itemId, folderId) : undefined}
               onExportCurl={onExportCurl ? () => onExportCurl(c.id) : undefined}
+              healthStatus={collectionHealthMap.get(c.id) ?? "gray"}
+              lastResponses={lastResponses}
             />
           ))
         )}
@@ -395,6 +432,8 @@ function CollectionNode({
   onReorder,
   onMoveToFolder,
   onExportCurl,
+  healthStatus,
+  lastResponses,
 }: {
   collection: StoredCollection;
   filter: string;
@@ -416,6 +455,8 @@ function CollectionNode({
   onReorder?: (parentFolderId: string | null, itemIds: string[]) => void;
   onMoveToFolder?: (itemId: string, targetFolderId: string | null) => void;
   onExportCurl?: () => void;
+  healthStatus?: HealthStatus;
+  lastResponses?: Map<string, LastResponseInfo>;
 }) {
   const [open, setOpen] = useState(true);
   const [renaming, setRenaming] = useState(false);
@@ -462,6 +503,13 @@ function CollectionNode({
           <span className="rounded-full bg-neutral-800/80 px-1.5 py-0.5 text-[9px] font-bold text-neutral-500">
             {itemCount}
           </span>
+        )}
+        {healthStatus && healthStatus !== "gray" && (
+          <span className={`h-2 w-2 rounded-full ${
+            healthStatus === "green" ? "bg-emerald-500" :
+            healthStatus === "amber" ? "bg-amber-500" :
+            "bg-rose-500"
+          }`} title={`Last run: ${healthStatus === "green" ? "all passed" : healthStatus === "amber" ? "some failures" : "errors"}`} />
         )}
         <button
           type="button"
@@ -523,6 +571,7 @@ function CollectionNode({
           onDropTargetChange={onDropTargetChange}
           onReorder={onReorder}
           onMoveToFolder={onMoveToFolder}
+          lastResponses={lastResponses}
         />
       )}
       {open && collection.items.length === 0 && (
@@ -554,6 +603,7 @@ function ItemList({
   onDropTargetChange,
   onReorder,
   onMoveToFolder,
+  lastResponses,
 }: {
   items: CollectionItem[];
   depth: number;
@@ -574,6 +624,7 @@ function ItemList({
   onDropTargetChange?: (id: string | null) => void;
   onReorder?: (parentFolderId: string | null, itemIds: string[]) => void;
   onMoveToFolder?: (itemId: string, targetFolderId: string | null) => void;
+  lastResponses?: Map<string, LastResponseInfo>;
 }) {
   const handleDrop = useCallback((targetIndex: number) => {
     if (!dragItemId || !onReorder) return;
@@ -610,6 +661,7 @@ function ItemList({
             onReorder={onReorder}
             onMoveToFolder={onMoveToFolder}
             onDropBefore={() => handleDrop(idx)}
+            lastResponses={lastResponses}
           />
         ) : (
           <RequestRow
@@ -629,6 +681,7 @@ function ItemList({
             onDropBefore={() => handleDrop(idx)}
             onDropTargetChange={onDropTargetChange}
             itemId={it.id}
+            lastResponseInfo={lastResponses?.get(it.id)}
           />
         ),
       )}
@@ -656,6 +709,7 @@ function FolderNode({
   onReorder,
   onMoveToFolder,
   onDropBefore: _onDropBefore,
+  lastResponses,
 }: {
   folder: CollectionItem;
   depth: number;
@@ -676,6 +730,7 @@ function FolderNode({
   onReorder?: (parentFolderId: string | null, itemIds: string[]) => void;
   onMoveToFolder?: (itemId: string, targetFolderId: string | null) => void;
   onDropBefore?: () => void;
+  lastResponses?: Map<string, LastResponseInfo>;
 }) {
   const [open, setOpen] = useState(true);
   const [renaming, setRenaming] = useState(false);
@@ -782,6 +837,7 @@ function FolderNode({
           onDropTargetChange={onDropTargetChange}
           onReorder={onReorder}
           onMoveToFolder={onMoveToFolder}
+          lastResponses={lastResponses}
         />
       )}
     </div>
@@ -804,6 +860,7 @@ function RequestRow({
   onDropBefore,
   onDropTargetChange,
   itemId,
+  lastResponseInfo,
 }: {
   request: CollectionItem;
   depth: number;
@@ -820,13 +877,25 @@ function RequestRow({
   onDropBefore?: () => void;
   onDropTargetChange?: (id: string | null) => void;
   itemId?: string;
+  lastResponseInfo?: LastResponseInfo;
 }) {
   const [renaming, setRenaming] = useState(false);
+  const [hovering, setHovering] = useState(false);
+  const hoverTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const padLeft = `${1.25 + depth * 0.75}rem`;
   return (
     <div
-      className={`group flex items-center rounded text-xs hover:bg-neutral-800/60 ${isDragging ? "opacity-50" : ""} ${isDropTarget ? "border-t-2 border-cobweb-500" : ""}`}
+      className={`group relative flex items-center rounded text-xs hover:bg-neutral-800/60 ${isDragging ? "opacity-50" : ""} ${isDropTarget ? "border-t-2 border-cobweb-500" : ""}`}
       onContextMenu={onContextMenu}
+      onMouseEnter={() => {
+        if (lastResponseInfo) {
+          hoverTimeout.current = setTimeout(() => setHovering(true), 500);
+        }
+      }}
+      onMouseLeave={() => {
+        if (hoverTimeout.current) clearTimeout(hoverTimeout.current);
+        setHovering(false);
+      }}
       draggable={!renaming}
       onDragStart={(e) => {
         e.dataTransfer.effectAllowed = "move";
@@ -917,6 +986,24 @@ function RequestRow({
       >
         <Trash2 className="h-3 w-3" />
       </button>
+      {/* Inline response preview tooltip */}
+      {hovering && lastResponseInfo && (
+        <div className="absolute left-full top-0 z-40 ml-2 w-56 rounded-md border border-neutral-700 bg-neutral-900 p-2.5 shadow-xl">
+          <div className="flex items-center gap-2 text-[11px]">
+            <span className={`font-mono font-bold ${
+              lastResponseInfo.status < 300 ? "text-emerald-400" :
+              lastResponseInfo.status < 400 ? "text-cobweb-400" :
+              lastResponseInfo.status < 500 ? "text-amber-400" :
+              "text-rose-400"
+            }`}>{lastResponseInfo.status}</span>
+            <span className="text-neutral-500">{lastResponseInfo.elapsed_ms}ms</span>
+            <span className="ml-auto text-[10px] text-neutral-600">{new Date(lastResponseInfo.timestamp).toLocaleTimeString()}</span>
+          </div>
+          {lastResponseInfo.preview && (
+            <pre className="mt-1.5 max-h-12 overflow-hidden rounded bg-neutral-800/50 px-2 py-1 font-mono text-[10px] text-neutral-400 leading-relaxed">{lastResponseInfo.preview.slice(0, 150)}</pre>
+          )}
+        </div>
+      )}
     </div>
   );
 }

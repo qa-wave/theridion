@@ -1,4 +1,4 @@
-import { Activity, BookOpen, Bot, Braces, Clock, Command, Database, Globe, MoreHorizontal, Pin, Plus, Server, Terminal, Wifi, X } from "lucide-react";
+import { Activity, BookOpen, Bot, Braces, Clock, Command, Database, Globe, MoreHorizontal, Pin, Plus, Search, Server, Terminal, Wifi, X } from "lucide-react";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { HTTP_METHOD_COLOR, isDirty } from "../state/types";
 import type { RequestTab } from "../state/types";
@@ -70,6 +70,9 @@ export function RequestTabBar({
   const overflowRef = useRef<HTMLDivElement>(null);
   const [ctxMenu, setCtxMenu] = useState<{ open: boolean; x: number; y: number; tabId: string } | null>(null);
   const ctxRef = useRef<HTMLDivElement>(null);
+  const [tabSearchOpen, setTabSearchOpen] = useState(false);
+  const [tabSearchQuery, setTabSearchQuery] = useState("");
+  const tabSearchRef = useRef<HTMLInputElement>(null);
 
   // Close context menu on outside click.
   useEffect(() => {
@@ -110,8 +113,42 @@ export function RequestTabBar({
   return (
     <div className="flex items-stretch gap-px border-b border-glass bg-neutral-925/80 pl-1">
       <div className="flex flex-1 items-stretch gap-0.5 overflow-x-auto py-1 pl-1">
+        {/* Tab search (visible only with 5+ tabs) */}
+        {tabs.length >= 5 && (
+          tabSearchOpen ? (
+            <div className="flex items-center gap-1 rounded-md border border-glass bg-neutral-900/60 px-1.5 mr-1">
+              <Search className="h-3 w-3 text-neutral-500" />
+              <input
+                ref={tabSearchRef}
+                type="text"
+                value={tabSearchQuery}
+                onChange={(e) => setTabSearchQuery(e.target.value)}
+                onBlur={() => { if (!tabSearchQuery) setTabSearchOpen(false); }}
+                onKeyDown={(e) => { if (e.key === "Escape") { setTabSearchQuery(""); setTabSearchOpen(false); } }}
+                placeholder="Filter tabs..."
+                className="w-24 bg-transparent py-1 text-xs text-neutral-100 outline-none placeholder:text-neutral-600"
+                autoFocus
+                spellCheck={false}
+              />
+              {tabSearchQuery && (
+                <button type="button" onClick={() => { setTabSearchQuery(""); setTabSearchOpen(false); }} className="text-neutral-500 hover:text-neutral-300">
+                  <X className="h-3 w-3" />
+                </button>
+              )}
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => { setTabSearchOpen(true); setTimeout(() => tabSearchRef.current?.focus(), 50); }}
+              className="mr-1 flex items-center rounded-md px-1.5 py-1 text-neutral-600 transition hover:bg-neutral-800/40 hover:text-neutral-400"
+              title="Search tabs"
+            >
+              <Search className="h-3 w-3" />
+            </button>
+          )
+        )}
         {/* Pinned tabs first, then unpinned */}
-        {[...tabs].sort((a, b) => (a.pinned === b.pinned ? 0 : a.pinned ? -1 : 1)).map((t) => {
+        {[...tabs].sort((a, b) => (a.pinned === b.pinned ? 0 : a.pinned ? -1 : 1)).filter((t) => !tabSearchQuery || t.name.toLowerCase().includes(tabSearchQuery.toLowerCase()) || t.url.toLowerCase().includes(tabSearchQuery.toLowerCase())).map((t) => {
           const active = t.id === activeId;
           const durationColor = t.response
             ? t.response.elapsed_ms < 200 ? "text-emerald-400"

@@ -121,6 +121,7 @@ export default function App() {
   const [appMode, setAppMode] = useState<AppMode>("requests");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [envToast, setEnvToast] = useState<string | null>(null);
+  const [shortcutOverlayOpen, setShortcutOverlayOpen] = useState(false);
   const [splitRatio, setSplitRatio] = useState(0.5);
   const splitDragging = useState(false);
 
@@ -210,6 +211,7 @@ export default function App() {
           auth: t.auth,
           assertions: t.assertions,
           preRequestScript: t.preRequestScript,
+          notes: t.notes,
           cleanSignature: t.cleanSignature,
           lastRunAt: t.lastRunAt,
           pinned: t.pinned,
@@ -381,6 +383,19 @@ export default function App() {
       } else {
         patchActive({ assertionResults: null });
       }
+      // Store last response info for sidebar hover preview.
+      if (active.savedAs?.requestId) {
+        try {
+          const stored = JSON.parse(localStorage.getItem("theridion.last-responses") ?? "{}");
+          stored[active.savedAs.requestId] = {
+            status: response.status,
+            elapsed_ms: response.elapsed_ms,
+            preview: response.body.slice(0, 200),
+            timestamp: Date.now(),
+          };
+          localStorage.setItem("theridion.last-responses", JSON.stringify(stored));
+        } catch { /* non-critical */ }
+      }
       setHistory((prev) => [
         {
           id: crypto.randomUUID(),
@@ -432,6 +447,7 @@ export default function App() {
       auth: active.auth.type !== "none" ? active.auth : null,
       assertions: active.assertions,
       pre_request_script: active.preRequestScript || null,
+      notes: active.notes || null,
     });
 
     // Find the saved record we just wrote. If we passed an id, look it up;
@@ -453,6 +469,7 @@ export default function App() {
         auth: active.auth,
         assertions: active.assertions,
         preRequestScript: active.preRequestScript,
+        notes: active.notes,
       }),
     });
 
@@ -700,6 +717,13 @@ export default function App() {
       } else if (cmd && e.key === "Enter") {
         e.preventDefault();
         void send();
+      } else if (e.key === "?" && !cmd && !e.altKey) {
+        // Don't trigger if user is typing in an input/textarea/contenteditable.
+        const tag = (e.target as HTMLElement).tagName;
+        const editable = (e.target as HTMLElement).isContentEditable;
+        if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || editable) return;
+        e.preventDefault();
+        setShortcutOverlayOpen((o) => !o);
       }
     }
     window.addEventListener("keydown", onKey);
@@ -837,6 +861,7 @@ export default function App() {
             onSave={() => save()}
             onSaveAs={() => setSavePopoverOpen(true)}
             onCopyAsCurl={copyAsCurl}
+            activeEnvId={activeEnvId}
           />
           <SavePopover
             open={savePopoverOpen}
@@ -867,6 +892,8 @@ export default function App() {
               onAssertionsChange={(assertions) => patchActive({ assertions, assertionResults: null })}
               preRequestScript={active.preRequestScript}
               onPreRequestScriptChange={(preRequestScript) => patchActive({ preRequestScript })}
+              notes={active.notes}
+              onNotesChange={(notes) => patchActive({ notes })}
               savedAs={active.savedAs}
               method={active.method}
               onMethodChange={(method) => patchActive({ method })}
@@ -1062,6 +1089,89 @@ export default function App() {
       <FlowEditorModal open={modals.isOpen("flowEditor")} onClose={modals.close} />
       <PerformanceDashboardModal open={modals.isOpen("perfDash")} onClose={modals.close} />
       <AgentExplorerModal open={modals.isOpen("agentExplorer")} onClose={modals.close} onCollectionCreated={refreshCollections} />
+
+      {/* Keyboard shortcut overlay */}
+      {shortcutOverlayOpen && (
+        <ShortcutOverlay onClose={() => setShortcutOverlayOpen(false)} />
+      )}
+    </div>
+  );
+}
+
+const SHORTCUT_SECTIONS: { title: string; items: { action: string; shortcut: string }[] }[] = [
+  {
+    title: "Request",
+    items: [
+      { action: "Send request", shortcut: "\u2318\u23CE" },
+      { action: "Save", shortcut: "\u2318S" },
+      { action: "Save As", shortcut: "\u2318\u21E7S" },
+    ],
+  },
+  {
+    title: "Tabs",
+    items: [
+      { action: "New tab", shortcut: "\u2318T" },
+      { action: "Close tab", shortcut: "\u2318W" },
+    ],
+  },
+  {
+    title: "Navigation",
+    items: [
+      { action: "Command palette", shortcut: "\u2318K" },
+      { action: "Settings", shortcut: "\u2318," },
+      { action: "Network console", shortcut: "\u2318\u21E7N" },
+      { action: "Switch environment", shortcut: "Ctrl+E" },
+    ],
+  },
+  {
+    title: "Tools",
+    items: [
+      { action: "Search in response", shortcut: "Ctrl+F" },
+      { action: "This overlay", shortcut: "?" },
+    ],
+  },
+];
+
+function ShortcutOverlay({ onClose }: { onClose: () => void }) {
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape" || e.key === "?") {
+        e.preventDefault();
+        onClose();
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  return (
+    <div
+      className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 backdrop-blur-sm"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="w-full max-w-lg rounded-xl border border-glass bg-neutral-900/95 p-6 shadow-2xl">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-neutral-100">Keyboard Shortcuts</h2>
+          <span className="text-[11px] text-neutral-500">Press Esc or ? to close</span>
+        </div>
+        <div className="grid grid-cols-2 gap-6">
+          {SHORTCUT_SECTIONS.map((section) => (
+            <div key={section.title}>
+              <h3 className="mb-2 text-[10px] font-bold uppercase tracking-widest text-neutral-500">{section.title}</h3>
+              <div className="space-y-1.5">
+                {section.items.map((item) => (
+                  <div key={item.action} className="flex items-center justify-between text-xs">
+                    <span className="text-neutral-300">{item.action}</span>
+                    <kbd className="rounded border border-glass bg-neutral-800 px-1.5 py-0.5 font-mono text-[10px] text-neutral-400">
+                      {item.shortcut}
+                    </kbd>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

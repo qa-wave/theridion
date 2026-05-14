@@ -32,6 +32,8 @@ interface Props {
   onAssertionsChange: (a: Assertion[]) => void;
   preRequestScript: string;
   onPreRequestScriptChange: (s: string) => void;
+  notes?: string;
+  onNotesChange?: (n: string) => void;
   savedAs?: { collectionId: string; requestId: string } | null;
   method?: Method;
   onMethodChange?: (m: Method) => void;
@@ -53,6 +55,8 @@ export function RequestPanel({
   onAssertionsChange,
   preRequestScript,
   onPreRequestScriptChange,
+  notes = "",
+  onNotesChange,
   savedAs,
   method,
   onMethodChange,
@@ -60,6 +64,7 @@ export function RequestPanel({
   breadcrumb,
 }: Props) {
   const [tab, setTab] = useState<Tab>("params");
+  const [notesOpen, setNotesOpen] = useState(false);
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -129,6 +134,37 @@ export function RequestPanel({
       </div>
 
       {savedAs && <CollectionVarsIndicator collectionId={savedAs.collectionId} />}
+
+      {/* Collapsible Notes section */}
+      {onNotesChange && (
+        <div className="border-b border-glass">
+          <button
+            type="button"
+            onClick={() => setNotesOpen((o) => !o)}
+            className="flex w-full items-center gap-1.5 px-3 py-1.5 text-left text-[11px] text-neutral-500 transition hover:text-neutral-300"
+          >
+            <ChevronDown className={`h-3 w-3 transition-transform ${notesOpen ? "" : "-rotate-90"}`} />
+            <span>Notes</span>
+            {notes.length > 0 && (
+              <span className="ml-1 rounded-full bg-neutral-800/80 px-1.5 py-0.5 text-[9px] text-neutral-500">
+                {notes.length > 100 ? `${Math.ceil(notes.length / 100) * 100}+` : notes.length} chars
+              </span>
+            )}
+          </button>
+          {notesOpen && (
+            <div className="px-3 pb-2">
+              <textarea
+                value={notes}
+                onChange={(e) => onNotesChange(e.target.value)}
+                placeholder="Document why this request exists, expected behavior, test notes..."
+                rows={4}
+                className="w-full resize-y rounded border border-glass bg-neutral-900/50 px-3 py-2 font-mono text-xs text-neutral-100 placeholder-neutral-600 focus:border-cobweb-500/40 focus:outline-none"
+                spellCheck={false}
+              />
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="min-h-0 flex-1 overflow-auto p-4">
         {tab === "params" && <ParamsView url={url} onUrlChange={onUrlChange} />}

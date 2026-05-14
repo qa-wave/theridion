@@ -1,8 +1,41 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AlertTriangle, ArrowDown, ArrowUp, Bot, CheckCircle2, Code2, Copy, FileCode, FolderPlus, GitCompare, Inbox, Minus, Search, Terminal, Upload, XCircle, Zap } from "lucide-react";
+import { AlertTriangle, ArrowDown, ArrowUp, Bot, CheckCircle2, ChevronDown, Clock, Code2, Copy, Download, FileCode, FolderPlus, GitCompare, Inbox, Minus, Search, Terminal, Upload, XCircle, Zap } from "lucide-react";
 import type { ExecuteResponse, SchemaValidateOutput, TimingBreakdown } from "../lib/sidecar";
 import { sidecar } from "../lib/sidecar";
 import { CodeEditor } from "./CodeEditor";
+
+/** Snapshot of a historical response for per-URL tracking. */
+interface ResponseSnapshot {
+  timestamp: number;
+  status: number;
+  elapsed_ms: number;
+  body_size: number;
+  body_preview: string;
+  response: ExecuteResponse;
+}
+
+/** Per-URL response history (max 10 per URL). */
+const urlHistory = new Map<string, ResponseSnapshot[]>();
+
+function recordUrlHistory(url: string, res: ExecuteResponse) {
+  const key = url.replace(/\?.*/, ""); // strip query params for grouping
+  const list = urlHistory.get(key) ?? [];
+  list.push({
+    timestamp: Date.now(),
+    status: res.status,
+    elapsed_ms: res.elapsed_ms,
+    body_size: res.body_size_bytes,
+    body_preview: res.body.slice(0, 200),
+    response: res,
+  });
+  if (list.length > 10) list.shift();
+  urlHistory.set(key, list);
+}
+
+function getUrlHistory(url: string): ResponseSnapshot[] {
+  const key = url.replace(/\?.*/, "");
+  return urlHistory.get(key) ?? [];
+}
 
 export interface ConsoleEntry {
   timestamp: number;
@@ -37,8 +70,9 @@ export function ResponsePanel({ busy, response, error, onDiff, onCodegen, consol
   const headerSearchRef = useRef<HTMLInputElement | null>(null);
   const cookieSearchRef = useRef<HTMLInputElement | null>(null);
   const lastTrackedRef = useRef<string | null>(null);
+  const [viewingHistorical, setViewingHistorical] = useState<ExecuteResponse | null>(null);
 
-  // Track response time history for sparkline
+  // Track response time history for sparkline + per-URL history
   useEffect(() => {
     if (response) {
       const key = `${response.status}-${response.elapsed_ms}-${response.body_size_bytes}`;
@@ -46,8 +80,11 @@ export function ResponsePanel({ busy, response, error, onDiff, onCodegen, consol
         lastTrackedRef.current = key;
         responseTimeHistory.push(response.elapsed_ms);
         if (responseTimeHistory.length > 5) responseTimeHistory.shift();
+        recordUrlHistory(response.final_url, response);
       }
     }
+    // Clear historical view when new response arrives.
+    setViewingHistorical(null);
   }, [response]);
 
   // Ctrl+F handler to focus search when response panel is active
@@ -73,17 +110,27 @@ export function ResponsePanel({ busy, response, error, onDiff, onCodegen, consol
   if (!response && isFirstRun) return <WelcomeScreen onImportCollection={onImportCollection} onOpenSwagger={onOpenSwagger} onOpenAgentExplorer={onOpenAgentExplorer} onNewCollection={onNewCollection} />;
   if (!response) return <Empty />;
 
+  const displayResponse = viewingHistorical ?? response;
+  const history = getUrlHistory(response.final_url);
+
   return (
     <div ref={panelRef} className="flex h-full min-h-0 flex-col">
-      <StatusRow res={response} onDiff={onDiff} onCodegen={onCodegen} />
+      <StatusRow res={displayResponse} onDiff={onDiff} onCodegen={onCodegen} history={history} onViewHistorical={(snap) => setViewingHistorical(snap.response)} />
+      {viewingHistorical && (
+        <div className="flex items-center gap-2 border-b border-amber-800/30 bg-amber-950/20 px-3 py-1 text-[11px] text-amber-400">
+          <Clock className="h-3 w-3" />
+          Viewing historical response from {new Date(history.find(h => h.response === viewingHistorical)?.timestamp ?? 0).toLocaleTimeString()}
+          <button type="button" onClick={() => setViewingHistorical(null)} className="ml-auto text-amber-500 hover:text-amber-300">Show current</button>
+        </div>
+      )}
       <div className="flex items-center gap-1 border-b border-glass px-2 py-1">
         <TabButton active={tab === "body"} onClick={() => setTab("body")}>Body</TabButton>
         <TabButton active={tab === "headers"} onClick={() => setTab("headers")}>
-          Headers <span className="ml-1 text-neutral-500">{Object.keys(response.headers).length}</span>
+          Headers <span className="ml-1 text-neutral-500">{Object.keys(displayResponse.headers).length}</span>
         </TabButton>
-        {response.cookies && Object.keys(response.cookies).length > 0 && (
+        {displayResponse.cookies && Object.keys(displayResponse.cookies).length > 0 && (
           <TabButton active={tab === "cookies"} onClick={() => setTab("cookies")}>
-            Cookies <span className="ml-1 text-neutral-500">{Object.keys(response.cookies).length}</span>
+            Cookies <span className="ml-1 text-neutral-500">{Object.keys(displayResponse.cookies).length}</span>
           </TabButton>
         )}
         <TabButton active={tab === "timing"} onClick={() => setTab("timing")}>
@@ -100,10 +147,10 @@ export function ResponsePanel({ busy, response, error, onDiff, onCodegen, consol
         </TabButton>
       </div>
       <div className="min-h-0 flex-1 overflow-hidden">
-        {tab === "body" && <BodyView res={response} />}
+        {tab === "body" && <BodyView res={displayResponse} />}
         {tab === "headers" && (
           <HeadersView
-            res={response}
+            res={displayResponse}
             search={headerSearch}
             onSearchChange={setHeaderSearch}
             searchRef={headerSearchRef}
@@ -111,15 +158,15 @@ export function ResponsePanel({ busy, response, error, onDiff, onCodegen, consol
         )}
         {tab === "cookies" && (
           <CookiesView
-            res={response}
+            res={displayResponse}
             search={cookieSearch}
             onSearchChange={setCookieSearch}
             searchRef={cookieSearchRef}
           />
         )}
-        {tab === "timing" && <TimingView res={response} />}
-        {tab === "console" && <ConsoleView entries={consoleEntries} response={response} />}
-        {tab === "schema" && <SchemaView res={response} />}
+        {tab === "timing" && <TimingView res={displayResponse} />}
+        {tab === "console" && <ConsoleView entries={consoleEntries} response={displayResponse} />}
+        {tab === "schema" && <SchemaView res={displayResponse} />}
       </div>
     </div>
   );
@@ -149,7 +196,8 @@ function TabButton({
   );
 }
 
-function StatusRow({ res, onDiff, onCodegen }: { res: ExecuteResponse; onDiff?: () => void; onCodegen?: () => void }) {
+function StatusRow({ res, onDiff, onCodegen, history, onViewHistorical }: { res: ExecuteResponse; onDiff?: () => void; onCodegen?: () => void; history?: ResponseSnapshot[]; onViewHistorical?: (snap: ResponseSnapshot) => void }) {
+  const [histDropdownOpen, setHistDropdownOpen] = useState(false);
   const tone = statusTone(res.status);
   const toneGlow = {
     ok: "shadow-[0_0_16px_-4px_rgba(52,211,153,0.35)]",
@@ -191,8 +239,8 @@ function StatusRow({ res, onDiff, onCodegen }: { res: ExecuteResponse; onDiff?: 
           {res.status_text || statusName(res.status)}
         </span>
       </div>
-      {/* Time card with trend + sparkline */}
-      <div className="stat-card !py-2 !px-4 flex flex-col items-center justify-center">
+      {/* Time card with trend + sparkline + timing bar + history badge */}
+      <div className="stat-card !py-2 !px-4 flex flex-col items-center justify-center relative">
         <div className="flex items-center gap-1">
           <span className="metric-value !text-[28px] font-mono text-neutral-100">
             {formatMs(res.elapsed_ms)}
@@ -201,7 +249,38 @@ function StatusRow({ res, onDiff, onCodegen }: { res: ExecuteResponse; onDiff?: 
           {timeTrend === "slower" && <ArrowUp className="h-3.5 w-3.5 text-rose-400" />}
           {timeTrend === "same" && prevMs !== null && <Minus className="h-3 w-3 text-neutral-500" />}
         </div>
-        <span className="metric-label">Time</span>
+        <div className="flex items-center gap-1.5">
+          <span className="metric-label">Time</span>
+          {history && history.length > 1 && (
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setHistDropdownOpen((o) => !o)}
+                className="inline-flex items-center gap-0.5 rounded-full bg-neutral-800/60 px-1.5 py-0.5 text-[9px] text-neutral-400 transition hover:bg-neutral-700/60 hover:text-neutral-200"
+              >
+                <Clock className="h-2.5 w-2.5" />
+                {history.length} runs
+              </button>
+              {histDropdownOpen && (
+                <div className="absolute right-0 top-full z-30 mt-1 w-56 rounded-md border border-neutral-700 bg-neutral-900 py-1 shadow-lg">
+                  <p className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-neutral-500">Response history</p>
+                  {[...history].reverse().map((snap, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => { onViewHistorical?.(snap); setHistDropdownOpen(false); }}
+                      className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-[11px] text-neutral-300 hover:bg-neutral-800"
+                    >
+                      <span className={`font-mono font-bold ${snap.status < 300 ? "text-emerald-400" : snap.status < 400 ? "text-cobweb-400" : snap.status < 500 ? "text-amber-400" : "text-rose-400"}`}>{snap.status}</span>
+                      <span className="text-neutral-500">{formatMs(snap.elapsed_ms)}</span>
+                      <span className="ml-auto text-[10px] text-neutral-600">{new Date(snap.timestamp).toLocaleTimeString()}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
         {sparkData.length > 1 && (
           <div className="mt-1.5 flex items-end gap-[2px]" title={`Last ${sparkData.length} responses`}>
             {sparkData.map((v, i) => (
@@ -213,6 +292,8 @@ function StatusRow({ res, onDiff, onCodegen }: { res: ExecuteResponse; onDiff?: 
             ))}
           </div>
         )}
+        {/* Timing comparison bar */}
+        <TimingBar elapsed_ms={res.elapsed_ms} />
       </div>
       {/* Size card */}
       <div className="stat-card !py-2 !px-4 flex flex-col items-center justify-center">
@@ -255,25 +336,171 @@ function StatusRow({ res, onDiff, onCodegen }: { res: ExecuteResponse; onDiff?: 
   );
 }
 
+const SIZE_WARNING_THRESHOLD = 1024 * 1024;       // 1 MB
+const SIZE_FORCE_RAW_THRESHOLD = 5 * 1024 * 1024;  // 5 MB
+
 function BodyView({ res }: { res: ExecuteResponse }) {
   const ct = res.headers["content-type"] ?? "";
   const pretty = useMemo(() => prettify(res.body, ct), [res.body, ct]);
+  const [copyDropdownOpen, setCopyDropdownOpen] = useState(false);
+  const [forceRaw, setForceRaw] = useState(false);
+  const isLarge = res.body_size_bytes >= SIZE_WARNING_THRESHOLD;
+  const isForcedRaw = res.body_size_bytes >= SIZE_FORCE_RAW_THRESHOLD || forceRaw;
+
+  function copyAsFormatted() {
+    try {
+      const formatted = JSON.stringify(JSON.parse(res.body), null, 2);
+      void navigator.clipboard?.writeText(formatted);
+    } catch {
+      void navigator.clipboard?.writeText(res.body);
+    }
+    setCopyDropdownOpen(false);
+  }
+
+  function copyAsRaw() {
+    void navigator.clipboard?.writeText(res.body);
+    setCopyDropdownOpen(false);
+  }
+
+  function copyAsMarkdown() {
+    const lang = ct.includes("json") ? "json" : ct.includes("xml") ? "xml" : "";
+    void navigator.clipboard?.writeText("```" + lang + "\n" + res.body + "\n```");
+    setCopyDropdownOpen(false);
+  }
+
+  function copyWithHeaders() {
+    const headerStr = Object.entries(res.headers).map(([k, v]) => `${k}: ${v}`).join("\n");
+    void navigator.clipboard?.writeText(headerStr + "\n\n" + res.body);
+    setCopyDropdownOpen(false);
+  }
+
+  function downloadAsFile() {
+    const ext = ct.includes("json") ? ".json" : ct.includes("xml") ? ".xml" : ".txt";
+    const blob = new Blob([res.body], { type: ct || "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `response${ext}`;
+    a.click();
+    URL.revokeObjectURL(url);
+    setCopyDropdownOpen(false);
+  }
+
   return (
-    <div className="relative h-full">
-      <button
-        type="button"
-        onClick={() => navigator.clipboard?.writeText(res.body)}
-        className="absolute right-3 top-2 z-10 inline-flex items-center gap-1 rounded border border-glass bg-neutral-900/80 px-2 py-0.5 text-[11px] text-neutral-400 backdrop-blur transition hover:border-neutral-700 hover:text-neutral-200"
-        title="Copy body"
-      >
-        <Copy className="h-3 w-3" /> Copy
-      </button>
-      <div className="h-full overflow-hidden">
-        <CodeEditor
-          value={pretty}
-          contentTypeHint={ct}
-          readOnly
+    <div className="relative flex h-full flex-col">
+      {/* Large response warning */}
+      {isLarge && (
+        <div className="flex items-center gap-2 border-b border-amber-800/30 bg-amber-950/20 px-3 py-1.5 text-[11px] text-amber-400">
+          <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+          Large response ({formatBytes(res.body_size_bytes)}) {isForcedRaw && !forceRaw ? "- forced raw mode" : "- rendering may be slow"}
+          {!isForcedRaw && (
+            <button type="button" onClick={() => setForceRaw(true)} className="ml-2 rounded border border-amber-700/40 px-1.5 py-0.5 text-[10px] hover:bg-amber-900/30">
+              Show raw
+            </button>
+          )}
+          <button type="button" onClick={copyAsRaw} className="ml-1 rounded border border-amber-700/40 px-1.5 py-0.5 text-[10px] hover:bg-amber-900/30">
+            Copy to clipboard
+          </button>
+        </div>
+      )}
+      {/* Copy dropdown */}
+      <div className="absolute right-3 top-2 z-10">
+        <div className="relative">
+          <div className="flex items-stretch rounded border border-glass bg-neutral-900/80 backdrop-blur">
+            <button
+              type="button"
+              onClick={copyAsRaw}
+              className="inline-flex items-center gap-1 px-2 py-0.5 text-[11px] text-neutral-400 transition hover:text-neutral-200"
+              title="Copy body"
+            >
+              <Copy className="h-3 w-3" /> Copy
+            </button>
+            <button
+              type="button"
+              onClick={() => setCopyDropdownOpen((o) => !o)}
+              className="border-l border-glass px-1 text-neutral-500 transition hover:text-neutral-300"
+              title="Copy options"
+            >
+              <ChevronDown className="h-3 w-3" />
+            </button>
+          </div>
+          {copyDropdownOpen && (
+            <div className="absolute right-0 top-full z-20 mt-1 w-52 rounded-md border border-neutral-700 bg-neutral-900 py-1 shadow-lg">
+              <CopyMenuItem label="Copy as JSON (formatted)" onClick={copyAsFormatted} />
+              <CopyMenuItem label="Copy as raw text" onClick={copyAsRaw} />
+              <CopyMenuItem label="Copy as Markdown code block" onClick={copyAsMarkdown} />
+              <CopyMenuItem label="Copy headers + body" onClick={copyWithHeaders} />
+              <div className="mx-2 my-1 border-t border-neutral-800" />
+              <button
+                type="button"
+                onClick={downloadAsFile}
+                className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-neutral-300 hover:bg-neutral-800"
+              >
+                <Download className="h-3 w-3 text-neutral-500" />
+                Download as file
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+      <div className="min-h-0 flex-1 overflow-hidden">
+        {isForcedRaw ? (
+          <textarea
+            readOnly
+            value={res.body}
+            className="h-full w-full resize-none bg-transparent p-4 font-mono text-xs text-neutral-100 focus:outline-none"
+          />
+        ) : (
+          <CodeEditor
+            value={pretty}
+            contentTypeHint={ct}
+            readOnly
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
+function CopyMenuItem({ label, onClick }: { label: string; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex w-full items-center px-3 py-1.5 text-left text-xs text-neutral-300 hover:bg-neutral-800"
+    >
+      {label}
+    </button>
+  );
+}
+
+function TimingBar({ elapsed_ms }: { elapsed_ms: number }) {
+  // Scale: 0-1000ms = full bar. Clamp at 100%.
+  const maxMs = 1000;
+  const pct = Math.min(100, (elapsed_ms / maxMs) * 100);
+  const color =
+    elapsed_ms <= 200 ? "bg-emerald-500" :
+    elapsed_ms <= 1000 ? "bg-amber-500" :
+    "bg-rose-500";
+  const dotColor =
+    elapsed_ms <= 200 ? "bg-emerald-400" :
+    elapsed_ms <= 1000 ? "bg-amber-400" :
+    "bg-rose-400";
+
+  return (
+    <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-neutral-800" title={`${Math.round(elapsed_ms)} ms`}>
+      <div className="relative h-full">
+        {/* Green zone: 0-20% */}
+        <div className="absolute left-0 top-0 h-full bg-emerald-900/30" style={{ width: "20%" }} />
+        {/* Yellow zone: 20-100% */}
+        <div className="absolute left-[20%] top-0 h-full bg-amber-900/20" style={{ width: "80%" }} />
+        {/* Marker dot */}
+        <div
+          className={`absolute top-0 h-full w-1.5 rounded-full ${color} shadow-[0_0_4px_rgba(0,0,0,0.4)]`}
+          style={{ left: `calc(${pct}% - 3px)` }}
         />
+        {/* Filled portion */}
+        <div className={`h-full rounded-full ${dotColor}/30`} style={{ width: `${pct}%` }} />
       </div>
     </div>
   );

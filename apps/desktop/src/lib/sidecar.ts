@@ -168,6 +168,7 @@ export interface CollectionItem {
   auth?: AuthConfig | null;
   assertions?: Assertion[];
   pre_request_script?: string | null;
+  notes?: string | null;
   examples?: RequestExample[];
   captures?: CaptureRule[];
   // folder field (when is_folder=true)
@@ -201,6 +202,7 @@ export interface SaveRequestInput {
   auth?: AuthConfig | null;
   assertions?: Assertion[];
   pre_request_script?: string | null;
+  notes?: string | null;
   examples?: RequestExample[];
   captures?: CaptureRule[];
   parent_folder_id?: string | null;

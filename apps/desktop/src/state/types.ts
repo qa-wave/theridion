@@ -33,6 +33,8 @@ export interface RequestTab {
   assertions: Assertion[];
   assertionResults: AssertionResult[] | null;
   preRequestScript: string;
+  /** Free-form notes / description for this request (Markdown-compatible). */
+  notes: string;
   response: ExecuteResponse | null;
   error: string | null;
   busy: boolean;
@@ -65,6 +67,7 @@ export function newRequestTab(partial?: Partial<RequestTab>): RequestTab {
     assertions: [],
     assertionResults: null,
     preRequestScript: "",
+    notes: "",
     response: null,
     error: null,
     busy: false,
@@ -87,6 +90,7 @@ export function signatureOf(t: Partial<RequestTab>): string {
     a: t.auth,
     t: t.assertions,
     s: t.preRequestScript,
+    nt: t.notes,
   });
 }
 
@@ -138,5 +142,6 @@ export function tabFromSaved(
     auth: saved.auth ?? { type: "none" },
     assertions: saved.assertions ?? [],
     preRequestScript: saved.pre_request_script ?? "",
+    notes: saved.notes ?? "",
   });
 }
