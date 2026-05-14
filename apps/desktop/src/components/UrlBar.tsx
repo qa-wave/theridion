@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { ChevronDown, ClipboardCopy, Loader2, Save, Send } from "lucide-react";
+import { CheckCircle2, ChevronDown, ClipboardCopy, Loader2, Save, Send, XCircle } from "lucide-react";
 import { HTTP_METHOD_COLOR, METHODS } from "../state/types";
 import type { Method } from "../state/types";
 import { sidecar } from "../lib/sidecar";
@@ -25,6 +25,7 @@ interface Props {
   onSaveAs: () => void;
   onCopyAsCurl: () => void;
   activeEnvId?: string | null;
+  lastStatus?: number | null;
 }
 
 export function UrlBar({
@@ -40,8 +41,19 @@ export function UrlBar({
   onSaveAs,
   onCopyAsCurl,
   activeEnvId,
+  lastStatus,
 }: Props) {
   const [copied, setCopied] = useState(false);
+  const [sendFlash, setSendFlash] = useState<"ok" | "err" | null>(null);
+
+  // Flash the send button on status change.
+  useEffect(() => {
+    if (lastStatus === null || lastStatus === undefined) return;
+    const tone = lastStatus < 400 ? "ok" : "err";
+    setSendFlash(tone);
+    const timer = setTimeout(() => setSendFlash(null), 1000);
+    return () => clearTimeout(timer);
+  }, [lastStatus]);
   const [autocompleteOpen, setAutocompleteOpen] = useState(false);
   const [autocompleteItems, setAutocompleteItems] = useState<{ name: string; label: string }[]>([]);
   const [autocompleteIdx, setAutocompleteIdx] = useState(0);
@@ -263,14 +275,25 @@ export function UrlBar({
         type="button"
         onClick={onSend}
         disabled={!canSend}
-        className={`inline-flex items-center gap-2 rounded-xl px-6 py-2.5 text-sm font-semibold tracking-wide text-white transition-all duration-200 disabled:cursor-not-allowed disabled:bg-neutral-800 disabled:text-neutral-500 disabled:shadow-none ${
+        className={`relative inline-flex items-center gap-2 overflow-hidden rounded-xl px-6 py-2.5 text-sm font-semibold tracking-wide text-white transition-all duration-200 disabled:cursor-not-allowed disabled:bg-neutral-800 disabled:text-neutral-500 disabled:shadow-none ${
           canSend
             ? "bg-accent-gradient shadow-glow-emerald hover:shadow-glow hover:scale-[1.03] active:scale-[0.97]"
             : ""
+        } ${
+          sendFlash === "ok"
+            ? "ring-2 ring-emerald-400/60"
+            : sendFlash === "err"
+            ? "ring-2 ring-rose-400/60"
+            : ""
         }`}
       >
+        {busy && <div className="send-shimmer absolute inset-0" />}
         {busy ? (
           <Loader2 className="h-4 w-4 animate-spin" />
+        ) : sendFlash === "ok" ? (
+          <CheckCircle2 className="h-4 w-4 text-emerald-300" />
+        ) : sendFlash === "err" ? (
+          <XCircle className="h-4 w-4 text-rose-300" />
         ) : (
           <Send className="h-4 w-4" />
         )}

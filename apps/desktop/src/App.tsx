@@ -57,6 +57,7 @@ import { PerformanceDashboardModal } from "./components/PerformanceDashboardModa
 import { AgentExplorerModal } from "./components/AgentExplorerModal";
 import { NetworkConsole, type NetworkEntry, type NetworkEntryType } from "./components/NetworkConsole";
 import { ActivityBar, type AppMode } from "./components/ActivityBar";
+import { ToastContainer, type Toast } from "./components/Toast";
 
 const APP_VERSION = "0.0.1";
 const ACTIVE_ENV_KEY = "theridion.activeEnvironmentId";
@@ -120,10 +121,19 @@ export default function App() {
   const [networkPreserveLog, setNetworkPreserveLog] = useState(false);
   const [appMode, setAppMode] = useState<AppMode>("requests");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [envToast, setEnvToast] = useState<string | null>(null);
+  const [toasts, setToasts] = useState<Toast[]>([]);
   const [shortcutOverlayOpen, setShortcutOverlayOpen] = useState(false);
   const [splitRatio, setSplitRatio] = useState(0.5);
   const splitDragging = useState(false);
+
+  function addToast(type: Toast["type"], message: string) {
+    const id = crypto.randomUUID();
+    setToasts((prev) => [...prev.slice(-2), { id, type, message }]);
+  }
+
+  const dismissToast = useCallback((id: string) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  }, []);
 
   // ---- sidecar health polling ---------------------------------------------
   useEffect(() => {
@@ -474,6 +484,7 @@ export default function App() {
     });
 
     await refreshCollections();
+    addToast("success", "Request saved");
   }
 
   // ---- cURL import / export -----------------------------------------------
@@ -499,8 +510,10 @@ export default function App() {
         auth: active.auth.type !== "none" ? active.auth : null,
       });
       await navigator.clipboard.writeText(result.curl);
+      addToast("success", "Copied to clipboard");
     } catch (e) {
       console.error("failed to copy as cURL", e);
+      addToast("error", "Failed to copy as cURL");
     }
   }
 
@@ -707,13 +720,11 @@ export default function App() {
         if (nextIdx === environments.length) {
           // Wrap to "no environment".
           setActiveEnvId(null);
-          setEnvToast("Switched to: No environment");
+          addToast("info", "Switched to: No environment");
         } else {
           setActiveEnvId(environments[nextIdx].id);
-          setEnvToast(`Switched to: ${environments[nextIdx].name}`);
+          addToast("info", `Switched to: ${environments[nextIdx].name}`);
         }
-        // Auto-dismiss toast.
-        setTimeout(() => setEnvToast(null), 1500);
       } else if (cmd && e.key === "Enter") {
         e.preventDefault();
         void send();
@@ -772,8 +783,7 @@ export default function App() {
             try {
               const result = await sidecar.exportCurl(collectionId);
               await navigator.clipboard.writeText(result.commands.join("\n\n"));
-              setEnvToast(`Copied ${result.count} cURL command${result.count !== 1 ? "s" : ""}`);
-              setTimeout(() => setEnvToast(null), 1500);
+              addToast("success", `Exported ${result.count} cURL command${result.count !== 1 ? "s" : ""}`);
             } catch (e) {
               console.error("export curl failed", e);
             }
@@ -862,6 +872,7 @@ export default function App() {
             onSaveAs={() => setSavePopoverOpen(true)}
             onCopyAsCurl={copyAsCurl}
             activeEnvId={activeEnvId}
+            lastStatus={lastStatus}
           />
           <SavePopover
             open={savePopoverOpen}
@@ -998,12 +1009,8 @@ export default function App() {
         />
       </div>
 
-      {/* Toast notification */}
-      {envToast && (
-        <div className="pointer-events-none fixed bottom-16 left-1/2 z-[70] -translate-x-1/2 animate-slide-in rounded-lg border border-glass bg-neutral-800/95 px-4 py-2 text-xs font-medium text-neutral-100 shadow-xl backdrop-blur">
-          {envToast}
-        </div>
-      )}
+      {/* Toast notifications */}
+      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
 
       <EnvManagerModal
         open={modals.isOpen("envManager")}

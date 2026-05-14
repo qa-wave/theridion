@@ -551,6 +551,7 @@ function CollectionNode({
         </button>
       </div>
       {open && (
+        <div className="folder-children-enter">
         <ItemList
           items={visibleItems}
           depth={1}
@@ -573,6 +574,7 @@ function CollectionNode({
           onMoveToFolder={onMoveToFolder}
           lastResponses={lastResponses}
         />
+        </div>
       )}
       {open && collection.items.length === 0 && (
         <p className="px-8 py-1 text-[11px] italic text-neutral-600">
@@ -817,6 +819,7 @@ function FolderNode({
         </button>
       </div>
       {open && (folder.items?.length ?? 0) > 0 && (
+        <div className="folder-children-enter">
         <ItemList
           items={folder.items ?? []}
           depth={depth + 1}
@@ -839,6 +842,7 @@ function FolderNode({
           onMoveToFolder={onMoveToFolder}
           lastResponses={lastResponses}
         />
+        </div>
       )}
     </div>
   );

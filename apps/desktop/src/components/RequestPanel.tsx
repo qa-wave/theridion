@@ -166,7 +166,7 @@ export function RequestPanel({
         </div>
       )}
 
-      <div className="min-h-0 flex-1 overflow-auto p-4">
+      <div key={tab} className="min-h-0 flex-1 overflow-auto p-4 animate-fade-in">
         {tab === "params" && <ParamsView url={url} onUrlChange={onUrlChange} />}
         {tab === "headers" && (
           <HeadersView value={headersRaw} onChange={onHeadersChange} />
@@ -196,6 +196,11 @@ export function RequestPanel({
                 placeholder="// Available: pm.environment.get/set, pm.variables, pm.request\npm.environment.set('token', 'generated-value');"
               />
             </div>
+            {!preRequestScript.trim() && (
+              <p className="mt-3 text-[11px] leading-relaxed text-neutral-600">
+                Write JavaScript that runs before each request. Use the Snippets dropdown for common patterns.
+              </p>
+            )}
           </div>
         )}
         {tab === "tests" && (
@@ -309,6 +314,11 @@ function HeadersView({ value, onChange }: { value: string; onChange: (s: string)
         className="w-full resize-y rounded border border-glass bg-neutral-900/50 px-3 py-2 font-mono text-xs text-neutral-100 placeholder-neutral-600 focus:border-cobweb-500/40 focus:outline-none"
         spellCheck={false}
       />
+      {!value.trim() && (
+        <p className="mt-3 text-[11px] leading-relaxed text-neutral-600">
+          Add headers like Accept, Authorization, Content-Type. Use the Quick Add dropdown above.
+        </p>
+      )}
     </div>
   );
 }
@@ -438,13 +448,20 @@ function BodyView({ value, onChange }: { value: string; onChange: (s: string) =>
         </div>
       </div>
       {mode === "raw" && (
-        <div className="min-h-[280px] flex-1 overflow-hidden rounded border border-glass bg-neutral-900/50">
-          <CodeEditor
-            value={value}
-            onChange={onChange}
-            placeholder='{"hello":"world"}'
-          />
-        </div>
+        <>
+          <div className="min-h-[280px] flex-1 overflow-hidden rounded border border-glass bg-neutral-900/50">
+            <CodeEditor
+              value={value}
+              onChange={onChange}
+              placeholder='{"hello":"world"}'
+            />
+          </div>
+          {!value.trim() && (
+            <p className="mt-3 text-[11px] leading-relaxed text-neutral-600">
+              Add a JSON or XML request body. Switch to Form Data mode for key-value pairs.
+            </p>
+          )}
+        </>
       )}
       {mode === "form-data" && renderTable(formRows, setFormRows, serializeForm)}
       {mode === "url-encoded" && renderTable(urlRows, setUrlRows, serializeUrlEncoded)}
@@ -487,6 +504,12 @@ function AuthView({
           ))}
         </select>
       </div>
+
+      {value.type === "none" && (
+        <p className="mt-3 text-[11px] leading-relaxed text-neutral-600">
+          Configure authentication for this request. Supports Bearer Token, Basic Auth, and API Key.
+        </p>
+      )}
 
       {value.type === "bearer" && (
         <div>
@@ -697,8 +720,8 @@ function TestsView({
       </div>
 
       {assertions.length === 0 && (
-        <p className="py-4 text-center text-xs text-neutral-600">
-          No assertions yet. Add one to test your API responses.
+        <p className="py-4 text-center text-[11px] leading-relaxed text-neutral-600">
+          Add assertions to validate responses. Click &ldquo;+ Add assertion&rdquo; to test status codes, JSON paths, headers, and more.
         </p>
       )}
 

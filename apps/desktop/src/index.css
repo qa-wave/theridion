@@ -509,3 +509,72 @@ button, a, select, input, textarea {
   0% { background-position: 200% 0; }
   100% { background-position: -200% 0; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   Micro-interaction animations
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* Toast enter / exit */
+@keyframes toast-in {
+  0% { opacity: 0; transform: translateY(16px) scale(0.95); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes toast-out {
+  0% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(8px); }
+}
+.toast-enter { animation: toast-in 0.2s ease-out; }
+.toast-exit { animation: toast-out 0.15s ease-in forwards; }
+
+/* Badge pop for status cards */
+@keyframes badge-pop {
+  0% { opacity: 0; transform: scale(0.8); }
+  60% { opacity: 1; transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+/* Send button shimmer overlay */
+@keyframes button-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.send-shimmer {
+  background: linear-gradient(90deg, transparent 25%, rgba(255,255,255,0.08) 50%, transparent 75%);
+  background-size: 200% 100%;
+  animation: button-shimmer 1.5s ease-in-out infinite;
+}
+
+/* Subtle lift on interactive stat cards */
+.stat-card {
+  transition: transform 150ms ease, background 150ms ease, border-color 150ms ease;
+}
+.stat-card:hover {
+  transform: translateY(-1px);
+}
+
+/* Button press effect on accent gradient */
+.bg-accent-gradient:active {
+  transform: scale(0.97);
+}
+
+/* Sidebar item hover slide */
+button[draggable="true"]:hover {
+  transform: translateX(2px);
+  transition: transform 150ms ease;
+}
+
+/* Focus ring animation on inputs */
+input:focus, textarea:focus, select:focus {
+  transition: border-color 200ms ease, box-shadow 200ms ease;
+}
+
+/* Collection folder expand animation */
+.folder-children-enter {
+  overflow: hidden;
+  max-height: 0;
+  animation: folder-expand 0.2s ease-in-out forwards;
+}
+@keyframes folder-expand {
+  0% { max-height: 0; opacity: 0; }
+  100% { max-height: 2000px; opacity: 1; }
+}

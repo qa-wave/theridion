@@ -231,7 +231,7 @@ function StatusRow({ res, onDiff, onCodegen, history, onViewHistorical }: { res:
   return (
     <div className="grid grid-cols-4 gap-3 border-b border-glass bg-neutral-950/60 px-4 py-2.5">
       {/* Status card */}
-      <div className={`stat-card !py-2 !px-4 flex flex-col items-center justify-center ${toneGlow[tone]} ${toneBorder[tone]}`}>
+      <div className={`stat-card !py-2 !px-4 flex flex-col items-center justify-center ${toneGlow[tone]} ${toneBorder[tone]}`} style={{ animation: "badge-pop 0.3s ease-out" }} key={`${res.status}-${res.elapsed_ms}`}>
         <span className={`metric-value !text-[28px] font-mono ${toneText[tone]}`}>
           {res.status}
         </span>
@@ -240,7 +240,7 @@ function StatusRow({ res, onDiff, onCodegen, history, onViewHistorical }: { res:
         </span>
       </div>
       {/* Time card with trend + sparkline + timing bar + history badge */}
-      <div className="stat-card !py-2 !px-4 flex flex-col items-center justify-center relative">
+      <div className="stat-card !py-2 !px-4 flex flex-col items-center justify-center relative" style={{ animation: "badge-pop 0.3s ease-out 0.05s both" }}>
         <div className="flex items-center gap-1">
           <span className="metric-value !text-[28px] font-mono text-neutral-100">
             {formatMs(res.elapsed_ms)}
@@ -296,7 +296,7 @@ function StatusRow({ res, onDiff, onCodegen, history, onViewHistorical }: { res:
         <TimingBar elapsed_ms={res.elapsed_ms} />
       </div>
       {/* Size card */}
-      <div className="stat-card !py-2 !px-4 flex flex-col items-center justify-center">
+      <div className="stat-card !py-2 !px-4 flex flex-col items-center justify-center" style={{ animation: "badge-pop 0.3s ease-out 0.1s both" }}>
         <span className="metric-value !text-[28px] font-mono text-neutral-100">
           {formatBytes(res.body_size_bytes)}
         </span>
