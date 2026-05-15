@@ -348,6 +348,7 @@ export function useDefaultActions(callbacks: {
   openServiceMap?: () => void;
   openProxy?: () => void;
   openSwagger?: () => void;
+  openOpenapiImport?: () => void;
   openJwt?: () => void;
   openBatch?: () => void;
   openMonitors?: () => void;
@@ -364,6 +365,7 @@ export function useDefaultActions(callbacks: {
   openEnvComparison?: () => void;
   openSSE?: () => void;
   openChangelog?: () => void;
+  openPipeline?: () => void;
   collections?: StoredCollection[];
   onOpenRequest?: (collectionId: string, item: CollectionItem) => void;
   environments?: EnvironmentSummary[];
@@ -470,6 +472,9 @@ export function useDefaultActions(callbacks: {
       ...(callbacks.openSwagger ? [{
         id: "swagger-browser", label: "Swagger / OpenAPI Browser", icon: <FileCode size={14} />, onSelect: callbacks.openSwagger,
       }] : []),
+      ...(callbacks.openOpenapiImport ? [{
+        id: "openapi-import", label: "Import from OpenAPI / Swagger", icon: <FileCode size={14} />, onSelect: callbacks.openOpenapiImport,
+      }] : []),
       ...(callbacks.openJwt ? [{
         id: "jwt-inspector", label: "JWT Inspector", icon: <Key size={14} />, onSelect: callbacks.openJwt,
       }] : []),
@@ -517,6 +522,9 @@ export function useDefaultActions(callbacks: {
       }] : []),
       ...(callbacks.openChangelog ? [{
         id: "api-changelog", label: "API Changelog Detector", icon: <GitCompare size={14} />, onSelect: callbacks.openChangelog,
+      }] : []),
+      ...(callbacks.openPipeline ? [{
+        id: "pipeline", label: "Request Pipeline", icon: <GitBranch size={14} />, onSelect: callbacks.openPipeline,
       }] : []),
       {
         id: "tpl-get-json",

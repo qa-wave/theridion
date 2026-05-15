@@ -125,8 +125,8 @@ export type {
   ProjectSummary, ProjectEnvironment, ProjectCollection, YamlProject,
   HarNetworkEntryData, HarExportResult, PostmanExportResult,
   FailureNotifyInput, FailureNotifyResult,
-  OpenApiImportFullInput, OpenApiImportFullOutput,
-  OpenApiPreviewRequest, OpenApiPreviewFolder, OpenApiPreviewOutput,
+  OpenApiEnhancedPreviewRequest, OpenApiEnhancedPreviewFolder, OpenApiEnhancedPreviewOutput,
+  OpenApiEnhancedImportOutput,
 } from "./advanced";
 
 // ---- Compose the unified sidecar object from all sub-modules ----

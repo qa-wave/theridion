@@ -38,6 +38,7 @@ import { MockServerModal } from "./components/MockServerModal";
 import { ProxyRecorderModal } from "./components/ProxyRecorderModal";
 import { ServiceMapModal } from "./components/ServiceMapModal";
 import { SwaggerBrowserModal } from "./components/SwaggerBrowserModal";
+import { OpenAPIImportModal } from "./components/OpenAPIImportModal";
 import { SettingsModal } from "./components/SettingsModal";
 import { WebSocketModal } from "./components/WebSocketModal";
 import { HistoryPanel, type HistoryEntry } from "./components/HistoryPanel";
@@ -62,6 +63,7 @@ import { CollectionStatsModal } from "./components/CollectionStatsModal";
 import { ComparisonTableModal } from "./components/ComparisonTableModal";
 import { SSEModal } from "./components/SSEModal";
 import { ChangelogModal } from "./components/ChangelogModal";
+import { PipelineModal } from "./components/PipelineModal";
 import { NetworkConsole, type NetworkEntry, type NetworkEntryType } from "./components/NetworkConsole";
 import { ActivityBar, type AppMode } from "./components/ActivityBar";
 import { ToastContainer, type Toast } from "./components/Toast";
@@ -777,6 +779,7 @@ export default function App() {
     openServiceMap: () => modals.open("serviceMap"),
     openProxy: () => modals.open("proxy"),
     openSwagger: () => modals.open("swagger"),
+    openOpenapiImport: () => modals.open("openapiImport"),
     openJwt: () => modals.open("jwt"),
     openBatch: () => modals.open("batch"),
     openMonitors: () => modals.open("monitors"),
@@ -793,6 +796,7 @@ export default function App() {
     openEnvComparison: () => modals.open("envComparison"),
     openSSE: () => modals.open("sse"),
     openChangelog: () => modals.open("changelog"),
+    openPipeline: () => modals.open("pipeline"),
     collections,
     onOpenRequest: openSaved,
     environments,
@@ -1287,6 +1291,7 @@ export default function App() {
           });
         }}
       />
+      <OpenAPIImportModal open={modals.isOpen("openapiImport")} onClose={modals.close} onImported={refreshCollections} />
       <SoapModal open={modals.isOpen("soap")} onClose={modals.close} />
       <TestGenModal
         open={modals.isOpen("testGen")}
@@ -1348,6 +1353,7 @@ export default function App() {
       />
       <SSEModal open={modals.isOpen("sse")} onClose={modals.close} />
       <ChangelogModal open={modals.isOpen("changelog")} onClose={modals.close} />
+      <PipelineModal open={modals.isOpen("pipeline")} onClose={modals.close} collections={collections} />
 
       {/* Keyboard shortcut overlay */}
       {shortcutOverlayOpen && (

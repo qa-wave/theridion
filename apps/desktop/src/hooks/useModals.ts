@@ -18,6 +18,7 @@ export type ModalId =
   | "serviceMap"
   | "proxy"
   | "swagger"
+  | "openapiImport"
   | "jwt"
   | "batch"
   | "monitors"
@@ -36,6 +37,8 @@ export type ModalId =
   | "sse"
   | "changelog"
   | "responseCompare"
+  | "pipeline"
+  | "openapiImport"
   | null;
 
 export function useModals() {

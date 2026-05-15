@@ -645,4 +645,79 @@ export const testingMethods = {
       method: "POST",
       body: JSON.stringify({ collection_id: collectionId }),
     }),
+  executePipeline: (input: PipelineInput) =>
+    call<PipelineResult>("/api/pipeline/execute", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  validatePipeline: (input: PipelineInput) =>
+    call<PipelineValidateOutput>("/api/pipeline/validate", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  getPipelineTemplates: () =>
+    call<PipelineTemplate[]>("/api/pipeline/templates"),
 } as const;
+
+// ---- Pipeline types ----------------------------------------------------------
+
+export interface PipelineExtractor {
+  name: string;
+  source: "body" | "header" | "status";
+  path: string;
+}
+
+export interface PipelineStep {
+  request_id: string;
+  collection_id: string;
+  delay_ms?: number;
+  condition?: string | null;
+  extractors?: PipelineExtractor[];
+  on_fail?: "stop" | "continue" | "retry";
+  retry_count?: number;
+}
+
+export interface PipelineInput {
+  name: string;
+  steps: PipelineStep[];
+  variables?: Record<string, string>;
+  environment_id?: string | null;
+}
+
+export interface PipelineStepResult {
+  step_index: number;
+  request_id: string;
+  collection_id: string;
+  status: number | null;
+  elapsed_ms: number;
+  passed: boolean;
+  error: string | null;
+  captured: Record<string, string>;
+  attempts: number;
+  skipped: boolean;
+}
+
+export interface PipelineResult {
+  results: PipelineStepResult[];
+  total_ms: number;
+  passed: number;
+  failed: number;
+  variables: Record<string, string>;
+}
+
+export interface PipelineValidationIssue {
+  step_index: number;
+  field: string;
+  message: string;
+}
+
+export interface PipelineValidateOutput {
+  valid: boolean;
+  issues: PipelineValidationIssue[];
+}
+
+export interface PipelineTemplate {
+  name: string;
+  description: string;
+  steps: Record<string, unknown>[];
+}

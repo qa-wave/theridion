@@ -491,6 +491,39 @@ export interface FailureNotifyResult {
   error: string | null;
 }
 
+// ---- Enhanced OpenAPI Import types ------------------------------------------
+
+export interface OpenApiEnhancedPreviewRequest {
+  method: string;
+  path: string;
+  name: string;
+}
+
+export interface OpenApiEnhancedPreviewFolder {
+  name: string;
+  request_count: number;
+  requests: OpenApiEnhancedPreviewRequest[];
+}
+
+export interface OpenApiEnhancedPreviewOutput {
+  title: string;
+  version: string;
+  base_url: string;
+  folder_count: number;
+  request_count: number;
+  folders: OpenApiEnhancedPreviewFolder[];
+  auth_detected: string | null;
+  warnings: string[];
+}
+
+export interface OpenApiEnhancedImportOutput {
+  collection_id: string;
+  collection_name: string;
+  request_count: number;
+  folder_count: number;
+  warnings: string[];
+}
+
 export const advancedMethods = {
   getServiceMap: () => call<ServiceGraph>("/api/servicemap"),
   saveServiceMap: (graph: ServiceGraph) =>
@@ -766,6 +799,16 @@ export const advancedMethods = {
     call<PostmanExportResult>(`/api/export/postman/${collectionId}`, { method: "POST" }),
   notifyOnFailure: (input: FailureNotifyInput) =>
     call<FailureNotifyResult>("/api/integrations/notify-on-failure", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  openApiImportPreview: (input: { source: string; collection_name?: string; base_url_override?: string }) =>
+    call<OpenApiEnhancedPreviewOutput>("/api/import/openapi/preview", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  openApiImportFull: (input: { source: string; collection_name?: string; base_url_override?: string }) =>
+    call<OpenApiEnhancedImportOutput>("/api/import/openapi", {
       method: "POST",
       body: JSON.stringify(input),
     }),
