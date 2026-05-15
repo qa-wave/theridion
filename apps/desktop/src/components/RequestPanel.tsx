@@ -157,7 +157,13 @@ export function RequestPanel({
         {tab === "headers" && (
           <HeadersView value={headersRaw} onChange={onHeadersChange} />
         )}
-        {tab === "body" && <BodyView value={body} onChange={onBodyChange} />}
+        {tab === "body" && <BodyView value={body} onChange={onBodyChange} onSetContentType={(ct) => {
+          const lines = headersRaw.split("\n");
+          const idx = lines.findIndex((l) => /^content-type\s*:/i.test(l.trim()));
+          if (idx >= 0) lines[idx] = `Content-Type: ${ct}`;
+          else lines.push(`Content-Type: ${ct}`);
+          onHeadersChange(lines.filter(Boolean).join("\n"));
+        }} />}
         {tab === "auth" && <AuthView value={auth} onChange={onAuthChange} />}
         {tab === "scripts" && (
           <ScriptsPanel
@@ -484,8 +490,18 @@ interface FormRow {
   value: string;
 }
 
-function BodyView({ value, onChange }: { value: string; onChange: (s: string) => void }) {
+const CONTENT_TYPE_PRESETS = [
+  { label: "JSON", ct: "application/json", lang: "json" },
+  { label: "XML", ct: "application/xml", lang: "xml" },
+  { label: "Text", ct: "text/plain", lang: "plaintext" },
+  { label: "HTML", ct: "text/html", lang: "html" },
+  { label: "YAML", ct: "application/x-yaml", lang: "yaml" },
+  { label: "GraphQL", ct: "application/graphql", lang: "graphql" },
+] as const;
+
+function BodyView({ value, onChange, onSetContentType }: { value: string; onChange: (s: string) => void; onSetContentType?: (ct: string) => void }) {
   const [mode, setMode] = useState<BodyMode>("raw");
+  const [activePreset, setActivePreset] = useState<string | null>(null);
   const [formRows, setFormRows] = useState<FormRow[]>([{ key: "", value: "" }]);
   const [urlRows, setUrlRows] = useState<FormRow[]>([{ key: "", value: "" }]);
 
@@ -603,7 +619,20 @@ function BodyView({ value, onChange }: { value: string; onChange: (s: string) =>
       </div>
       {mode === "raw" && (
         <>
-          <div className="mb-1 flex items-center gap-1">
+          <div className="mb-1 flex items-center gap-1 flex-wrap">
+            {CONTENT_TYPE_PRESETS.map((p) => (
+              <button
+                key={p.label}
+                type="button"
+                onClick={() => { setActivePreset(p.ct); onSetContentType?.(p.ct); }}
+                className={`rounded border border-glass px-1.5 py-0.5 text-[10px] transition ${
+                  activePreset === p.ct ? "bg-cobweb-600/20 text-cobweb-400 border-cobweb-600/30" : "text-neutral-500 hover:bg-white/[0.06] hover:text-neutral-300"
+                }`}
+              >
+                {p.label}
+              </button>
+            ))}
+            <span className="mx-1 h-3 w-px bg-neutral-700/50" />
             <button
               type="button"
               onClick={() => { try { onChange(JSON.stringify(JSON.parse(value), null, 2)); } catch { /* not JSON */ } }}
