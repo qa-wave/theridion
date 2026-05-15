@@ -5,10 +5,13 @@ import type {
   CertConfig,
   ExecuteResponse,
   ExecuteRequestInput,
+  RetryConfig,
+  RetryAttemptInfo,
   SavedRequest,
 } from "../lib/sidecar";
+import { DEFAULT_RETRY_CONFIG } from "../lib/sidecar";
 
-export type { Assertion, AssertionResult, AuthConfig, CertConfig };
+export type { Assertion, AssertionResult, AuthConfig, CertConfig, RetryConfig, RetryAttemptInfo };
 export type Method = ExecuteRequestInput["method"];
 
 export const METHODS: Method[] = [
@@ -47,6 +50,10 @@ export interface RequestTab {
   notes: string;
   /** Extractors for request chaining — pull values from responses into variables. */
   extractors: Extractor[];
+  /** Retry configuration for transient errors. */
+  retryConfig: RetryConfig;
+  /** Attempt timeline from the last retry-enabled execution. */
+  retryAttempts: RetryAttemptInfo[] | null;
   response: ExecuteResponse | null;
   error: string | null;
   busy: boolean;
@@ -83,6 +90,8 @@ export function newRequestTab(partial?: Partial<RequestTab>): RequestTab {
     postResponseScript: "",
     notes: "",
     extractors: [],
+    retryConfig: { ...DEFAULT_RETRY_CONFIG },
+    retryAttempts: null,
     response: null,
     error: null,
     busy: false,
@@ -108,6 +117,7 @@ export function signatureOf(t: Partial<RequestTab>): string {
     s: t.preRequestScript,
     ps: t.postResponseScript,
     nt: t.notes,
+    rc: t.retryConfig,
     ex: t.extractors,
   });
 }

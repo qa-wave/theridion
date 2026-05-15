@@ -91,6 +91,42 @@ export interface ExecuteResponse {
   cookies?: Record<string, string>;
 }
 
+// ---- Retry types -----------------------------------------------------------
+
+export type BackoffStrategy = "fixed" | "linear" | "exponential" | "jitter";
+
+export interface RetryConfig {
+  enabled: boolean;
+  max_retries: number;
+  retry_on: number[];
+  backoff_strategy: BackoffStrategy;
+  backoff_base_ms: number;
+  backoff_max_ms: number;
+}
+
+export const DEFAULT_RETRY_CONFIG: RetryConfig = {
+  enabled: false,
+  max_retries: 3,
+  retry_on: [429, 500, 502, 503, 504],
+  backoff_strategy: "exponential",
+  backoff_base_ms: 1000,
+  backoff_max_ms: 30000,
+};
+
+export interface RetryAttemptInfo {
+  attempt: number;
+  status: number;
+  elapsed_ms: number;
+  waited_ms: number;
+}
+
+export interface ExecuteWithRetryResponse {
+  final_response: ExecuteResponse;
+  attempts: RetryAttemptInfo[];
+  total_elapsed_ms: number;
+  retried: boolean;
+}
+
 export interface EnvVariable {
   name: string;
   value: string;

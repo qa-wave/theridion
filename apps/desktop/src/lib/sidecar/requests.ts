@@ -6,6 +6,7 @@ import { call } from "./client";
 import type {
   AuthConfig, ExecuteRequestInput, ExecuteResponse, TimingBreakdown,
   CertInfo, VerifyChainResponse, SystemCertsResponse,
+  RetryConfig, ExecuteWithRetryResponse,
 } from "./types";
 import type { HealthResponse } from "./client";
 
@@ -201,6 +202,22 @@ export const requestsMethods = {
         timeout_seconds: 30,
         follow_redirects: true,
         ...input,
+      }),
+    }),
+  executeWithRetry: (input: ExecuteRequestInput, retry: Omit<RetryConfig, "enabled">) =>
+    call<ExecuteWithRetryResponse>("/api/requests/execute-with-retry", {
+      method: "POST",
+      body: JSON.stringify({
+        timeout_seconds: 30,
+        follow_redirects: true,
+        ...input,
+        retry: {
+          max_retries: retry.max_retries,
+          retry_on: retry.retry_on,
+          backoff_strategy: retry.backoff_strategy,
+          backoff_base_ms: retry.backoff_base_ms,
+          backoff_max_ms: retry.backoff_max_ms,
+        },
       }),
     }),
   executeMultipart: (input: ExecuteMultipartInput) =>

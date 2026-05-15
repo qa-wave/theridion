@@ -1,14 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { ChevronDown } from "lucide-react";
-import type { Assertion, AssertionResult, AuthConfig, CertConfig } from "../state/types";
-import type { CertInfo, CollectionVariable, ExecuteResponse, HealCandidate, RequestExample, StoredCollection } from "../lib/sidecar";
+import type { Assertion, AssertionResult, AuthConfig, CertConfig, RetryConfig, RetryAttemptInfo } from "../state/types";
+import type { CertInfo, CollectionVariable, ExecuteResponse, HealCandidate, RequestExample, StoredCollection, BackoffStrategy } from "../lib/sidecar";
 import { sidecar } from "../lib/sidecar";
 import { CodeEditor } from "./CodeEditor";
 import { ScriptsPanel } from "./ScriptsPanel";
 import type { Method } from "../state/types";
 import { headersToText, parseHeadersText } from "../state/types";
 
-type Tab = "params" | "headers" | "body" | "auth" | "certs" | "tests" | "scripts" | "notes";
+type Tab = "params" | "headers" | "body" | "auth" | "certs" | "tests" | "scripts" | "notes" | "retry";
 
 const TABS: { id: Tab; label: string; comingSoon?: boolean }[] = [
   { id: "params", label: "Params" },
@@ -18,6 +18,7 @@ const TABS: { id: Tab; label: string; comingSoon?: boolean }[] = [
   { id: "certs", label: "Certs" },
   { id: "tests", label: "Tests" },
   { id: "scripts", label: "Scripts" },
+  { id: "retry", label: "Retry" },
   { id: "notes", label: "Notes" },
 ];
 
@@ -47,6 +48,9 @@ interface Props {
   response?: ExecuteResponse | null;
   breadcrumb?: string[] | null;
   onReEvaluate?: () => void;
+  retryConfig?: RetryConfig;
+  onRetryConfigChange?: (rc: RetryConfig) => void;
+  retryAttempts?: RetryAttemptInfo[] | null;
 }
 
 export function RequestPanel({
@@ -75,6 +79,9 @@ export function RequestPanel({
   response,
   breadcrumb,
   onReEvaluate,
+  retryConfig,
+  onRetryConfigChange,
+  retryAttempts,
 }: Props) {
   const [tab, setTab] = useState<Tab>("params");
 
@@ -108,7 +115,7 @@ export function RequestPanel({
             : t.id === "params" ? countParams(url)
             : t.id === "tests" ? assertions.length
             : undefined;
-          const badge = (t.id === "auth" && auth.type !== "none") || (t.id === "certs" && Boolean(certConfig.client_cert_path)) || (t.id === "notes" && notes.length > 0);
+          const badge = (t.id === "auth" && auth.type !== "none") || (t.id === "certs" && Boolean(certConfig.client_cert_path)) || (t.id === "notes" && notes.length > 0) || (t.id === "retry" && retryConfig?.enabled);
           return (
             <button
               key={t.id}
@@ -188,6 +195,9 @@ export function RequestPanel({
             response={response ?? null}
             onReEvaluate={onReEvaluate}
           />
+        )}
+        {tab === "retry" && retryConfig && onRetryConfigChange && (
+          <RetryView config={retryConfig} onChange={onRetryConfigChange} attempts={retryAttempts ?? null} />
         )}
         {tab === "notes" && onNotesChange && (
           <NotesView notes={notes ?? ""} onChange={onNotesChange} />
@@ -1557,6 +1567,239 @@ function buildUrl(base: string, params: { key: string; value: string }[]): strin
     .map((p) => `${encodeURIComponent(p.key)}=${encodeURIComponent(p.value)}`)
     .join("&");
   return `${base}?${qs}`;
+}
+
+const DEFAULT_RETRY_STATUS_CODES = [429, 500, 502, 503, 504];
+
+const BACKOFF_STRATEGIES: { value: BackoffStrategy; label: string; desc: string }[] = [
+  { value: "fixed", label: "Fixed", desc: "Same delay every time" },
+  { value: "linear", label: "Linear", desc: "base * attempt" },
+  { value: "exponential", label: "Exponential", desc: "base * 2^attempt" },
+  { value: "jitter", label: "Jitter", desc: "Exponential + random noise" },
+];
+
+function RetryView({
+  config,
+  onChange,
+  attempts,
+}: {
+  config: RetryConfig;
+  onChange: (rc: RetryConfig) => void;
+  attempts: RetryAttemptInfo[] | null;
+}) {
+  const inputClass =
+    "w-full rounded border border-glass bg-neutral-900/50 px-3 py-1.5 font-mono text-xs text-neutral-100 placeholder-neutral-600 focus:border-cobweb-500/40 focus:outline-none";
+
+  function toggleCode(code: number) {
+    const next = config.retry_on.includes(code)
+      ? config.retry_on.filter((c) => c !== code)
+      : [...config.retry_on, code];
+    onChange({ ...config, retry_on: next });
+  }
+
+  function addCustomCode(codeStr: string) {
+    const code = parseInt(codeStr, 10);
+    if (isNaN(code) || code < 100 || code > 599) return;
+    if (config.retry_on.includes(code)) return;
+    onChange({ ...config, retry_on: [...config.retry_on, code] });
+  }
+
+  const totalAttemptTime = attempts ? attempts.reduce((s, a) => s + a.elapsed_ms + a.waited_ms, 0) : 0;
+
+  return (
+    <div className="space-y-4">
+      {/* Enable toggle */}
+      <div className="flex items-center gap-3">
+        <label className="flex cursor-pointer items-center gap-2 text-xs text-neutral-300">
+          <input
+            type="checkbox"
+            checked={config.enabled}
+            onChange={(e) => onChange({ ...config, enabled: e.target.checked })}
+            className="h-3.5 w-3.5 rounded border-glass accent-cobweb-500"
+          />
+          Enable retry on transient errors
+        </label>
+      </div>
+
+      {!config.enabled && (
+        <p className="text-[11px] leading-relaxed text-neutral-600">
+          When enabled, requests that return specific status codes (429, 5xx) will be automatically retried with configurable backoff.
+        </p>
+      )}
+
+      {config.enabled && (
+        <>
+          {/* Max retries */}
+          <div>
+            <label className="mb-1 block text-[11px] uppercase tracking-wider text-neutral-500">
+              Max retries
+            </label>
+            <input
+              type="number"
+              min={1}
+              max={10}
+              value={config.max_retries}
+              onChange={(e) => onChange({ ...config, max_retries: Math.min(10, Math.max(1, parseInt(e.target.value) || 1)) })}
+              className={inputClass}
+              style={{ width: "80px" }}
+            />
+          </div>
+
+          {/* Retry on status codes */}
+          <div>
+            <label className="mb-1 block text-[11px] uppercase tracking-wider text-neutral-500">
+              Retry on status codes
+            </label>
+            <div className="flex flex-wrap gap-1.5">
+              {DEFAULT_RETRY_STATUS_CODES.map((code) => {
+                const active = config.retry_on.includes(code);
+                return (
+                  <button
+                    key={code}
+                    type="button"
+                    onClick={() => toggleCode(code)}
+                    className={`rounded-full border px-2.5 py-0.5 font-mono text-xs transition ${
+                      active
+                        ? "border-cobweb-600/40 bg-cobweb-600/20 text-cobweb-400"
+                        : "border-glass text-neutral-500 hover:border-neutral-600 hover:text-neutral-300"
+                    }`}
+                  >
+                    {code}
+                  </button>
+                );
+              })}
+              {config.retry_on
+                .filter((c) => !DEFAULT_RETRY_STATUS_CODES.includes(c))
+                .map((code) => (
+                  <button
+                    key={code}
+                    type="button"
+                    onClick={() => toggleCode(code)}
+                    className="rounded-full border border-cobweb-600/40 bg-cobweb-600/20 px-2.5 py-0.5 font-mono text-xs text-cobweb-400 transition"
+                  >
+                    {code} ×
+                  </button>
+                ))}
+              <input
+                type="number"
+                min={100}
+                max={599}
+                placeholder="add"
+                className="w-16 rounded-full border border-glass bg-transparent px-2 py-0.5 text-center font-mono text-xs text-neutral-300 placeholder-neutral-600 focus:border-cobweb-500/40 focus:outline-none"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    addCustomCode((e.target as HTMLInputElement).value);
+                    (e.target as HTMLInputElement).value = "";
+                  }
+                }}
+              />
+            </div>
+          </div>
+
+          {/* Backoff strategy */}
+          <div>
+            <label className="mb-1 block text-[11px] uppercase tracking-wider text-neutral-500">
+              Backoff strategy
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              {BACKOFF_STRATEGIES.map((s) => (
+                <button
+                  key={s.value}
+                  type="button"
+                  onClick={() => onChange({ ...config, backoff_strategy: s.value })}
+                  className={`rounded border p-2 text-left transition ${
+                    config.backoff_strategy === s.value
+                      ? "border-cobweb-600/40 bg-cobweb-600/10"
+                      : "border-glass hover:border-neutral-600"
+                  }`}
+                >
+                  <div className={`text-xs font-medium ${config.backoff_strategy === s.value ? "text-cobweb-400" : "text-neutral-300"}`}>
+                    {s.label}
+                  </div>
+                  <div className="text-[10px] text-neutral-500">{s.desc}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Timing */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="mb-1 block text-[11px] uppercase tracking-wider text-neutral-500">
+                Base delay (ms)
+              </label>
+              <input
+                type="number"
+                min={0}
+                max={60000}
+                value={config.backoff_base_ms}
+                onChange={(e) => onChange({ ...config, backoff_base_ms: Math.max(0, parseInt(e.target.value) || 0) })}
+                className={inputClass}
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-[11px] uppercase tracking-wider text-neutral-500">
+                Max delay (ms)
+              </label>
+              <input
+                type="number"
+                min={0}
+                max={120000}
+                value={config.backoff_max_ms}
+                onChange={(e) => onChange({ ...config, backoff_max_ms: Math.max(0, parseInt(e.target.value) || 0) })}
+                className={inputClass}
+              />
+            </div>
+          </div>
+
+          {/* Attempt timeline */}
+          {attempts && attempts.length > 0 && (
+            <div>
+              <p className="mb-1 text-[11px] uppercase tracking-wider text-neutral-500">
+                Last run — {attempts.length} attempt{attempts.length > 1 ? "s" : ""}
+                <span className="ml-2 normal-case text-neutral-400">({totalAttemptTime.toFixed(0)} ms total)</span>
+              </p>
+              <div className="space-y-1">
+                {attempts.map((a) => {
+                  const isSuccess = a.status >= 200 && a.status < 300;
+                  const isRetryable = a.waited_ms > 0;
+                  return (
+                    <div key={a.attempt} className="flex items-center gap-2 rounded border border-glass px-2 py-1">
+                      <span className="w-6 text-right font-mono text-[10px] text-neutral-500">#{a.attempt}</span>
+                      <span className={`rounded px-1.5 py-0.5 font-mono text-[10px] font-bold ${
+                        isSuccess ? "bg-emerald-950/30 text-emerald-400" : "bg-rose-950/30 text-rose-400"
+                      }`}>
+                        {a.status}
+                      </span>
+                      <span className="font-mono text-[10px] text-neutral-400">{a.elapsed_ms.toFixed(0)} ms</span>
+                      {isRetryable && (
+                        <span className="text-[10px] text-amber-400/70">
+                          waited {a.waited_ms.toFixed(0)} ms
+                        </span>
+                      )}
+                      {/* Progress bar */}
+                      <div className="ml-auto flex h-1.5 w-24 overflow-hidden rounded-full bg-neutral-800">
+                        <div
+                          className={`h-full ${isSuccess ? "bg-emerald-500" : "bg-rose-500"}`}
+                          style={{ width: `${Math.min(100, (a.elapsed_ms / (totalAttemptTime || 1)) * 100)}%` }}
+                        />
+                        {isRetryable && (
+                          <div
+                            className="h-full bg-amber-500/50"
+                            style={{ width: `${Math.min(100, (a.waited_ms / (totalAttemptTime || 1)) * 100)}%` }}
+                          />
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
 }
 
 function NotesView({ notes, onChange }: { notes: string; onChange: (s: string) => void }) {
