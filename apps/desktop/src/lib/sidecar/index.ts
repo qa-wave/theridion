@@ -23,6 +23,7 @@ export type {
   ExecuteWithCapturesResponse, OAuth2TokenInput, OAuth2TokenOutput,
   OAuth1Input, OAuth1Output, OAuth2AuthorizeUrlInput, OAuth2AuthorizeUrlOutput,
   OAuth2CallbackResult, CookieManagerEntry, CookieManagerList, ConsoleLogEntry,
+  ScriptAssertionItem, ScriptSafeOutput,
 } from "./requests";
 
 export type {
@@ -78,6 +79,7 @@ export type {
   LoadTestInput, LoadTestResult,
   LoadRunConfig, TimelinePoint, LoadRunResult,
   OWASPSeverity, OWASPScanType, OWASPFinding, OWASPScanInput, OWASPScanOutput,
+  CompareResponsesInput, ResponseChangeEntry, CompareResponsesOutput,
 } from "./analysis";
 
 export type { ParsedCurl, UniversalImportResult, ReplayDiff, ReplayOutput } from "./codegen";

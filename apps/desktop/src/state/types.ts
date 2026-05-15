@@ -20,6 +20,12 @@ export const METHODS: Method[] = [
   "OPTIONS",
 ];
 
+export interface Extractor {
+  name: string;       // variable name to set (e.g., "auth_token")
+  source: "body" | "header" | "status";
+  path: string;       // JSONPath for body, header name for header
+}
+
 export interface RequestTab {
   id: string;
   /** When set, points to a saved request — Save updates in place. */
@@ -33,8 +39,11 @@ export interface RequestTab {
   assertions: Assertion[];
   assertionResults: AssertionResult[] | null;
   preRequestScript: string;
+  postResponseScript: string;
   /** Free-form notes / description for this request (Markdown-compatible). */
   notes: string;
+  /** Extractors for request chaining — pull values from responses into variables. */
+  extractors: Extractor[];
   response: ExecuteResponse | null;
   error: string | null;
   busy: boolean;
@@ -67,7 +76,9 @@ export function newRequestTab(partial?: Partial<RequestTab>): RequestTab {
     assertions: [],
     assertionResults: null,
     preRequestScript: "",
+    postResponseScript: "",
     notes: "",
+    extractors: [],
     response: null,
     error: null,
     busy: false,
@@ -90,7 +101,9 @@ export function signatureOf(t: Partial<RequestTab>): string {
     a: t.auth,
     t: t.assertions,
     s: t.preRequestScript,
+    ps: t.postResponseScript,
     nt: t.notes,
+    ex: t.extractors,
   });
 }
 
@@ -142,6 +155,12 @@ export function tabFromSaved(
     auth: saved.auth ?? { type: "none" },
     assertions: saved.assertions ?? [],
     preRequestScript: saved.pre_request_script ?? "",
+    postResponseScript: saved.post_response_script ?? "",
     notes: saved.notes ?? "",
+    extractors: (saved.captures ?? []).map((c) => ({
+      name: c.name,
+      source: c.source ?? "body",
+      path: c.path ?? "",
+    })),
   });
 }

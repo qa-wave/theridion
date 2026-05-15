@@ -21,6 +21,7 @@ export interface CollectionItem {
   auth?: AuthConfig | null;
   assertions?: Assertion[];
   pre_request_script?: string | null;
+  post_response_script?: string | null;
   notes?: string | null;
   examples?: RequestExample[];
   captures?: CaptureRule[];
@@ -55,6 +56,7 @@ export interface SaveRequestInput {
   auth?: AuthConfig | null;
   assertions?: Assertion[];
   pre_request_script?: string | null;
+  post_response_script?: string | null;
   notes?: string | null;
   examples?: RequestExample[];
   captures?: CaptureRule[];
