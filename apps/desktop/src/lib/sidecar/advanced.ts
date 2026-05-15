@@ -41,8 +41,24 @@ export interface TimelineOutput {
 
 // ---- Schema Validation types ---------------------------------------------
 
+export interface SchemaValidationError {
+  path: string; message: string; schema_path: string;
+}
+
 export interface SchemaValidateOutput {
-  valid: boolean; errors: Array<{ path: string; message: string }>;
+  valid: boolean; errors: SchemaValidationError[];
+}
+
+export interface SchemaGenerateOutput {
+  schema: Record<string, unknown>;
+}
+
+export interface SchemaDiffField {
+  path: string; kind: string; detail: string;
+}
+
+export interface SchemaDiffOutput {
+  added: SchemaDiffField[]; removed: SchemaDiffField[]; changed: SchemaDiffField[];
 }
 
 // ---- Request Example types -----------------------------------------------
@@ -543,10 +559,20 @@ export const advancedMethods = {
     call<TimelineOutput>("/api/timeline/record", { method: "POST", body: JSON.stringify(input) }),
   getTimeline: (requestId: string) => call<TimelineOutput>(`/api/timeline/${requestId}`),
   exportWorkspace: () => getSidecarBaseUrl().then((base) => `${base}/api/workspace/export`),
-  validateSchema: (body: string, schema: string) =>
+  validateSchema: (body: string, schema: string | Record<string, unknown>) =>
     call<SchemaValidateOutput>("/api/schema/validate", {
       method: "POST",
       body: JSON.stringify({ body, schema }),
+    }),
+  generateSchema: (body: string) =>
+    call<SchemaGenerateOutput>("/api/schema/generate", {
+      method: "POST",
+      body: JSON.stringify({ body }),
+    }),
+  diffSchemas: (old: Record<string, unknown> | string, newSchema: Record<string, unknown> | string) =>
+    call<SchemaDiffOutput>("/api/schema/diff", {
+      method: "POST",
+      body: JSON.stringify({ old, new: newSchema }),
     }),
   listSecrets: () => call<VaultListOutput>("/api/advanced/secrets"),
   writeSecret: (name: string, input: VaultWriteInput) =>
