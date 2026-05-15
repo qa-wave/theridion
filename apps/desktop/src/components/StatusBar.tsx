@@ -19,9 +19,11 @@ interface Props {
   activeEnvId?: string | null;
   environments?: EnvironmentSummary[];
   onManageEnv?: () => void;
+  onToggleHistory?: () => void;
+  onOpenDiagnostics?: () => void;
 }
 
-export function StatusBar({ sidecarStatus, appVersion, onOpenSettings, requestCount = 0, lastStatus = null, networkOpen = false, networkEntryCount = 0, onToggleNetwork, activeEnvId, environments = [], onManageEnv }: Props) {
+export function StatusBar({ sidecarStatus, appVersion, onOpenSettings, requestCount = 0, lastStatus = null, networkOpen = false, networkEntryCount = 0, onToggleNetwork, activeEnvId, environments = [], onManageEnv, onToggleHistory, onOpenDiagnostics }: Props) {
   const ok = sidecarStatus.state === "ok";
   const checking = sidecarStatus.state === "checking";
   const label = ok
@@ -56,7 +58,12 @@ export function StatusBar({ sidecarStatus, appVersion, onOpenSettings, requestCo
       <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cobweb-500/20 to-transparent" />
 
       {/* Sidecar status + session uptime */}
-      <div className="stat-card !rounded-lg !px-2.5 !py-1 flex items-center gap-2">
+      <div
+        className="stat-card !rounded-lg !px-2.5 !py-1 flex items-center gap-2 cursor-pointer transition hover:!bg-white/[0.05]"
+        onClick={onOpenDiagnostics}
+        role="button"
+        tabIndex={0}
+      >
         <span className="relative flex h-2 w-2">
           {ok && (
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-40" />
@@ -82,7 +89,12 @@ export function StatusBar({ sidecarStatus, appVersion, onOpenSettings, requestCo
 
       {/* Request stats */}
       {requestCount > 0 && (
-        <div className="stat-card !rounded-lg !px-2.5 !py-1 flex items-center gap-2">
+        <div
+          className="stat-card !rounded-lg !px-2.5 !py-1 flex items-center gap-2 cursor-pointer transition hover:!bg-white/[0.05]"
+          onClick={onToggleHistory}
+          role="button"
+          tabIndex={0}
+        >
           <span className="font-mono font-bold text-neutral-200">{requestCount}</span>
           <span className="text-neutral-500">req</span>
           <span className="text-neutral-700">&middot;</span>

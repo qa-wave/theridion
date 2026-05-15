@@ -147,9 +147,29 @@ export function RequestTabBar({
             </button>
           )
         )}
-        {/* Pinned tabs first, then unpinned */}
-        {[...tabs].sort((a, b) => (a.pinned === b.pinned ? 0 : a.pinned ? -1 : 1)).filter((t) => !tabSearchQuery || t.name.toLowerCase().includes(tabSearchQuery.toLowerCase()) || t.url.toLowerCase().includes(tabSearchQuery.toLowerCase())).map((t) => {
+        {/* Pinned tabs first, then unpinned; group by collection when 4+ tabs */}
+        {(() => {
+          const sorted = [...tabs].sort((a, b) => (a.pinned === b.pinned ? 0 : a.pinned ? -1 : 1)).filter((t) => !tabSearchQuery || t.name.toLowerCase().includes(tabSearchQuery.toLowerCase()) || t.url.toLowerCase().includes(tabSearchQuery.toLowerCase()));
+
+          // Group tabs by collection for visual separator (only when 4+ tabs)
+          const showGroups = tabs.length >= 4;
+          const METHOD_GROUP_COLORS: Record<string, string> = {
+            GET: "border-t-sky-500",
+            POST: "border-t-emerald-500",
+            PUT: "border-t-amber-500",
+            PATCH: "border-t-violet-500",
+            DELETE: "border-t-rose-500",
+            HEAD: "border-t-neutral-500",
+            OPTIONS: "border-t-neutral-500",
+          };
+
+          return sorted.map((t) => {
           const active = t.id === activeId;
+
+          // Top border color based on collection's first method
+          const topBorderClass = showGroups && t.savedAs
+            ? `border-t-2 ${METHOD_GROUP_COLORS[t.method] ?? "border-t-neutral-600"}`
+            : showGroups ? "border-t-2 border-t-transparent" : "";
           const durationColor = t.response
             ? t.response.elapsed_ms < 200 ? "text-emerald-400"
             : t.response.elapsed_ms <= 1000 ? "text-amber-400"
@@ -161,7 +181,7 @@ export function RequestTabBar({
               type="button"
               onClick={() => onSelect(t.id)}
               onContextMenu={(e) => handleTabContextMenu(e, t.id)}
-              className={`group relative flex items-center gap-2 rounded-md py-1.5 text-xs transition-all duration-150 ${
+              className={`group relative flex items-center gap-2 rounded-md py-1.5 text-xs transition-all duration-150 ${topBorderClass} ${
                 t.pinned ? "max-w-[120px] px-2" : "max-w-[240px] px-3"
               } ${
                 active
@@ -222,7 +242,8 @@ export function RequestTabBar({
               )}
             </button>
           );
-        })}
+        });
+        })()}
       </div>
 
       {/* Action buttons -- right side */}

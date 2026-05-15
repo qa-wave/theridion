@@ -314,7 +314,14 @@ export function NetworkConsole({
                   <span className="w-16 shrink-0 px-2 py-2.5 font-mono text-neutral-300">
                     {entry.method}
                   </span>
-                  <span className="min-w-0 flex-1 truncate px-2 py-2.5 font-mono text-neutral-400" title={entry.url}>
+                  <span
+                    className="min-w-0 flex-1 truncate px-2 py-2.5 font-mono text-neutral-400 cursor-pointer"
+                    title={`${entry.url} (double-click to copy)`}
+                    onDoubleClick={(e) => {
+                      e.stopPropagation();
+                      void navigator.clipboard?.writeText(entry.url);
+                    }}
+                  >
                     {entry.url}
                   </span>
                   <span className="w-16 shrink-0 px-2 py-2.5">

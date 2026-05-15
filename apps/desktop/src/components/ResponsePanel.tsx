@@ -264,6 +264,27 @@ function StatusRow({ res, onDiff, onCodegen, history, onViewHistorical }: { res:
     ? res.elapsed_ms > prevMs ? "slower" : res.elapsed_ms < prevMs ? "faster" : "same"
     : "same";
 
+  // Per-URL timing comparison: average of past times vs current
+  const urlTimingComparison = useMemo(() => {
+    if (!history || history.length < 2) return null;
+    const pastTimes = history.slice(0, -1).map((h) => h.elapsed_ms);
+    const avg = pastTimes.reduce((sum, t) => sum + t, 0) / pastTimes.length;
+    if (avg === 0) return null;
+    const ratio = res.elapsed_ms / avg;
+    if (ratio < 0.85) {
+      const pctFaster = Math.round((1 - ratio) * 100);
+      return { label: `${pctFaster}% faster`, color: "text-emerald-400" };
+    }
+    if (ratio > 1.15) {
+      if (ratio >= 2) {
+        return { label: `${ratio.toFixed(1)}x slower`, color: "text-rose-400" };
+      }
+      const pctSlower = Math.round((ratio - 1) * 100);
+      return { label: `${pctSlower}% slower`, color: "text-rose-400" };
+    }
+    return { label: "~same", color: "text-neutral-500" };
+  }, [history, res.elapsed_ms]);
+
   // Sparkline bars from history
   const sparkData = responseTimeHistory.slice(-5);
   const sparkMax = Math.max(...sparkData, 1);
@@ -291,6 +312,11 @@ function StatusRow({ res, onDiff, onCodegen, history, onViewHistorical }: { res:
         </div>
         <div className="flex items-center gap-1.5">
           <span className="metric-label">Time</span>
+          {urlTimingComparison && (
+            <span className={`text-[9px] font-medium ${urlTimingComparison.color}`}>
+              {urlTimingComparison.label}
+            </span>
+          )}
           {history && history.length > 1 && (
             <div className="relative">
               <button
@@ -386,6 +412,9 @@ function BodyView({ res, onAddAssertion }: { res: ExecuteResponse; onAddAssertio
   const [forceRaw, setForceRaw] = useState(false);
   const isLarge = res.body_size_bytes >= SIZE_WARNING_THRESHOLD;
   const isForcedRaw = res.body_size_bytes >= SIZE_FORCE_RAW_THRESHOLD || forceRaw;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const editorRef = useRef<any>(null);
+  const lineCount = useMemo(() => pretty.split("\n").length, [pretty]);
 
   function copyAsFormatted() {
     try {
@@ -491,6 +520,26 @@ function BodyView({ res, onAddAssertion }: { res: ExecuteResponse; onAddAssertio
           })()}
         </div>
       )}
+      {/* Fold/unfold bar + line count */}
+      {!isForcedRaw && (
+        <div className="flex items-center gap-2 border-b border-glass/60 px-3 py-1">
+          <button
+            type="button"
+            onClick={() => editorRef.current?.trigger("fold", "editor.foldAll", {})}
+            className="inline-flex items-center gap-1 rounded border border-glass px-1.5 py-0.5 text-[10px] text-neutral-500 transition hover:bg-white/[0.06] hover:text-neutral-300"
+          >
+            Collapse All
+          </button>
+          <button
+            type="button"
+            onClick={() => editorRef.current?.trigger("unfold", "editor.unfoldAll", {})}
+            className="inline-flex items-center gap-1 rounded border border-glass px-1.5 py-0.5 text-[10px] text-neutral-500 transition hover:bg-white/[0.06] hover:text-neutral-300"
+          >
+            Expand All
+          </button>
+          <span className="text-[10px] text-neutral-600">{lineCount} lines</span>
+        </div>
+      )}
       {/* Copy dropdown */}
       <div className="absolute right-3 top-2 z-10">
         <div className="relative">
@@ -543,6 +592,7 @@ function BodyView({ res, onAddAssertion }: { res: ExecuteResponse; onAddAssertio
             value={pretty}
             contentTypeHint={ct}
             readOnly
+            onEditorMount={(editor) => { editorRef.current = editor; }}
           />
         )}
       </div>
@@ -642,7 +692,13 @@ function HeadersView({
             {filtered.map(([k, v]) => (
               <tr key={k} className="border-t border-glass/60 hover:bg-neutral-900/40">
                 <td className="px-4 py-1.5 font-mono text-neutral-400">{k}</td>
-                <td className="px-4 py-1.5 font-mono text-neutral-100 break-all">{v}</td>
+                <td
+                  className="px-4 py-1.5 font-mono text-neutral-100 break-all cursor-pointer"
+                  title="Double-click to copy"
+                  onDoubleClick={() => {
+                    void navigator.clipboard?.writeText(v);
+                  }}
+                >{v}</td>
               </tr>
             ))}
           </tbody>

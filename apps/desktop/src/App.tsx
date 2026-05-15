@@ -43,6 +43,7 @@ import { WebSocketModal } from "./components/WebSocketModal";
 import { HistoryPanel, type HistoryEntry } from "./components/HistoryPanel";
 import { SoapModal } from "./components/SoapModal";
 import { CommandPalette, useDefaultActions } from "./components/CommandPalette";
+import { GlobalSearch } from "./components/GlobalSearch";
 import { ContextMenu, buildSidebarActions, type ContextMenuAction } from "./components/ContextMenu";
 import { JwtInspectorModal } from "./components/JwtInspectorModal";
 import { BatchRunnerModal } from "./components/BatchRunnerModal";
@@ -111,6 +112,7 @@ export default function App() {
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [cmdPaletteOpen, setCmdPaletteOpen] = useState(false);
+  const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
   const [requestCount, setRequestCount] = useState(0);
   const [lastStatus, setLastStatus] = useState<number | null>(null);
   const [consoleEntries, setConsoleEntries] = useState<ConsoleEntry[]>([]);
@@ -677,11 +679,21 @@ export default function App() {
     window.addEventListener("mouseup", onUp);
   }, [networkHeight]);
 
+  // Responsive auto-collapse sidebar when window is narrow
+  useEffect(() => {
+    const check = () => {
+      if (window.innerWidth < 1200 && !sidebarCollapsed) setSidebarCollapsed(true);
+    };
+    window.addEventListener("resize", check);
+    check();
+    return () => window.removeEventListener("resize", check);
+  }, [sidebarCollapsed]);
+
   const isFirstRun = collections.length === 0 && !active.response;
 
   // ---- command palette actions ----------------------------------------------
   const cmdActions = useDefaultActions({
-    newTab: () => newTab(),
+    newTab: (seed) => newTab(seed as Partial<RequestTab> | undefined),
     importCurl: () => modals.open("curlImport"),
     openGraphQL: () => modals.open("graphql"),
     openWebSocket: () => modals.open("webSocket"),
@@ -722,7 +734,10 @@ export default function App() {
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       const cmd = e.metaKey || e.ctrlKey;
-      if (cmd && e.key === "k") {
+      if (cmd && e.shiftKey && e.key === "f") {
+        e.preventDefault();
+        setGlobalSearchOpen((o) => !o);
+      } else if (cmd && e.key === "k") {
         e.preventDefault();
         setCmdPaletteOpen((o) => !o);
       } else if (cmd && e.key === ",") {
@@ -1098,6 +1113,8 @@ export default function App() {
           activeEnvId={activeEnvId}
           environments={environments}
           onManageEnv={() => modals.open("envManager")}
+          onToggleHistory={() => setHistoryOpen((o) => !o)}
+          onOpenDiagnostics={() => modals.open("settings")}
         />
       </div>
 
@@ -1170,6 +1187,21 @@ export default function App() {
         onClose={() => setCmdPaletteOpen(false)}
         actions={cmdActions}
       />
+      <GlobalSearch
+        open={globalSearchOpen}
+        onClose={() => setGlobalSearchOpen(false)}
+        collections={collections}
+        environments={environments}
+        onOpenRequest={openSaved}
+        onManageEnvs={() => modals.open("envManager")}
+        onSelectEnv={(id) => {
+          setActiveEnvId(id);
+          addToast("info", id ? `Switched to: ${environments.find((e) => e.id === id)?.name}` : "No environment");
+        }}
+        onNewTab={() => newTab()}
+        onOpenCommandPalette={() => setCmdPaletteOpen(true)}
+        onOpenSettings={() => modals.open("settings")}
+      />
       <ContextMenu
         open={ctxMenu.open}
         x={ctxMenu.x}
@@ -1217,6 +1249,7 @@ const SHORTCUT_SECTIONS: { title: string; items: { action: string; shortcut: str
     title: "Navigation",
     items: [
       { action: "Command palette", shortcut: "\u2318K" },
+      { action: "Global search", shortcut: "\u2318\u21E7F" },
       { action: "Settings", shortcut: "\u2318," },
       { action: "Network console", shortcut: "\u2318\u21E7N" },
       { action: "Switch environment", shortcut: "Ctrl+E" },

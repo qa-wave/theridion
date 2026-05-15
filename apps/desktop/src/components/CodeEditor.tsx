@@ -11,6 +11,9 @@ interface Props {
   /** Pixels — when omitted, fills its container via flex. */
   height?: number | string;
   placeholder?: string;
+  /** Called when the Monaco editor instance is mounted, exposing the editor ref. */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  onEditorMount?: (editor: any) => void;
 }
 
 const DEFAULT_OPTIONS = {
@@ -46,6 +49,7 @@ export function CodeEditor({
   readOnly = false,
   height,
   placeholder,
+  onEditorMount,
 }: Props) {
   const [ready, setReady] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -109,6 +113,7 @@ export function CodeEditor({
 
     setReady(true);
     requestAnimationFrame(() => editor.layout());
+    onEditorMount?.(editor);
   };
 
   // Re-layout on container resize so the editor stays snug inside flex/grid.

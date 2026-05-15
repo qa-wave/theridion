@@ -65,6 +65,11 @@ const GROUP_MAP: Record<string, string> = {
   "perf-dashboard": "TOOLS",
   "service-map": "TOOLS",
   "proxy-recorder": "TOOLS",
+  "tpl-get-json": "TEMPLATES",
+  "tpl-post-json": "TEMPLATES",
+  "tpl-graphql": "TEMPLATES",
+  "tpl-soap": "TEMPLATES",
+  "tpl-auth-bearer": "TEMPLATES",
 };
 
 const RECENT_KEY = "theridion.recentCommands";
@@ -84,7 +89,7 @@ function pushRecent(id: string) {
   localStorage.setItem(RECENT_KEY, JSON.stringify(recent.slice(0, MAX_RECENT)));
 }
 
-const GROUP_ORDER = ["RECENT", "NAVIGATION", "PROTOCOLS", "ENVIRONMENTS", "TOOLS", "REQUESTS"];
+const GROUP_ORDER = ["RECENT", "TEMPLATES", "NAVIGATION", "PROTOCOLS", "ENVIRONMENTS", "TOOLS", "REQUESTS"];
 
 type GroupedAction = {
   type: "header";
@@ -322,7 +327,7 @@ function flattenCollectionRequests(
 
 /** Default set of command palette actions. Callers should pass callbacks. */
 export function useDefaultActions(callbacks: {
-  newTab: () => void;
+  newTab: (seed?: { method?: string; url?: string; headersRaw?: string; body?: string; name?: string }) => void;
   importCurl: () => void;
   openGraphQL: () => void;
   openWebSocket: () => void;
@@ -488,6 +493,67 @@ export function useDefaultActions(callbacks: {
       ...(callbacks.openAgentExplorer ? [{
         id: "agent-explorer", label: "AI: Explore API", icon: <Search size={14} />, onSelect: callbacks.openAgentExplorer,
       }] : []),
+      {
+        id: "tpl-get-json",
+        label: "Template: GET JSON",
+        icon: <FileCode size={14} />,
+        onSelect: () => callbacks.newTab({ method: "GET", url: "https://httpbin.org/get", name: "GET JSON" }),
+      },
+      {
+        id: "tpl-post-json",
+        label: "Template: POST JSON",
+        icon: <FileCode size={14} />,
+        onSelect: () => callbacks.newTab({
+          method: "POST",
+          url: "https://httpbin.org/post",
+          headersRaw: "Content-Type: application/json",
+          body: JSON.stringify({ key: "value", number: 42 }, null, 2),
+          name: "POST JSON",
+        }),
+      },
+      {
+        id: "tpl-graphql",
+        label: "Template: GraphQL",
+        icon: <FileCode size={14} />,
+        onSelect: () => callbacks.newTab({
+          method: "POST",
+          url: "https://api.example.com/graphql",
+          headersRaw: "Content-Type: application/json",
+          body: JSON.stringify({ query: "{\n  viewer {\n    id\n    name\n  }\n}" }, null, 2),
+          name: "GraphQL Query",
+        }),
+      },
+      {
+        id: "tpl-soap",
+        label: "Template: SOAP",
+        icon: <FileCode size={14} />,
+        onSelect: () => callbacks.newTab({
+          method: "POST",
+          url: "https://api.example.com/soap",
+          headersRaw: "Content-Type: text/xml; charset=utf-8\nSOAPAction: \"\"",
+          body: `<?xml version="1.0" encoding="UTF-8"?>
+<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+  <soap:Header/>
+  <soap:Body>
+    <YourOperation xmlns="http://example.com/ns">
+      <param>value</param>
+    </YourOperation>
+  </soap:Body>
+</soap:Envelope>`,
+          name: "SOAP Request",
+        }),
+      },
+      {
+        id: "tpl-auth-bearer",
+        label: "Template: Auth Bearer",
+        icon: <Key size={14} />,
+        onSelect: () => callbacks.newTab({
+          method: "GET",
+          url: "https://httpbin.org/bearer",
+          headersRaw: "Authorization: Bearer YOUR_TOKEN_HERE",
+          name: "Bearer Auth",
+        }),
+      },
       ...envActions,
       ...requestActions,
     ],
