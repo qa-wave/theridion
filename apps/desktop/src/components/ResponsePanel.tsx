@@ -769,6 +769,31 @@ function TimingBar({ elapsed_ms }: { elapsed_ms: number }) {
   );
 }
 
+function HeaderRow({ name, value }: { name: string; value: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <tr className="border-t border-glass/60 hover:bg-neutral-900/40 group">
+      <td className="px-4 py-1.5 font-mono text-neutral-400">{name}</td>
+      <td
+        className="px-4 py-1.5 font-mono text-neutral-100 break-all cursor-pointer relative"
+        title="Click to copy value"
+        onClick={() => {
+          void navigator.clipboard?.writeText(value);
+          setCopied(true);
+          setTimeout(() => setCopied(false), 1000);
+        }}
+      >
+        {value}
+        {copied && (
+          <span className="absolute right-2 top-1/2 -translate-y-1/2 rounded bg-cobweb-600/30 px-1.5 py-0.5 text-[10px] text-cobweb-400 animate-fade-in">
+            Copied!
+          </span>
+        )}
+      </td>
+    </tr>
+  );
+}
+
 function HeadersView({
   res,
   search,
@@ -815,16 +840,7 @@ function HeadersView({
           </thead>
           <tbody>
             {filtered.map(([k, v]) => (
-              <tr key={k} className="border-t border-glass/60 hover:bg-neutral-900/40">
-                <td className="px-4 py-1.5 font-mono text-neutral-400">{k}</td>
-                <td
-                  className="px-4 py-1.5 font-mono text-neutral-100 break-all cursor-pointer"
-                  title="Double-click to copy"
-                  onDoubleClick={() => {
-                    void navigator.clipboard?.writeText(v);
-                  }}
-                >{v}</td>
-              </tr>
+              <HeaderRow key={k} name={k} value={v} />
             ))}
           </tbody>
         </table>
