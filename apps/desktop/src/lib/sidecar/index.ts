@@ -72,6 +72,7 @@ export type {
   CorsTestResult, InjectionFinding, InjectionScanResult,
   SensitiveFinding, SensitiveDataResult,
   LoadTestInput, LoadTestResult,
+  LoadRunConfig, TimelinePoint, LoadRunResult,
 } from "./analysis";
 
 export type { ParsedCurl, UniversalImportResult, ReplayDiff, ReplayOutput } from "./codegen";

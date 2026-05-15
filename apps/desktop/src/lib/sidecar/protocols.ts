@@ -78,25 +78,31 @@ export interface SoapExecuteOutput {
 // ---- WS-Security types -----------------------------------------------------
 
 export interface WsSecurityConfig {
-  type: "UsernameToken" | "X509" | "SAML";
+  type: "UsernameToken" | "Timestamp" | "BinarySecurityToken";
   username?: string;
   password?: string;
-  certificate?: string;
+  password_type?: "PasswordText" | "PasswordDigest";
+  add_nonce?: boolean;
+  add_created?: boolean;
+  add_timestamp?: boolean;
+  ttl_seconds?: number;
+  certificate_base64?: string;
 }
 
 export interface WsSecurityInput {
-  wsdl_url: string;
-  operation: string;
-  args?: Record<string, unknown>;
+  url: string;
+  soap_action?: string;
+  envelope_xml: string;
   security: WsSecurityConfig;
-  endpoint_url?: string;
-  envelope_xml?: string;
+  headers?: Record<string, string>;
 }
 
 export interface WsSecurityOutput {
   ok: boolean;
-  result?: string | null;
-  fault?: string | null;
+  status: number;
+  response_xml: string;
+  secured_envelope: string;
+  error?: string | null;
 }
 
 // ---- MTOM types ------------------------------------------------------------
@@ -246,7 +252,7 @@ export const protocolsMethods = {
       body: JSON.stringify(input),
     }),
   wsSecurityExecute: (input: WsSecurityInput) =>
-    call<WsSecurityOutput>("/api/soap/ws-security", {
+    call<WsSecurityOutput>("/api/soap/ws-security/execute", {
       method: "POST",
       body: JSON.stringify(input),
     }),

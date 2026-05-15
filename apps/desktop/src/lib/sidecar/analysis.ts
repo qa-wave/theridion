@@ -421,6 +421,46 @@ export interface SensitiveDataResult {
   risk_level: "none" | "low" | "medium" | "high";
 }
 
+// ---- Full load runner types -------------------------------------------------
+
+export interface LoadRunConfig {
+  url: string;
+  method?: string;
+  headers?: Record<string, string>;
+  body?: string | null;
+  virtual_users?: number;
+  duration_seconds?: number;
+  ramp_up_seconds?: number;
+  think_time_ms?: number;
+  environment_id?: string | null;
+}
+
+export interface TimelinePoint {
+  second: number;
+  rps: number;
+  avg_latency_ms: number;
+  error_count: number;
+  active_users: number;
+}
+
+export interface LoadRunResult {
+  total_requests: number;
+  successful: number;
+  failed: number;
+  errors: Record<string, number>;
+  avg_latency_ms: number;
+  min_latency_ms: number;
+  max_latency_ms: number;
+  p50_ms: number;
+  p75_ms: number;
+  p90_ms: number;
+  p95_ms: number;
+  p99_ms: number;
+  requests_per_second: number;
+  duration_seconds: number;
+  timeline: TimelinePoint[];
+}
+
 // ---- Load test types --------------------------------------------------------
 
 export interface LoadTestInput {
@@ -487,6 +527,11 @@ export const analysisMethods = {
     }),
   loadTest: (input: LoadTestInput) =>
     call<LoadTestResult>("/api/loadtest/run", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  loadTestFull: (input: LoadRunConfig) =>
+    call<LoadRunResult>("/api/loadtest/run-full", {
       method: "POST",
       body: JSON.stringify(input),
     }),
