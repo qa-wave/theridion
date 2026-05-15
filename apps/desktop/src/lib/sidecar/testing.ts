@@ -15,7 +15,8 @@ export type AssertionType =
   | "header_exists"
   | "header_equals"
   | "body_contains"
-  | "body_regex";
+  | "body_regex"
+  | "performance_budget";
 
 export interface Assertion {
   type: AssertionType;

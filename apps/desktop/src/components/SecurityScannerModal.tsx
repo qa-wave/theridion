@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { Loader2, Shield, X } from "lucide-react";
-import { sidecar, type CorsTestResult, type InjectionScanResult, type SensitiveDataResult, type JwtInspectResult } from "../lib/sidecar";
+import { sidecar, type CorsTestResult, type InjectionScanResult, type SensitiveDataResult, type JwtInspectResult, type OWASPScanOutput } from "../lib/sidecar";
 
 interface Props {
   open: boolean;
   onClose: () => void;
 }
 
-type ScanTab = "cors" | "injection" | "sensitive" | "jwt";
+type ScanTab = "cors" | "injection" | "sensitive" | "jwt" | "owasp";
 
 export function SecurityScannerModal({ open, onClose }: Props) {
   const [tab, setTab] = useState<ScanTab>("cors");
@@ -31,6 +31,11 @@ export function SecurityScannerModal({ open, onClose }: Props) {
   // JWT
   const [jwtToken, setJwtToken] = useState("");
   const [jwtResult, setJwtResult] = useState<JwtInspectResult | null>(null);
+
+  // OWASP
+  const [owaspUrl, setOwaspUrl] = useState("");
+  const [owaspParams, setOwaspParams] = useState("");
+  const [owaspResult, setOwaspResult] = useState<OWASPScanOutput | null>(null);
 
   if (!open) return null;
 
@@ -80,6 +85,7 @@ export function SecurityScannerModal({ open, onClose }: Props) {
     { id: "injection", label: "Injection Scan" },
     { id: "sensitive", label: "Sensitive Data" },
     { id: "jwt", label: "JWT" },
+    { id: "owasp", label: "OWASP Scan" },
   ];
 
   return (
@@ -165,6 +171,41 @@ export function SecurityScannerModal({ open, onClose }: Props) {
                     <div key={idx} className="rounded border border-glass p-2 text-xs">
                       <p className="text-neutral-300">{f.type} at {f.location} (line {f.line})</p>
                       <p className="text-neutral-500 font-mono">{f.value_preview}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+
+          {tab === "owasp" && (
+            <>
+              <input value={owaspUrl} onChange={(e) => setOwaspUrl(e.target.value)} placeholder="https://api.example.com/endpoint" className={inputClass} />
+              <textarea value={owaspParams} onChange={(e) => setOwaspParams(e.target.value)} placeholder='{"q":"test"}' rows={2} className={`${inputClass} font-mono resize-none`} />
+              <button type="button" onClick={async () => {
+                if (!owaspUrl) return;
+                setBusy(true); setError(null);
+                try {
+                  let params: Record<string, string> = {};
+                  try { params = JSON.parse(owaspParams); } catch { /* ignore */ }
+                  setOwaspResult(await sidecar.owaspScan({ url: owaspUrl, params }));
+                } catch (e: unknown) { setError(e instanceof Error ? e.message : String(e)); }
+                finally { setBusy(false); }
+              }} disabled={busy} className={btnClass}>
+                {busy && <Loader2 className="h-3.5 w-3.5 animate-spin" />} Run OWASP Scan
+              </button>
+              {owaspResult && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-3">
+                    <span className={`text-2xl font-bold ${owaspResult.score >= 80 ? "text-emerald-400" : owaspResult.score >= 60 ? "text-amber-400" : "text-rose-400"}`}>{owaspResult.score}</span>
+                    <span className="text-xs text-neutral-400">{owaspResult.findings.length} finding(s) in {owaspResult.elapsed_ms.toFixed(0)}ms</span>
+                  </div>
+                  {owaspResult.findings.map((f, idx) => (
+                    <div key={idx} className="rounded border border-glass p-2 text-xs">
+                      <span className={`mr-2 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase ${f.severity === "critical" ? "bg-rose-600 text-white" : f.severity === "high" ? "bg-orange-600 text-white" : f.severity === "medium" ? "bg-amber-600 text-black" : "bg-sky-600 text-white"}`}>{f.severity}</span>
+                      <span className="text-neutral-200">{f.title}</span>
+                      <p className="mt-1 text-neutral-500 text-[11px]">{f.description}</p>
+                      <p className="font-mono text-[10px] text-neutral-600 mt-0.5">{f.evidence}</p>
                     </div>
                   ))}
                 </div>

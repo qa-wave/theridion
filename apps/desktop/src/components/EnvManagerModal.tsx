@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { Layers, Plus, Save, Trash2, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Download, Layers, Plus, Save, Trash2, Upload, X } from "lucide-react";
 import {
   sidecar,
   type Environment,
@@ -25,6 +25,9 @@ export function EnvManagerModal({ open, onClose, onChanged }: Props) {
   const [draftRows, setDraftRows] = useState<DraftRow[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [bulkMode, setBulkMode] = useState(false);
+  const [bulkText, setBulkText] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const dirty = useMemo(() => isDirty(editing, draftName, draftRows), [editing, draftName, draftRows]);
 
   useEffect(() => {
@@ -87,6 +90,69 @@ export function EnvManagerModal({ open, onClose, onChanged }: Props) {
 
   function delRow(idx: number) {
     setDraftRows((rs) => rs.filter((_, i) => i !== idx));
+  }
+
+  function switchToBulk() {
+    const text = draftRows
+      .filter((r) => r.name.trim())
+      .map((r) => `${r.enabled ? "" : "# "}${r.name}=${r.value}`)
+      .join("\n");
+    setBulkText(text);
+    setBulkMode(true);
+  }
+
+  function switchToTable() {
+    const rows: DraftRow[] = bulkText.split("\n")
+      .filter((l) => l.trim())
+      .map((line) => {
+        const disabled = line.startsWith("# ");
+        const effective = disabled ? line.slice(2) : line;
+        const idx = effective.indexOf("=");
+        const name = idx >= 0 ? effective.slice(0, idx).trim() : effective.trim();
+        const value = idx >= 0 ? effective.slice(idx + 1) : "";
+        return { _key: crypto.randomUUID(), name, value, enabled: !disabled };
+      });
+    setDraftRows(rows);
+    setBulkMode(false);
+  }
+
+  function exportDotEnv() {
+    const text = draftRows
+      .filter((r) => r.name.trim())
+      .map((r) => `${r.name}=${r.value}`)
+      .join("\n");
+    const blob = new Blob([text], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${draftName || "env"}.env`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function importDotEnv(content: string) {
+    const rows: DraftRow[] = content.split("\n")
+      .filter((l) => l.trim() && !l.startsWith("#"))
+      .map((line) => {
+        const idx = line.indexOf("=");
+        const name = idx >= 0 ? line.slice(0, idx).trim() : line.trim();
+        const value = idx >= 0 ? line.slice(idx + 1) : "";
+        return { _key: crypto.randomUUID(), name, value, enabled: true };
+      });
+    setDraftRows((prev) => [...prev, ...rows]);
+  }
+
+  function handleFileImport(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const text = ev.target?.result;
+      if (typeof text === "string") importDotEnv(text);
+    };
+    reader.readAsText(file);
+    // Reset input so the same file can be re-selected.
+    e.target.value = "";
   }
 
   async function saveActive() {
@@ -215,66 +281,126 @@ export function EnvManagerModal({ open, onClose, onChanged }: Props) {
                   </p>
                 )}
 
-                <div className="flex-1 overflow-y-auto p-4">
-                  <div className="overflow-hidden rounded-lg border border-glass">
-                    <div className="grid grid-cols-[28px_1fr_1.5fr_28px] items-center bg-neutral-900/30 px-2 py-1.5 text-[10px] font-medium uppercase tracking-widest text-neutral-500">
-                      <span></span>
-                      <span className="px-2">Name</span>
-                      <span className="px-2">Value</span>
-                      <span></span>
-                    </div>
-                    {draftRows.length === 0 && (
-                      <p className="border-t border-glass px-3 py-3 text-center text-xs text-neutral-600">
-                        No variables. Add one below.
-                      </p>
-                    )}
-                    {draftRows.map((row, idx) => (
-                      <div
-                        key={row._key}
-                        className="grid grid-cols-[28px_1fr_1.5fr_28px] items-center border-t border-glass hover:bg-white/[0.02]"
-                      >
-                        <div className="flex justify-center">
-                          <input
-                            type="checkbox"
-                            checked={row.enabled}
-                            onChange={(e) => patchRow(idx, { enabled: e.target.checked })}
-                            className="h-3 w-3 cursor-pointer accent-cobweb-500"
-                          />
-                        </div>
-                        <input
-                          value={row.name}
-                          onChange={(e) => patchRow(idx, { name: e.target.value })}
-                          placeholder="baseUrl"
-                          className="bg-transparent px-2 py-1.5 font-mono text-[13px] text-neutral-100 placeholder-neutral-600 focus:outline-none"
-                          spellCheck={false}
-                        />
-                        <input
-                          value={row.value}
-                          onChange={(e) => patchRow(idx, { value: e.target.value })}
-                          placeholder="https://api.example.com"
-                          className="bg-transparent px-2 py-1.5 font-mono text-[13px] text-neutral-100 placeholder-neutral-600 focus:outline-none"
-                          spellCheck={false}
-                        />
-                        <div className="flex justify-center">
-                          <button
-                            type="button"
-                            onClick={() => delRow(idx)}
-                            className="flex h-5 w-5 items-center justify-center rounded-md text-neutral-500 transition hover:bg-white/[0.05] hover:text-rose-400"
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
+                <div className="flex items-center gap-2 border-b border-glass px-4 py-1.5">
+                  <div className="flex rounded-md border border-glass overflow-hidden text-[11px]">
+                    <button
+                      type="button"
+                      onClick={() => bulkMode ? switchToTable() : undefined}
+                      className={`px-2 py-0.5 transition ${!bulkMode ? "bg-cobweb-600/20 text-cobweb-400" : "text-neutral-500 hover:text-neutral-300"}`}
+                    >
+                      Table
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => !bulkMode ? switchToBulk() : undefined}
+                      className={`px-2 py-0.5 transition ${bulkMode ? "bg-cobweb-600/20 text-cobweb-400" : "text-neutral-500 hover:text-neutral-300"}`}
+                    >
+                      Bulk Edit
+                    </button>
                   </div>
+                  <div className="flex-1" />
                   <button
                     type="button"
-                    onClick={addRow}
-                    className="mt-2 inline-flex items-center gap-1 text-xs text-cobweb-400 hover:text-cobweb-300"
+                    onClick={exportDotEnv}
+                    className="inline-flex items-center gap-1 rounded-md border border-glass px-2 py-0.5 text-[11px] text-neutral-400 transition hover:border-cobweb-500/40 hover:text-neutral-200"
+                    title="Export .env"
                   >
-                    <Plus className="h-3 w-3" />
-                    Add variable
+                    <Download className="h-3 w-3" /> Export .env
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="inline-flex items-center gap-1 rounded-md border border-glass px-2 py-0.5 text-[11px] text-neutral-400 transition hover:border-cobweb-500/40 hover:text-neutral-200"
+                    title="Import .env"
+                  >
+                    <Upload className="h-3 w-3" /> Import .env
+                  </button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".env,.txt"
+                    className="hidden"
+                    onChange={handleFileImport}
+                  />
+                </div>
+
+                <div className="flex-1 overflow-y-auto p-4">
+                  {bulkMode ? (
+                    <div className="flex h-full flex-col">
+                      <p className="mb-2 text-[11px] text-neutral-500">
+                        One variable per line: <code className="text-cobweb-400">KEY=VALUE</code>. Prefix with <code className="text-cobweb-400"># </code> to disable.
+                      </p>
+                      <textarea
+                        value={bulkText}
+                        onChange={(e) => setBulkText(e.target.value)}
+                        placeholder={"BASE_URL=https://api.example.com\nAPI_KEY=secret123\n# DISABLED_VAR=value"}
+                        className="flex-1 resize-none rounded-lg border border-glass bg-neutral-900/50 px-3 py-2 font-mono text-[13px] text-neutral-100 placeholder-neutral-600 focus:border-cobweb-500/40 focus:outline-none"
+                        spellCheck={false}
+                      />
+                    </div>
+                  ) : (
+                    <>
+                      <div className="overflow-hidden rounded-lg border border-glass">
+                        <div className="grid grid-cols-[28px_1fr_1.5fr_28px] items-center bg-neutral-900/30 px-2 py-1.5 text-[10px] font-medium uppercase tracking-widest text-neutral-500">
+                          <span></span>
+                          <span className="px-2">Name</span>
+                          <span className="px-2">Value</span>
+                          <span></span>
+                        </div>
+                        {draftRows.length === 0 && (
+                          <p className="border-t border-glass px-3 py-3 text-center text-xs text-neutral-600">
+                            No variables. Add one below.
+                          </p>
+                        )}
+                        {draftRows.map((row, idx) => (
+                          <div
+                            key={row._key}
+                            className="grid grid-cols-[28px_1fr_1.5fr_28px] items-center border-t border-glass hover:bg-white/[0.02]"
+                          >
+                            <div className="flex justify-center">
+                              <input
+                                type="checkbox"
+                                checked={row.enabled}
+                                onChange={(e) => patchRow(idx, { enabled: e.target.checked })}
+                                className="h-3 w-3 cursor-pointer accent-cobweb-500"
+                              />
+                            </div>
+                            <input
+                              value={row.name}
+                              onChange={(e) => patchRow(idx, { name: e.target.value })}
+                              placeholder="baseUrl"
+                              className="bg-transparent px-2 py-1.5 font-mono text-[13px] text-neutral-100 placeholder-neutral-600 focus:outline-none"
+                              spellCheck={false}
+                            />
+                            <input
+                              value={row.value}
+                              onChange={(e) => patchRow(idx, { value: e.target.value })}
+                              placeholder="https://api.example.com"
+                              className="bg-transparent px-2 py-1.5 font-mono text-[13px] text-neutral-100 placeholder-neutral-600 focus:outline-none"
+                              spellCheck={false}
+                            />
+                            <div className="flex justify-center">
+                              <button
+                                type="button"
+                                onClick={() => delRow(idx)}
+                                className="flex h-5 w-5 items-center justify-center rounded-md text-neutral-500 transition hover:bg-white/[0.05] hover:text-rose-400"
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={addRow}
+                        className="mt-2 inline-flex items-center gap-1 text-xs text-cobweb-400 hover:text-cobweb-300"
+                      >
+                        <Plus className="h-3 w-3" />
+                        Add variable
+                      </button>
+                    </>
+                  )}
                 </div>
               </>
             )}

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   BarChart3,
+  Columns3,
   Plus,
   Upload,
   Globe,
@@ -53,6 +54,8 @@ const GROUP_MAP: Record<string, string> = {
   "load-test": "TOOLS",
   "security-scanner": "TOOLS",
   "agent-explorer": "TOOLS",
+  "owasp-scanner": "TOOLS",
+  "request-diff": "TOOLS",
   "jwt-inspector": "TOOLS",
   "batch-runner": "TOOLS",
   "monitors": "TOOLS",
@@ -354,6 +357,9 @@ export function useDefaultActions(callbacks: {
   openFlowEditor?: () => void;
   openPerfDash?: () => void;
   openAgentExplorer?: () => void;
+  openOwaspScanner?: () => void;
+  openRequestDiff?: () => void;
+  openEnvComparison?: () => void;
   collections?: StoredCollection[];
   onOpenRequest?: (collectionId: string, item: CollectionItem) => void;
   environments?: EnvironmentSummary[];
@@ -492,6 +498,15 @@ export function useDefaultActions(callbacks: {
       }] : []),
       ...(callbacks.openAgentExplorer ? [{
         id: "agent-explorer", label: "AI: Explore API", icon: <Search size={14} />, onSelect: callbacks.openAgentExplorer,
+      }] : []),
+      ...(callbacks.openOwaspScanner ? [{
+        id: "owasp-scanner", label: "OWASP Security Scanner", icon: <Shield size={14} />, onSelect: callbacks.openOwaspScanner,
+      }] : []),
+      ...(callbacks.openRequestDiff ? [{
+        id: "request-diff", label: "Request Diff (compare two requests)", icon: <GitCompare size={14} />, onSelect: callbacks.openRequestDiff,
+      }] : []),
+      ...(callbacks.openEnvComparison ? [{
+        id: "env-comparison", label: "Compare across environments", icon: <Columns3 size={14} />, onSelect: callbacks.openEnvComparison,
       }] : []),
       {
         id: "tpl-get-json",

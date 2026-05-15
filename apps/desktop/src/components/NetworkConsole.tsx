@@ -55,6 +55,7 @@ interface Props {
   onClear: () => void;
   preserveLog: boolean;
   onTogglePreserveLog: () => void;
+  onExportHar?: () => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -121,6 +122,7 @@ export function NetworkConsole({
   onClear,
   preserveLog,
   onTogglePreserveLog,
+  onExportHar,
 }: Props) {
   const [filter, setFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState<NetworkEntryType | "all">("all");
@@ -267,6 +269,21 @@ export function NetworkConsole({
           />
           Preserve log
         </label>
+
+        {onExportHar && entries.length > 0 && (
+          <>
+            <div className="mx-1 h-4 w-px bg-glass" />
+            <button
+              type="button"
+              onClick={onExportHar}
+              className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] text-neutral-500 transition hover:bg-neutral-800/50 hover:text-neutral-300"
+              title="Export as HAR"
+            >
+              <FileText className="h-3 w-3" />
+              Export HAR
+            </button>
+          </>
+        )}
 
         <span className="ml-auto text-[10px] font-mono text-neutral-600">
           {filtered.length} / {entries.length} requests

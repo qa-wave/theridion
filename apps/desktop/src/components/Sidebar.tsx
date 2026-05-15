@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import {
+  BarChart3,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  Download,
+  FileText,
   FolderClosed,
   FolderOpen,
   FolderPlus,
@@ -75,6 +78,8 @@ interface Props {
   onReorder?: (collectionId: string, parentFolderId: string | null, itemIds: string[]) => void;
   onMoveToFolder?: (collectionId: string, itemId: string, targetFolderId: string | null) => void;
   onExportCurl?: (collectionId: string) => void;
+  onExportPostman?: (collectionId: string) => void;
+  onViewStats?: (collectionId: string) => void;
   onImport?: () => void;
   onRunCollection?: () => void;
   inlineNewName?: { type: "collection" | "folder"; parentId?: string; collectionId?: string } | null;
@@ -102,6 +107,8 @@ export function Sidebar({
   onReorder,
   onMoveToFolder,
   onExportCurl,
+  onExportPostman,
+  onViewStats,
   onImport,
   onRunCollection,
   inlineNewName,
@@ -347,7 +354,19 @@ export function Sidebar({
               onReorder={onReorder ? (parentFolderId, itemIds) => onReorder(c.id, parentFolderId, itemIds) : undefined}
               onMoveToFolder={onMoveToFolder ? (itemId, folderId) => onMoveToFolder(c.id, itemId, folderId) : undefined}
               onExportCurl={onExportCurl ? () => onExportCurl(c.id) : undefined}
+              onExportPostman={onExportPostman ? () => onExportPostman(c.id) : undefined}
+              onViewStats={onViewStats ? () => onViewStats(c.id) : undefined}
               onRunCollection={onRunCollection}
+              onGenerateDocs={async () => {
+                try {
+                  const result = await sidecar.generateDocs(c.id);
+                  const blob = new Blob([result.html], { type: "text/html" });
+                  const url = URL.createObjectURL(blob);
+                  window.open(url, "_blank");
+                } catch (e) {
+                  console.error("failed to generate docs", e);
+                }
+              }}
               healthStatus={collectionHealthMap.get(c.id) ?? "gray"}
               lastResponses={lastResponses}
               inlineNewFolder={inlineNewName?.type === "folder" && inlineNewName.collectionId === c.id ? { type: "folder" as const, parentId: inlineNewName.parentId, collectionId: inlineNewName.collectionId } : null}
@@ -505,7 +524,10 @@ function CollectionNode({
   onReorder,
   onMoveToFolder,
   onExportCurl,
+  onExportPostman,
+  onViewStats,
   onRunCollection,
+  onGenerateDocs,
   healthStatus,
   lastResponses,
   inlineNewFolder,
@@ -532,7 +554,10 @@ function CollectionNode({
   onReorder?: (parentFolderId: string | null, itemIds: string[]) => void;
   onMoveToFolder?: (itemId: string, targetFolderId: string | null) => void;
   onExportCurl?: () => void;
+  onExportPostman?: () => void;
+  onViewStats?: () => void;
   onRunCollection?: () => void;
+  onGenerateDocs?: () => void;
   healthStatus?: HealthStatus;
   lastResponses?: Map<string, LastResponseInfo>;
   inlineNewFolder?: { type: "folder"; parentId?: string; collectionId?: string } | null;
@@ -626,6 +651,36 @@ function CollectionNode({
             title="Export as cURL"
           >
             <Terminal className="h-3 w-3" />
+          </button>
+        )}
+        {onExportPostman && (
+          <button
+            type="button"
+            onClick={onExportPostman}
+            className="rounded p-0.5 text-neutral-600 opacity-0 transition hover:bg-neutral-800 hover:text-amber-400 group-hover:opacity-100"
+            title="Export as Postman"
+          >
+            <Download className="h-3 w-3" />
+          </button>
+        )}
+        {onViewStats && (
+          <button
+            type="button"
+            onClick={onViewStats}
+            className="rounded p-0.5 text-neutral-600 opacity-0 transition hover:bg-neutral-800 hover:text-violet-400 group-hover:opacity-100"
+            title="View Statistics"
+          >
+            <BarChart3 className="h-3 w-3" />
+          </button>
+        )}
+        {onGenerateDocs && (
+          <button
+            type="button"
+            onClick={onGenerateDocs}
+            className="rounded p-0.5 text-neutral-600 opacity-0 transition hover:bg-neutral-800 hover:text-cobweb-400 group-hover:opacity-100"
+            title="Generate Docs"
+          >
+            <FileText className="h-3 w-3" />
           </button>
         )}
         <button

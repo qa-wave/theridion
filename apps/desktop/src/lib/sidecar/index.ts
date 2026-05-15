@@ -73,6 +73,7 @@ export type {
   SensitiveFinding, SensitiveDataResult,
   LoadTestInput, LoadTestResult,
   LoadRunConfig, TimelinePoint, LoadRunResult,
+  OWASPSeverity, OWASPScanType, OWASPFinding, OWASPScanInput, OWASPScanOutput,
 } from "./analysis";
 
 export type { ParsedCurl, UniversalImportResult, ReplayDiff, ReplayOutput } from "./codegen";
@@ -106,6 +107,8 @@ export type {
   ResolvedVariableItem, VariableResolveOutput,
   SemanticDiffChange, SemanticDiffInput, SemanticDiffOutput,
   ProjectSummary, ProjectEnvironment, ProjectCollection, YamlProject,
+  HarNetworkEntryData, HarExportResult, PostmanExportResult,
+  FailureNotifyInput, FailureNotifyResult,
 } from "./advanced";
 
 // ---- Compose the unified sidecar object from all sub-modules ----

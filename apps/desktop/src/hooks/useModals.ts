@@ -29,6 +29,10 @@ export type ModalId =
   | "flowEditor"
   | "perfDash"
   | "agentExplorer"
+  | "owaspScanner"
+  | "requestDiff"
+  | "collectionStats"
+  | "envComparison"
   | null;
 
 export function useModals() {

@@ -790,6 +790,7 @@ const ASSERTION_TYPES: { value: Assertion["type"]; label: string }[] = [
   { value: "header_equals", label: "Header equals" },
   { value: "body_contains", label: "Body contains" },
   { value: "body_regex", label: "Body matches regex" },
+  { value: "performance_budget", label: "Performance budget" },
 ];
 
 function resolveJsonPath(body: string, path: string): string | null {

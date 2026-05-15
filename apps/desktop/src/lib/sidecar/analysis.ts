@@ -622,4 +622,38 @@ export const analysisMethods = {
       method: "POST",
       body: JSON.stringify(input),
     }),
+  owaspScan: (input: OWASPScanInput) =>
+    call<OWASPScanOutput>("/api/security/owasp-scan", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
 } as const;
+
+// ---- OWASP Scanner types ---------------------------------------------------
+
+export type OWASPSeverity = "critical" | "high" | "medium" | "low" | "info";
+export type OWASPScanType = "sql_injection" | "xss" | "auth_bypass" | "rate_limit";
+
+export interface OWASPFinding {
+  scan_type: OWASPScanType;
+  severity: OWASPSeverity;
+  title: string;
+  evidence: string;
+  description: string;
+}
+
+export interface OWASPScanInput {
+  url: string;
+  method?: string;
+  headers?: Record<string, string>;
+  params?: Record<string, string>;
+  body?: string | null;
+  scan_types?: OWASPScanType[];
+}
+
+export interface OWASPScanOutput {
+  findings: OWASPFinding[];
+  score: number;
+  scan_types_run: OWASPScanType[];
+  elapsed_ms: number;
+}

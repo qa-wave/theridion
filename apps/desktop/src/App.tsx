@@ -56,6 +56,10 @@ import { MultiEnvModal } from "./components/MultiEnvModal";
 import { FlowEditorModal } from "./components/FlowEditorModal";
 import { PerformanceDashboardModal } from "./components/PerformanceDashboardModal";
 import { AgentExplorerModal } from "./components/AgentExplorerModal";
+import { OWASPScannerModal } from "./components/OWASPScannerModal";
+import { RequestDiffModal } from "./components/RequestDiffModal";
+import { CollectionStatsModal } from "./components/CollectionStatsModal";
+import { ComparisonTableModal } from "./components/ComparisonTableModal";
 import { NetworkConsole, type NetworkEntry, type NetworkEntryType } from "./components/NetworkConsole";
 import { ActivityBar, type AppMode } from "./components/ActivityBar";
 import { ToastContainer, type Toast } from "./components/Toast";
@@ -129,6 +133,7 @@ export default function App() {
   const [splitRatio, setSplitRatio] = useState(0.5);
   const splitDragging = useState(false);
   const [networkHeight, setNetworkHeight] = useState(300);
+  const [statsCollectionId, setStatsCollectionId] = useState<string | null>(null);
   const networkDragging = useRef(false);
 
   function addToast(type: Toast["type"], message: string) {
@@ -522,6 +527,53 @@ export default function App() {
     }
   }
 
+  // ---- HAR export -----------------------------------------------------------
+  async function exportHar() {
+    if (networkEntries.length === 0) return;
+    try {
+      const entries = networkEntries.map((e) => ({
+        method: e.method,
+        url: e.url,
+        status: e.status,
+        request_headers: e.requestHeaders,
+        response_headers: e.responseHeaders,
+        request_body: e.requestBody,
+        response_body: e.responseBody,
+        elapsed_ms: e.elapsed_ms,
+        timestamp: e.timestamp,
+      }));
+      const result = await sidecar.exportHarFromEntries(entries);
+      const blob = new Blob([result.har_json], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `theridion-export-${Date.now()}.har`;
+      a.click();
+      URL.revokeObjectURL(url);
+      addToast("success", `Exported ${networkEntries.length} entries as HAR`);
+    } catch (e) {
+      addToast("error", `HAR export failed: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }
+
+  // ---- Postman export -------------------------------------------------------
+  async function exportPostman(collectionId: string) {
+    try {
+      const result = await sidecar.exportPostman(collectionId);
+      const blob = new Blob([result.postman_json], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const col = collections.find((c) => c.id === collectionId);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${col?.name ?? "collection"}.postman_collection.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      addToast("success", "Exported as Postman collection");
+    } catch (e) {
+      addToast("error", `Postman export failed: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }
+
   // ---- collection ops -----------------------------------------------------
   function newCollection() {
     setInlineNewName({ type: "collection" });
@@ -720,6 +772,9 @@ export default function App() {
     openFlowEditor: () => modals.open("flowEditor"),
     openPerfDash: () => modals.open("perfDash"),
     openAgentExplorer: () => modals.open("agentExplorer"),
+    openOwaspScanner: () => modals.open("owaspScanner"),
+    openRequestDiff: () => modals.open("requestDiff"),
+    openEnvComparison: () => modals.open("envComparison"),
     collections,
     onOpenRequest: openSaved,
     environments,
@@ -862,6 +917,11 @@ export default function App() {
             } catch (e) {
               console.error("export curl failed", e);
             }
+          }}
+          onExportPostman={(collectionId) => void exportPostman(collectionId)}
+          onViewStats={(collectionId) => {
+            setStatsCollectionId(collectionId);
+            modals.open("collectionStats");
           }}
           onMoveToFolder={async (collectionId, itemId, targetFolderId) => {
             try {
@@ -1067,6 +1127,7 @@ export default function App() {
             onClear={() => setNetworkEntries([])}
             preserveLog={networkPreserveLog}
             onTogglePreserveLog={() => setNetworkPreserveLog((p) => !p)}
+            onExportHar={exportHar}
           />
         </div>
       )}
@@ -1096,6 +1157,7 @@ export default function App() {
             onClear={() => setNetworkEntries([])}
             preserveLog={networkPreserveLog}
             onTogglePreserveLog={() => setNetworkPreserveLog((p) => !p)}
+            onExportHar={exportHar}
           />
         </div>
       )}
@@ -1220,6 +1282,19 @@ export default function App() {
       <FlowEditorModal open={modals.isOpen("flowEditor")} onClose={modals.close} />
       <PerformanceDashboardModal open={modals.isOpen("perfDash")} onClose={modals.close} />
       <AgentExplorerModal open={modals.isOpen("agentExplorer")} onClose={modals.close} onCollectionCreated={refreshCollections} />
+      <OWASPScannerModal open={modals.isOpen("owaspScanner")} onClose={modals.close} />
+      <RequestDiffModal open={modals.isOpen("requestDiff")} onClose={modals.close} />
+      <CollectionStatsModal
+        open={modals.isOpen("collectionStats")}
+        onClose={() => { modals.close(); setStatsCollectionId(null); }}
+        collection={statsCollectionId ? collections.find((c) => c.id === statsCollectionId) ?? null : null}
+      />
+      <ComparisonTableModal
+        open={modals.isOpen("envComparison")}
+        onClose={modals.close}
+        collections={collections}
+        environments={environments}
+      />
 
       {/* Keyboard shortcut overlay */}
       {shortcutOverlayOpen && (

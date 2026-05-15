@@ -450,6 +450,47 @@ export interface YamlProject {
   environments: ProjectEnvironment[];
 }
 
+// ---- HAR Export types -------------------------------------------------------
+
+export interface HarNetworkEntryData {
+  method: string;
+  url: string;
+  status: number;
+  request_headers: Record<string, string>;
+  response_headers: Record<string, string>;
+  request_body: string | null;
+  response_body: string;
+  elapsed_ms: number;
+  timestamp: number;
+}
+
+export interface HarExportResult {
+  har_json: string;
+}
+
+// ---- Postman Export types ---------------------------------------------------
+
+export interface PostmanExportResult {
+  postman_json: string;
+}
+
+// ---- Failure Notify types ---------------------------------------------------
+
+export interface FailureNotifyInput {
+  webhook_url: string;
+  collection_name: string;
+  failed_requests: Array<{ name: string; status: number; error: string }>;
+  total: number;
+  passed: number;
+  failed: number;
+}
+
+export interface FailureNotifyResult {
+  ok: boolean;
+  status_code: number;
+  error: string | null;
+}
+
 export const advancedMethods = {
   getServiceMap: () => call<ServiceGraph>("/api/servicemap"),
   saveServiceMap: (graph: ServiceGraph) =>
@@ -716,4 +757,16 @@ export const advancedMethods = {
     });
     if (!r.ok && r.status !== 204) throw new Error(`delete project ${r.status}`);
   },
+  exportHarFromEntries: (entries: HarNetworkEntryData[]) =>
+    call<HarExportResult>("/api/export/har", {
+      method: "POST",
+      body: JSON.stringify({ entries }),
+    }),
+  exportPostman: (collectionId: string) =>
+    call<PostmanExportResult>(`/api/export/postman/${collectionId}`, { method: "POST" }),
+  notifyOnFailure: (input: FailureNotifyInput) =>
+    call<FailureNotifyResult>("/api/integrations/notify-on-failure", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
 } as const;

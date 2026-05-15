@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { Database, Loader2, Play, X } from "lucide-react";
+import { BarChart3, Database, Loader2, Play, X } from "lucide-react";
 import { sidecar, type BatchOutput, type CollectionSummary, type EnvironmentSummary } from "../lib/sidecar";
+import { RequestTimeline } from "./RequestTimeline";
 
 interface Props {
   open: boolean;
@@ -18,6 +19,7 @@ export function BatchRunnerModal({ open, onClose }: Props) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
+  const [resultsView, setResultsView] = useState<"table" | "timeline">("table");
 
   if (!open) return null;
 
@@ -118,38 +120,73 @@ export function BatchRunnerModal({ open, onClose }: Props) {
             </>
           ) : (
             <div>
-              <div className="mb-3 flex items-center gap-4 text-xs">
-                <span className="text-neutral-400">Rows: <span className="text-neutral-100">{result.total_rows}</span></span>
-                <span className="text-emerald-400">Passed: {result.total_passed}</span>
-                <span className="text-rose-400">Failed: {result.total_failed}</span>
-                <span className="text-neutral-400">Time: {result.elapsed_ms}ms</span>
+              <div className="mb-3 flex items-center justify-between">
+                <div className="flex items-center gap-4 text-xs">
+                  <span className="text-neutral-400">Rows: <span className="text-neutral-100">{result.total_rows}</span></span>
+                  <span className="text-emerald-400">Passed: {result.total_passed}</span>
+                  <span className="text-rose-400">Failed: {result.total_failed}</span>
+                  <span className="text-neutral-400">Time: {result.elapsed_ms}ms</span>
+                </div>
+                <div className="flex rounded-md border border-glass overflow-hidden text-[11px]">
+                  <button
+                    type="button"
+                    onClick={() => setResultsView("table")}
+                    className={`px-2 py-0.5 transition ${resultsView === "table" ? "bg-cobweb-600/20 text-cobweb-400" : "text-neutral-500 hover:text-neutral-300"}`}
+                  >
+                    Table
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setResultsView("timeline")}
+                    className={`inline-flex items-center gap-1 px-2 py-0.5 transition ${resultsView === "timeline" ? "bg-cobweb-600/20 text-cobweb-400" : "text-neutral-500 hover:text-neutral-300"}`}
+                  >
+                    <BarChart3 className="h-3 w-3" /> Timeline
+                  </button>
+                </div>
               </div>
-              <div className="overflow-hidden rounded border border-glass">
-                <table className="w-full text-xs">
-                  <thead className="bg-neutral-900/60 text-neutral-500">
-                    <tr>
-                      <th className="px-3 py-1.5 text-left font-medium">Row</th>
-                      <th className="px-3 py-1.5 text-left font-medium">Variables</th>
-                      <th className="px-3 py-1.5 text-left font-medium">Passed</th>
-                      <th className="px-3 py-1.5 text-left font-medium">Failed</th>
-                      <th className="px-3 py-1.5 text-left font-medium">Errors</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {result.rows.map((row) => (
-                      <tr key={row.row_index} className="border-t border-glass">
-                        <td className="px-3 py-1.5 font-mono">{row.row_index}</td>
-                        <td className="px-3 py-1.5 font-mono text-neutral-400 truncate max-w-[200px]">
-                          {Object.entries(row.variables).map(([k, v]) => `${k}=${v}`).join(", ")}
-                        </td>
-                        <td className="px-3 py-1.5 text-emerald-400">{row.passed}</td>
-                        <td className="px-3 py-1.5 text-rose-400">{row.failed}</td>
-                        <td className="px-3 py-1.5 text-amber-400">{row.errors}</td>
+
+              {resultsView === "table" ? (
+                <div className="overflow-hidden rounded border border-glass">
+                  <table className="w-full text-xs">
+                    <thead className="bg-neutral-900/60 text-neutral-500">
+                      <tr>
+                        <th className="px-3 py-1.5 text-left font-medium">Row</th>
+                        <th className="px-3 py-1.5 text-left font-medium">Variables</th>
+                        <th className="px-3 py-1.5 text-left font-medium">Passed</th>
+                        <th className="px-3 py-1.5 text-left font-medium">Failed</th>
+                        <th className="px-3 py-1.5 text-left font-medium">Errors</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {result.rows.map((row) => (
+                        <tr key={row.row_index} className="border-t border-glass">
+                          <td className="px-3 py-1.5 font-mono">{row.row_index}</td>
+                          <td className="px-3 py-1.5 font-mono text-neutral-400 truncate max-w-[200px]">
+                            {Object.entries(row.variables).map(([k, v]) => `${k}=${v}`).join(", ")}
+                          </td>
+                          <td className="px-3 py-1.5 text-emerald-400">{row.passed}</td>
+                          <td className="px-3 py-1.5 text-rose-400">{row.failed}</td>
+                          <td className="px-3 py-1.5 text-amber-400">{row.errors}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <RequestTimeline
+                  entries={result.rows.flatMap((row) =>
+                    row.request_results.map((rr) => ({
+                      name: String(rr.name ?? `Row ${row.row_index}`),
+                      method: String(rr.method ?? "GET"),
+                      url: String(rr.url ?? ""),
+                      status: Number(rr.status ?? 0),
+                      elapsed_ms: Number(rr.elapsed_ms ?? 0),
+                      error: rr.error ? String(rr.error) : null,
+                    })),
+                  )}
+                />
+              )}
+
               <button
                 type="button"
                 onClick={() => setResult(null)}
