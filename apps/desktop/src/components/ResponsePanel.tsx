@@ -960,11 +960,12 @@ function CookiesView({
   );
 }
 
-const TIMING_PHASES: { key: keyof TimingBreakdown; label: string; color: string }[] = [
-  { key: "dns_ms", label: "DNS Lookup", color: "bg-cyan-500" },
-  { key: "connect_ms", label: "TCP Connect", color: "bg-emerald-500" },
-  { key: "tls_ms", label: "TLS Handshake", color: "bg-amber-500" },
-  { key: "transfer_ms", label: "Transfer", color: "bg-violet-500" },
+const TIMING_PHASES: { key: keyof TimingBreakdown; label: string; color: string; hex: string }[] = [
+  { key: "dns_ms", label: "DNS Lookup", color: "bg-blue-400", hex: "#60a5fa" },
+  { key: "connect_ms", label: "TCP Connect", color: "bg-emerald-400", hex: "#34d399" },
+  { key: "tls_ms", label: "TLS Handshake", color: "bg-violet-400", hex: "#a78bfa" },
+  { key: "server_processing_ms", label: "Server Processing", color: "bg-amber-400", hex: "#fbbf24" },
+  { key: "transfer_ms", label: "Content Transfer", color: "bg-cyan-400", hex: "#22d3ee" },
 ];
 
 function TimingView({ res }: { res: ExecuteResponse }) {
@@ -977,11 +978,47 @@ function TimingView({ res }: { res: ExecuteResponse }) {
     );
   }
   const total = t.total_ms || 1;
+
+  // Filter to phases that have a value > 0.
+  const activePhases = TIMING_PHASES.filter((p) => t[p.key] > 0);
+
   return (
     <div className="p-4">
       <p className="mb-3 text-[11px] uppercase tracking-wider text-neutral-500">
         Request timing — {formatMs(t.total_ms)} total
       </p>
+
+      {/* Waterfall bar — all phases as adjacent colored segments */}
+      <div className="mb-4 rounded-md bg-neutral-900/80 p-3">
+        <div className="flex h-[7px] w-full overflow-hidden rounded-full bg-neutral-800">
+          {activePhases.map((phase) => {
+            const pct = Math.max(1, (t[phase.key] / total) * 100);
+            return (
+              <div
+                key={phase.key}
+                className="relative h-full first:rounded-l-full last:rounded-r-full"
+                style={{ width: `${pct}%`, backgroundColor: phase.hex }}
+                title={`${phase.label}: ${formatMs(t[phase.key])}`}
+              />
+            );
+          })}
+        </div>
+        {/* Legend row */}
+        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
+          {activePhases.map((phase) => (
+            <div key={phase.key} className="flex items-center gap-1.5 text-[10px] text-neutral-400">
+              <span className="inline-block h-2 w-2 rounded-sm" style={{ backgroundColor: phase.hex }} />
+              {phase.label}
+              <span className="font-mono text-neutral-300">{formatMs(t[phase.key])}</span>
+            </div>
+          ))}
+          <div className="ml-auto text-[10px] font-mono font-bold text-neutral-200">
+            {formatMs(t.total_ms)}
+          </div>
+        </div>
+      </div>
+
+      {/* Per-phase breakdown bars */}
       <div className="space-y-2">
         {TIMING_PHASES.map((phase) => {
           const val = t[phase.key];
@@ -990,13 +1027,16 @@ function TimingView({ res }: { res: ExecuteResponse }) {
           return (
             <div key={phase.key}>
               <div className="mb-0.5 flex items-baseline justify-between text-xs">
-                <span className="text-neutral-400">{phase.label}</span>
+                <span className="flex items-center gap-1.5 text-neutral-400">
+                  <span className="inline-block h-2 w-2 rounded-sm" style={{ backgroundColor: phase.hex }} />
+                  {phase.label}
+                </span>
                 <span className="font-mono text-neutral-200">{formatMs(val)}</span>
               </div>
-              <div className="h-2 w-full overflow-hidden rounded-full bg-neutral-800">
+              <div className="h-[6px] w-full overflow-hidden rounded-full bg-neutral-800">
                 <div
-                  className={`h-full rounded-full ${phase.color}`}
-                  style={{ width: `${pct}%` }}
+                  className="h-full rounded-full"
+                  style={{ width: `${pct}%`, backgroundColor: phase.hex }}
                 />
               </div>
             </div>

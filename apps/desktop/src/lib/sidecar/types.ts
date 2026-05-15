@@ -21,6 +21,7 @@ export interface TimingBreakdown {
   dns_ms: number;
   connect_ms: number;
   tls_ms: number;
+  server_processing_ms: number;
   transfer_ms: number;
   total_ms: number;
 }
