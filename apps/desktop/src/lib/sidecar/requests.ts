@@ -138,6 +138,21 @@ export interface CookieManagerList {
   cookies: CookieManagerEntry[];
 }
 
+// ---- Script execution types -------------------------------------------------
+
+export interface ScriptAssertionItem {
+  passed: boolean;
+  message: string;
+}
+
+export interface ScriptSafeOutput {
+  variables: Record<string, string>;
+  headers: Record<string, string>;
+  logs: string[];
+  assertions: ScriptAssertionItem[];
+  error: string | null;
+}
+
 // ---- Console Log types ------------------------------------------------------
 
 export interface ConsoleLogEntry {
@@ -170,6 +185,16 @@ export const requestsMethods = {
     }),
   executeChain: (input: ExecuteWithCapturesInput) =>
     call<ExecuteWithCapturesResponse>("/api/requests/execute-chain", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  extractVariables: (input: {
+    response_body: string;
+    response_headers: Record<string, string>;
+    response_status: number;
+    rules: CaptureRule[];
+  }) =>
+    call<{ extracted: Record<string, string | null> }>("/api/requests/extract", {
       method: "POST",
       body: JSON.stringify(input),
     }),
@@ -207,6 +232,15 @@ export const requestsMethods = {
       error: string | null;
       duration_ms: number;
     }>("/api/scripts/execute", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  executeScriptSafe: (input: {
+    script: string;
+    phase: "pre" | "post";
+    context: Record<string, unknown>;
+  }) =>
+    call<ScriptSafeOutput>("/api/scripts/execute-safe", {
       method: "POST",
       body: JSON.stringify(input),
     }),

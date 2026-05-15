@@ -4,6 +4,7 @@ import type { Assertion, AssertionResult, AuthConfig } from "../state/types";
 import type { CollectionVariable, ExecuteResponse, HealCandidate, RequestExample, StoredCollection } from "../lib/sidecar";
 import { sidecar } from "../lib/sidecar";
 import { CodeEditor } from "./CodeEditor";
+import { ScriptsPanel } from "./ScriptsPanel";
 import type { Method } from "../state/types";
 import { headersToText, parseHeadersText } from "../state/types";
 
@@ -15,7 +16,7 @@ const TABS: { id: Tab; label: string; comingSoon?: boolean }[] = [
   { id: "body", label: "Body" },
   { id: "auth", label: "Auth" },
   { id: "tests", label: "Tests" },
-  { id: "scripts", label: "Pre-request" },
+  { id: "scripts", label: "Scripts" },
   { id: "notes", label: "Notes" },
 ];
 
@@ -33,6 +34,8 @@ interface Props {
   onAssertionsChange: (a: Assertion[]) => void;
   preRequestScript: string;
   onPreRequestScriptChange: (s: string) => void;
+  postResponseScript: string;
+  onPostResponseScriptChange: (s: string) => void;
   notes?: string;
   onNotesChange?: (n: string) => void;
   savedAs?: { collectionId: string; requestId: string } | null;
@@ -57,6 +60,8 @@ export function RequestPanel({
   onAssertionsChange,
   preRequestScript,
   onPreRequestScriptChange,
+  postResponseScript,
+  onPostResponseScriptChange,
   notes = "",
   onNotesChange,
   savedAs,
@@ -155,34 +160,13 @@ export function RequestPanel({
         {tab === "body" && <BodyView value={body} onChange={onBodyChange} />}
         {tab === "auth" && <AuthView value={auth} onChange={onAuthChange} />}
         {tab === "scripts" && (
-          <div className="flex h-full min-h-0 flex-col">
-            <div className="mb-2 flex items-center justify-between">
-              <p className="text-[11px] uppercase tracking-widest text-neutral-500">
-                Pre-request Script
-                <span className="ml-2 normal-case text-neutral-600">JavaScript &middot; runs before each send</span>
-              </p>
-              <SnippetsDropdown
-                onInsert={(snippet) =>
-                  onPreRequestScriptChange(
-                    preRequestScript ? preRequestScript + "\n" + snippet : snippet,
-                  )
-                }
-              />
-            </div>
-            <div className="min-h-[200px] flex-1 overflow-hidden rounded-lg border border-glass bg-neutral-900/50">
-              <CodeEditor
-                value={preRequestScript}
-                onChange={onPreRequestScriptChange}
-                language="javascript"
-                placeholder="// Available: pm.environment.get/set, pm.variables, pm.request\npm.environment.set('token', 'generated-value');"
-              />
-            </div>
-            {!preRequestScript.trim() && (
-              <p className="mt-3 text-[11px] leading-relaxed text-neutral-600">
-                Write JavaScript that runs before each request. Use the Snippets dropdown for common patterns.
-              </p>
-            )}
-          </div>
+          <ScriptsPanel
+            preRequestScript={preRequestScript}
+            onPreRequestScriptChange={onPreRequestScriptChange}
+            postResponseScript={postResponseScript}
+            onPostResponseScriptChange={onPostResponseScriptChange}
+            response={response}
+          />
         )}
         {tab === "tests" && (
           <TestsView
@@ -1097,56 +1081,6 @@ function TestsView({
           </div>
         );
       })}
-    </div>
-  );
-}
-
-const SCRIPT_SNIPPETS: { label: string; code: string }[] = [
-  {
-    label: "Set Bearer Token",
-    code: `pm.environment.set('token', 'your-bearer-token-here');`,
-  },
-  {
-    label: "Generate UUID",
-    code: `pm.environment.set('uuid', crypto.randomUUID());`,
-  },
-  {
-    label: "Add Timestamp Header",
-    code: `pm.request.headers['X-Timestamp'] = new Date().toISOString();`,
-  },
-  {
-    label: "Log Response",
-    code: `console.log('Response status:', pm.response?.status);
-console.log('Response body:', pm.response?.body?.substring(0, 200));`,
-  },
-];
-
-function SnippetsDropdown({ onInsert }: { onInsert: (code: string) => void }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <div className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        className="inline-flex items-center gap-1 rounded-md border border-glass px-2 py-0.5 text-[11px] text-neutral-500 transition hover:bg-white/[0.04] hover:text-neutral-300"
-      >
-        Snippets
-        <ChevronDown className="h-3 w-3" />
-      </button>
-      {open && (
-        <div className="absolute right-0 top-full z-20 mt-1 w-56 rounded-md border border-neutral-700 bg-neutral-900 py-1 shadow-lg">
-          {SCRIPT_SNIPPETS.map((s) => (
-            <button
-              key={s.label}
-              type="button"
-              onClick={() => { onInsert(s.code); setOpen(false); }}
-              className="w-full px-3 py-1.5 text-left text-xs text-neutral-300 hover:bg-neutral-800"
-            >
-              {s.label}
-            </button>
-          ))}
-        </div>
-      )}
     </div>
   );
 }
