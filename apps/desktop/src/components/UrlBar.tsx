@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { CheckCircle2, ChevronDown, ClipboardCopy, Globe, Loader2, Save, Send, XCircle } from "lucide-react";
 import { HTTP_METHOD_COLOR, METHODS } from "../state/types";
 import type { Method } from "../state/types";
@@ -155,8 +155,23 @@ export function UrlBar({
     }
   }
 
+  const resolvedUrl = useMemo(() => {
+    if (!url.includes("{{")) return null;
+    let resolved = url;
+    for (const v of envVars) resolved = resolved.replaceAll(`{{${v.name}}}`, v.value);
+    for (const v of globalVars) resolved = resolved.replaceAll(`{{${v.name}}}`, v.value);
+    // Built-in vars preview
+    resolved = resolved.replace(/\{\{\$timestamp\}\}/g, String(Math.floor(Date.now() / 1000)));
+    resolved = resolved.replace(/\{\{\$uuid\}\}/g, "xxxxxxxx-...");
+    resolved = resolved.replace(/\{\{\$isoDate\}\}/g, new Date().toISOString().split("T")[0]);
+    resolved = resolved.replace(/\{\{\$randomInt\}\}/g, "42");
+    if (resolved === url) return null; // nothing resolved
+    return resolved;
+  }, [url, envVars, globalVars]);
+
   return (
-    <div className="flex items-stretch gap-2.5 border-b border-glass bg-neutral-950/80 px-4 py-3">
+    <div className="flex flex-col border-b border-glass bg-neutral-950/80">
+    <div className="flex items-stretch gap-2.5 px-4 py-3">
       {/* Method + URL input group */}
       <div className="flex flex-1 items-stretch overflow-hidden rounded-xl border border-neutral-800/80 bg-neutral-900/60 shadow-[inset_0_1px_3px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.03)] transition-all duration-200 focus-within:border-cobweb-500/40 focus-within:shadow-glow-sm">
         <Tooltip content="HTTP Method" side="bottom">
@@ -344,6 +359,14 @@ export function UrlBar({
         )}
         {busy ? "Sending" : "Send"}
       </button>
+    </div>
+    {resolvedUrl && (
+      <div className="px-4 pb-1.5 -mt-1">
+        <p className="truncate font-mono text-[10px] text-neutral-600" title={resolvedUrl}>
+          <span className="text-neutral-500">→</span> {resolvedUrl}
+        </p>
+      </div>
+    )}
     </div>
   );
 }
