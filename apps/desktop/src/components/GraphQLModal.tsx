@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Braces, Loader2, Play, Search, X } from "lucide-react";
 import {
   sidecar,
@@ -6,6 +6,7 @@ import {
   type IntrospectOutput,
 } from "../lib/sidecar";
 import { CodeEditor } from "./CodeEditor";
+import { useFocusTrap } from "../hooks/useFocusTrap";
 
 interface Props {
   open: boolean;
@@ -18,6 +19,8 @@ const DEFAULT_QUERY = `query {
 }`;
 
 export function GraphQLModal({ open, onClose, activeEnvId }: Props) {
+  const trapRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(trapRef, open);
   const [url, setUrl] = useState("");
   const [query, setQuery] = useState(DEFAULT_QUERY);
   const [variables, setVariables] = useState("{}");
@@ -76,7 +79,7 @@ export function GraphQLModal({ open, onClose, activeEnvId }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
-      <div className="glass flex h-[700px] w-[1080px] max-h-[90vh] max-w-[95vw] animate-slide-in flex-col overflow-hidden rounded-xl border border-glass-light shadow-2xl shadow-black/60">
+      <div ref={trapRef} className="glass flex h-[700px] w-[1080px] max-h-[90vh] max-w-[95vw] animate-slide-in flex-col overflow-hidden rounded-xl border border-glass-light shadow-2xl shadow-black/60">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-glass px-4 py-3">
           <div className="flex items-center gap-2 text-sm font-medium text-neutral-100">

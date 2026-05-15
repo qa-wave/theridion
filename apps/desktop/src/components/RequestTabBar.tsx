@@ -228,8 +228,8 @@ export function RequestTabBar({
                 }`} />
               )}
               {!t.pinned && (
-                <span
-                  role="button"
+                <button
+                  type="button"
                   aria-label="Close tab"
                   onClick={(e) => {
                     e.stopPropagation();
@@ -238,7 +238,7 @@ export function RequestTabBar({
                   className="ml-0.5 rounded p-0.5 text-neutral-600 opacity-0 transition hover:bg-neutral-700/60 hover:text-neutral-300 group-hover:opacity-100"
                 >
                   <X className="h-3 w-3" />
-                </span>
+                </button>
               )}
             </button>
           );

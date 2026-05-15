@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { BarChart3, Database, Loader2, Play, X } from "lucide-react";
 import { sidecar, type BatchOutput, type CollectionSummary, type EnvironmentSummary } from "../lib/sidecar";
 import { RequestTimeline } from "./RequestTimeline";
+import { useFocusTrap } from "../hooks/useFocusTrap";
 
 interface Props {
   open: boolean;
@@ -9,6 +10,8 @@ interface Props {
 }
 
 export function BatchRunnerModal({ open, onClose }: Props) {
+  const trapRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(trapRef, open);
   const [collections, setCollections] = useState<CollectionSummary[]>([]);
   const [environments, setEnvironments] = useState<EnvironmentSummary[]>([]);
   const [collectionId, setCollectionId] = useState("");
@@ -52,7 +55,7 @@ export function BatchRunnerModal({ open, onClose }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
-      <div className="glass flex h-[600px] w-[750px] max-h-[90vh] max-w-[95vw] animate-slide-in flex-col overflow-hidden rounded-xl border border-glass-light shadow-2xl shadow-black/60">
+      <div ref={trapRef} className="glass flex h-[600px] w-[750px] max-h-[90vh] max-w-[95vw] animate-slide-in flex-col overflow-hidden rounded-xl border border-glass-light shadow-2xl shadow-black/60">
         <div className="flex items-center justify-between border-b border-glass px-4 py-3">
           <div className="flex items-center gap-2 text-sm font-medium text-neutral-100">
             <Database className="h-4 w-4 text-cobweb-400" /> Batch Runner

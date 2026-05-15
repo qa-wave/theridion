@@ -405,11 +405,52 @@ function StatusRow({ res, onDiff, onCodegen, history, onViewHistorical }: { res:
 const SIZE_WARNING_THRESHOLD = 1024 * 1024;       // 1 MB
 const SIZE_FORCE_RAW_THRESHOLD = 5 * 1024 * 1024;  // 5 MB
 
+function decodeBase64(s: string): string {
+  try { return atob(s.trim()); } catch { return s; }
+}
+
+function decodeJwt(s: string): string {
+  const parts = s.trim().split(".");
+  if (parts.length < 2) return s;
+  try {
+    const header = JSON.parse(atob(parts[0].replace(/-/g, "+").replace(/_/g, "/")));
+    const payload = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")));
+    return JSON.stringify({ header, payload }, null, 2);
+  } catch { return s; }
+}
+
+function parseUrlEncoded(s: string): string {
+  try {
+    const params = new URLSearchParams(s.trim());
+    const obj: Record<string, string> = {};
+    for (const [k, v] of params) obj[k] = v;
+    return JSON.stringify(obj, null, 2);
+  } catch { return s; }
+}
+
+function minifyJson(s: string): string {
+  try { return JSON.stringify(JSON.parse(s)); } catch { return s; }
+}
+
+type BodyTransform = "none" | "format" | "minify" | "base64" | "jwt" | "urlencoded";
+
 function BodyView({ res, onAddAssertion }: { res: ExecuteResponse; onAddAssertion?: (assertion: Assertion) => void }) {
   const ct = res.headers["content-type"] ?? "";
   const pretty = useMemo(() => prettify(res.body, ct), [res.body, ct]);
   const [copyDropdownOpen, setCopyDropdownOpen] = useState(false);
   const [forceRaw, setForceRaw] = useState(false);
+  const [transform, setTransform] = useState<BodyTransform>("none");
+  const [transformOpen, setTransformOpen] = useState(false);
+
+  const displayBody = useMemo(() => {
+    if (transform === "minify") return minifyJson(res.body);
+    if (transform === "base64") return decodeBase64(res.body);
+    if (transform === "jwt") return decodeJwt(res.body);
+    if (transform === "urlencoded") return parseUrlEncoded(res.body);
+    if (transform === "format") return pretty;
+    return pretty; // "none" shows pretty by default
+  }, [transform, res.body, pretty]);
+
   const isLarge = res.body_size_bytes >= SIZE_WARNING_THRESHOLD;
   const isForcedRaw = res.body_size_bytes >= SIZE_FORCE_RAW_THRESHOLD || forceRaw;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -440,6 +481,32 @@ function BodyView({ res, onAddAssertion }: { res: ExecuteResponse; onAddAssertio
   function copyWithHeaders() {
     const headerStr = Object.entries(res.headers).map(([k, v]) => `${k}: ${v}`).join("\n");
     void navigator.clipboard?.writeText(headerStr + "\n\n" + res.body);
+    setCopyDropdownOpen(false);
+  }
+
+  function copyAsShareable() {
+    const lines: string[] = [];
+    lines.push(`${res.status} ${res.final_url}`);
+    for (const [k, v] of Object.entries(res.headers)) {
+      lines.push(`${k}: ${v}`);
+    }
+    if (res.body) {
+      lines.push("");
+      lines.push(res.body.slice(0, 2000));
+    }
+    void navigator.clipboard?.writeText(lines.join("\n"));
+    setCopyDropdownOpen(false);
+  }
+
+  function copyAsShareableLink() {
+    const data = {
+      url: res.final_url,
+      status: res.status,
+      headers: res.headers,
+      body_preview: res.body.slice(0, 500),
+    };
+    const encoded = btoa(JSON.stringify(data));
+    void navigator.clipboard?.writeText(`theridion://response?data=${encoded}`);
     setCopyDropdownOpen(false);
   }
 
@@ -540,8 +607,41 @@ function BodyView({ res, onAddAssertion }: { res: ExecuteResponse; onAddAssertio
           <span className="text-[10px] text-neutral-600">{lineCount} lines</span>
         </div>
       )}
-      {/* Copy dropdown */}
-      <div className="absolute right-3 top-2 z-10">
+      {/* Transform + Copy dropdowns */}
+      <div className="absolute right-3 top-2 z-10 flex items-center gap-1.5">
+        {/* Transform dropdown */}
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setTransformOpen((o) => !o)}
+            className={`inline-flex items-center gap-1 rounded border border-glass bg-neutral-900/80 px-2 py-0.5 text-[11px] backdrop-blur transition ${transform !== "none" ? "text-cobweb-400" : "text-neutral-400 hover:text-neutral-200"}`}
+            title="Transform body view"
+          >
+            Transform <ChevronDown className="h-3 w-3" />
+          </button>
+          {transformOpen && (
+            <div className="absolute right-0 top-full z-20 mt-1 w-48 rounded-md border border-neutral-700 bg-neutral-900 py-1 shadow-lg">
+              {([
+                { key: "none" as BodyTransform, label: "Original (pretty)" },
+                { key: "format" as BodyTransform, label: "Format JSON/XML" },
+                { key: "minify" as BodyTransform, label: "Minify JSON" },
+                { key: "base64" as BodyTransform, label: "Decode Base64" },
+                { key: "jwt" as BodyTransform, label: "Decode JWT" },
+                { key: "urlencoded" as BodyTransform, label: "Parse URL Encoded" },
+              ]).map((t) => (
+                <button
+                  key={t.key}
+                  type="button"
+                  onClick={() => { setTransform(t.key); setTransformOpen(false); }}
+                  className={`flex w-full items-center px-3 py-1.5 text-left text-xs ${transform === t.key ? "text-cobweb-400 bg-cobweb-600/10" : "text-neutral-300 hover:bg-neutral-800"}`}
+                >
+                  {transform === t.key && <span className="mr-1.5">&#10003;</span>}
+                  {t.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
         <div className="relative">
           <div className="flex items-stretch rounded border border-glass bg-neutral-900/80 backdrop-blur">
             <button
@@ -567,6 +667,8 @@ function BodyView({ res, onAddAssertion }: { res: ExecuteResponse; onAddAssertio
               <CopyMenuItem label="Copy as raw text" onClick={copyAsRaw} />
               <CopyMenuItem label="Copy as Markdown code block" onClick={copyAsMarkdown} />
               <CopyMenuItem label="Copy headers + body" onClick={copyWithHeaders} />
+              <CopyMenuItem label="Copy as shareable text" onClick={copyAsShareable} />
+              <CopyMenuItem label="Copy as shareable link" onClick={copyAsShareableLink} />
               <div className="mx-2 my-1 border-t border-neutral-800" />
               <button
                 type="button"
@@ -589,7 +691,7 @@ function BodyView({ res, onAddAssertion }: { res: ExecuteResponse; onAddAssertio
           />
         ) : (
           <CodeEditor
-            value={pretty}
+            value={displayBody}
             contentTypeHint={ct}
             readOnly
             onEditorMount={(editor) => { editorRef.current = editor; }}
@@ -703,7 +805,72 @@ function HeadersView({
             ))}
           </tbody>
         </table>
+        <SecurityHeaderAnalysis headers={res.headers} />
       </div>
+    </div>
+  );
+}
+
+const SECURITY_HEADERS: { name: string; label: string; severity: "high" | "medium" | "low" }[] = [
+  { name: "strict-transport-security", label: "HSTS", severity: "high" },
+  { name: "content-security-policy", label: "CSP", severity: "high" },
+  { name: "x-content-type-options", label: "X-Content-Type-Options", severity: "medium" },
+  { name: "x-frame-options", label: "X-Frame-Options", severity: "medium" },
+  { name: "referrer-policy", label: "Referrer-Policy", severity: "low" },
+  { name: "permissions-policy", label: "Permissions-Policy", severity: "low" },
+  { name: "x-xss-protection", label: "X-XSS-Protection", severity: "low" },
+];
+
+function SecurityHeaderAnalysis({ headers }: { headers: Record<string, string> }) {
+  const [expanded, setExpanded] = useState(false);
+  const lowerHeaders = useMemo(() => {
+    const m: Record<string, string> = {};
+    for (const [k, v] of Object.entries(headers)) m[k.toLowerCase()] = v;
+    return m;
+  }, [headers]);
+
+  const results = SECURITY_HEADERS.map((h) => ({
+    ...h,
+    present: h.name in lowerHeaders,
+    value: lowerHeaders[h.name],
+  }));
+
+  const presentCount = results.filter((r) => r.present).length;
+  const score = Math.round((presentCount / SECURITY_HEADERS.length) * 100);
+  const scoreColor = score >= 70 ? "text-emerald-400" : score >= 40 ? "text-amber-400" : "text-rose-400";
+
+  return (
+    <div className="border-t border-glass/60">
+      <button
+        type="button"
+        onClick={() => setExpanded((e) => !e)}
+        className="flex w-full items-center justify-between px-4 py-2 text-left text-[11px] text-neutral-500 transition hover:bg-neutral-900/40"
+      >
+        <span className="uppercase tracking-wider font-medium">Security Analysis</span>
+        <span className="flex items-center gap-2">
+          <span className={`font-mono font-bold ${scoreColor}`}>{score}%</span>
+          <span>{presentCount}/{SECURITY_HEADERS.length} headers</span>
+          <span className="text-neutral-600">{expanded ? "\u25B2" : "\u25BC"}</span>
+        </span>
+      </button>
+      {expanded && (
+        <div className="space-y-1.5 px-4 pb-3">
+          {results.map((r) => (
+            <div key={r.name} className="flex items-center gap-2 text-xs">
+              <span className={r.present ? "text-emerald-400" : r.severity === "high" ? "text-rose-400" : r.severity === "medium" ? "text-amber-400" : "text-neutral-500"}>
+                {r.present ? "\u2713" : "\u2717"}
+              </span>
+              <span className={r.present ? "text-neutral-300" : "text-neutral-500"}>{r.label}</span>
+              <span className={`ml-1 rounded px-1 py-0.5 text-[9px] ${
+                r.severity === "high" ? "bg-rose-950/30 text-rose-400" : r.severity === "medium" ? "bg-amber-950/30 text-amber-400" : "bg-neutral-800 text-neutral-500"
+              }`}>{r.severity}</span>
+              {r.present && r.value && (
+                <span className="ml-auto truncate max-w-[200px] font-mono text-[10px] text-neutral-600">{r.value}</span>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

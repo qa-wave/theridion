@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { AlertTriangle, FileUp, Loader2, Upload, X } from "lucide-react";
 import { sidecar, type UniversalImportResult } from "../lib/sidecar";
+import { useFocusTrap } from "../hooks/useFocusTrap";
 
 interface Props { open: boolean; onClose: () => void; onImported: () => void; }
 
@@ -10,6 +11,8 @@ export function ImportModal({ open, onClose, onImported }: Props) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<UniversalImportResult | null>(null);
+  const trapRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(trapRef, open);
 
   if (!open) return null;
 
@@ -33,7 +36,7 @@ export function ImportModal({ open, onClose, onImported }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
-      <div className="glass w-full max-w-lg animate-slide-in rounded-xl border border-glass-light shadow-2xl shadow-black/60">
+      <div ref={trapRef} className="glass w-full max-w-lg animate-slide-in rounded-xl border border-glass-light shadow-2xl shadow-black/60">
         <div className="flex items-center justify-between border-b border-glass px-4 py-3">
           <div className="flex items-center gap-2 text-sm font-medium text-neutral-100">
             <Upload className="h-4 w-4 text-cobweb-400" /> Import Collection

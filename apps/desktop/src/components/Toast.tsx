@@ -41,7 +41,7 @@ export function ToastContainer({ toasts, onDismiss }: Props) {
   const visible = toasts.slice(-3);
 
   return (
-    <div className="pointer-events-none fixed bottom-14 left-1/2 z-[70] flex -translate-x-1/2 flex-col items-center gap-2">
+    <div aria-live="polite" aria-atomic="false" className="pointer-events-none fixed bottom-14 left-1/2 z-[70] flex -translate-x-1/2 flex-col items-center gap-2">
       {visible.map((t) => (
         <ToastItem key={t.id} toast={t} onDismiss={onDismiss} />
       ))}

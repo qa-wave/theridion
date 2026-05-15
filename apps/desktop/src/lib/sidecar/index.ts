@@ -34,6 +34,7 @@ export type {
   GrpcService, GrpcReflectOutput, GrpcInvokeInput, GrpcInvokeOutput,
   MockRoute, MockStartInput, MockStartOutput, MockServerInfo, MockStatusOutput,
   JdbcInput, JdbcOutput,
+  SSEConnectInput, SSEEvent, SSEResult,
 } from "./protocols";
 
 export type {

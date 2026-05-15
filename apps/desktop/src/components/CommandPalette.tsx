@@ -48,6 +48,7 @@ const GROUP_MAP: Record<string, string> = {
   "open-grpc": "PROTOCOLS",
   "open-kafka": "PROTOCOLS",
   "open-soap": "PROTOCOLS",
+  "open-sse": "PROTOCOLS",
   "swagger-browser": "PROTOCOLS",
   "codegen": "TOOLS",
   "open-mock": "TOOLS",
@@ -360,6 +361,7 @@ export function useDefaultActions(callbacks: {
   openOwaspScanner?: () => void;
   openRequestDiff?: () => void;
   openEnvComparison?: () => void;
+  openSSE?: () => void;
   collections?: StoredCollection[];
   onOpenRequest?: (collectionId: string, item: CollectionItem) => void;
   environments?: EnvironmentSummary[];
@@ -507,6 +509,9 @@ export function useDefaultActions(callbacks: {
       }] : []),
       ...(callbacks.openEnvComparison ? [{
         id: "env-comparison", label: "Compare across environments", icon: <Columns3 size={14} />, onSelect: callbacks.openEnvComparison,
+      }] : []),
+      ...(callbacks.openSSE ? [{
+        id: "open-sse", label: "Server-Sent Events (SSE)", icon: <Radio size={14} />, onSelect: callbacks.openSSE,
       }] : []),
       {
         id: "tpl-get-json",

@@ -60,6 +60,7 @@ import { OWASPScannerModal } from "./components/OWASPScannerModal";
 import { RequestDiffModal } from "./components/RequestDiffModal";
 import { CollectionStatsModal } from "./components/CollectionStatsModal";
 import { ComparisonTableModal } from "./components/ComparisonTableModal";
+import { SSEModal } from "./components/SSEModal";
 import { NetworkConsole, type NetworkEntry, type NetworkEntryType } from "./components/NetworkConsole";
 import { ActivityBar, type AppMode } from "./components/ActivityBar";
 import { ToastContainer, type Toast } from "./components/Toast";
@@ -775,6 +776,7 @@ export default function App() {
     openOwaspScanner: () => modals.open("owaspScanner"),
     openRequestDiff: () => modals.open("requestDiff"),
     openEnvComparison: () => modals.open("envComparison"),
+    openSSE: () => modals.open("sse"),
     collections,
     onOpenRequest: openSaved,
     environments,
@@ -1011,6 +1013,19 @@ export default function App() {
             onSave={() => save()}
             onSaveAs={() => setSavePopoverOpen(true)}
             onCopyAsCurl={copyAsCurl}
+            onCopyShareable={() => {
+              const lines: string[] = [];
+              lines.push(`${active.method} ${active.url}`);
+              for (const line of active.headersRaw.split("\n").filter((l) => l.trim() && !l.startsWith("#"))) {
+                lines.push(line.trim());
+              }
+              if (active.body) {
+                lines.push("");
+                lines.push(active.body);
+              }
+              void navigator.clipboard.writeText(lines.join("\n"));
+              addToast("success", "Copied shareable text");
+            }}
             activeEnvId={activeEnvId}
             lastStatus={lastStatus}
           />
@@ -1295,6 +1310,7 @@ export default function App() {
         collections={collections}
         environments={environments}
       />
+      <SSEModal open={modals.isOpen("sse")} onClose={modals.close} />
 
       {/* Keyboard shortcut overlay */}
       {shortcutOverlayOpen && (

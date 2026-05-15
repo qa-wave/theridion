@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Check, Globe, Info, Keyboard, Loader2, Monitor, Plus, Radio, Settings2, Sparkles, Trash2, X } from "lucide-react";
 import { sidecar } from "../lib/sidecar";
 import { THEMES, applyTheme, loadTheme, type ThemeId } from "../state/theme";
+import { useFocusTrap } from "../hooks/useFocusTrap";
 
 type Tab = "general" | "ai" | "editor" | "proxy" | "shortcuts" | "about";
 
@@ -18,6 +19,8 @@ interface Props { open: boolean; onClose: () => void; }
 
 export function SettingsModal({ open, onClose }: Props) {
   const [tab, setTab] = useState<Tab>("general");
+  const trapRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(trapRef, open);
 
   // AI settings
   const [provider, setProvider] = useState("ollama");
@@ -83,7 +86,7 @@ export function SettingsModal({ open, onClose }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
-      <div className="glass flex h-[540px] w-[680px] max-h-[90vh] max-w-[95vw] animate-slide-in overflow-hidden rounded-xl border border-glass-light shadow-2xl shadow-black/60">
+      <div ref={trapRef} className="glass flex h-[540px] w-[680px] max-h-[90vh] max-w-[95vw] animate-slide-in overflow-hidden rounded-xl border border-glass-light shadow-2xl shadow-black/60">
         {/* Left nav */}
         <div className="flex w-48 shrink-0 flex-col border-r border-glass bg-neutral-950/40">
           <div className="border-b border-glass px-4 py-3">

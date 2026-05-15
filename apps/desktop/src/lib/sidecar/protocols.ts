@@ -230,6 +230,31 @@ export interface JdbcOutput {
   error?: string | null;
 }
 
+// ---- SSE types -----------------------------------------------------------
+
+export interface SSEConnectInput {
+  url: string;
+  headers?: Record<string, string>;
+  environment_id?: string | null;
+  max_events?: number;
+  timeout_seconds?: number;
+}
+
+export interface SSEEvent {
+  id: string | null;
+  event: string;
+  data: string;
+  timestamp: number;
+}
+
+export interface SSEResult {
+  url: string;
+  events: SSEEvent[];
+  total_events: number;
+  connection_time_ms: number;
+  error: string | null;
+}
+
 export const protocolsMethods = {
   executeGraphQL: (input: GraphQLExecuteInput) =>
     call<GraphQLResponse>("/api/graphql/execute", {
@@ -346,4 +371,9 @@ export const protocolsMethods = {
       `/api/advanced/mock/start-from-collection/${collectionId}${port ? `?port=${port}` : ""}`,
       { method: "POST" },
     ),
+  sseConnect: (input: SSEConnectInput) =>
+    call<SSEResult>("/api/sse/connect", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
 } as const;

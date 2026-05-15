@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Code2, Copy, X } from "lucide-react";
 import { sidecar } from "../lib/sidecar";
 import { CodeEditor } from "./CodeEditor";
+import { useFocusTrap } from "../hooks/useFocusTrap";
 
 const LANGUAGES = [
   { id: "curl", label: "cURL" },
@@ -32,6 +33,8 @@ export function CodegenModal({ open, onClose, method, url, headers, body }: Prop
   const [lang, setLang] = useState("curl");
   const [code, setCode] = useState("");
   const [copied, setCopied] = useState(false);
+  const trapRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(trapRef, open);
 
   useEffect(() => {
     if (!open || !url) return;
@@ -44,7 +47,7 @@ export function CodegenModal({ open, onClose, method, url, headers, body }: Prop
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
-      <div className="glass flex h-[500px] w-[700px] max-h-[90vh] max-w-[95vw] animate-slide-in flex-col overflow-hidden rounded-xl border border-glass-light shadow-2xl shadow-black/60">
+      <div ref={trapRef} className="glass flex h-[500px] w-[700px] max-h-[90vh] max-w-[95vw] animate-slide-in flex-col overflow-hidden rounded-xl border border-glass-light shadow-2xl shadow-black/60">
         <div className="flex items-center justify-between border-b border-glass px-4 py-3">
           <div className="flex items-center gap-2 text-sm font-medium text-neutral-100">
             <Code2 className="h-4 w-4 text-cobweb-400" />

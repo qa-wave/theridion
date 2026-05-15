@@ -619,6 +619,25 @@ function BodyView({ value, onChange }: { value: string; onChange: (s: string) =>
       </div>
       {mode === "raw" && (
         <>
+          <div className="mb-1 flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => { try { onChange(JSON.stringify(JSON.parse(value), null, 2)); } catch { /* not JSON */ } }}
+              className="inline-flex items-center gap-1 rounded border border-glass px-1.5 py-0.5 text-[10px] text-neutral-500 transition hover:bg-white/[0.06] hover:text-neutral-300"
+              title="Pretty-print JSON (2-space indent)"
+            >
+              Format
+            </button>
+            <button
+              type="button"
+              onClick={() => { try { onChange(JSON.stringify(JSON.parse(value))); } catch { /* not JSON */ } }}
+              className="inline-flex items-center gap-1 rounded border border-glass px-1.5 py-0.5 text-[10px] text-neutral-500 transition hover:bg-white/[0.06] hover:text-neutral-300"
+              title="Compact single-line JSON"
+            >
+              Minify
+            </button>
+            <BodySnippetsDropdown onInsert={onChange} />
+          </div>
           <div className="min-h-[280px] flex-1 overflow-hidden rounded border border-glass bg-neutral-900/50">
             <CodeEditor
               value={value}
@@ -1121,6 +1140,59 @@ function SnippetsDropdown({ onInsert }: { onInsert: (code: string) => void }) {
               key={s.label}
               type="button"
               onClick={() => { onInsert(s.code); setOpen(false); }}
+              className="w-full px-3 py-1.5 text-left text-xs text-neutral-300 hover:bg-neutral-800"
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+const BODY_SNIPPETS: { label: string; body: string }[] = [
+  { label: "Empty JSON object", body: "{}" },
+  { label: "JSON array", body: "[]" },
+  { label: "GraphQL query", body: JSON.stringify({ query: "{ __typename }" }, null, 2) },
+  {
+    label: "SOAP envelope",
+    body: `<?xml version="1.0" encoding="UTF-8"?>
+<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+  <soap:Header/>
+  <soap:Body>
+    <ns:MyOperation xmlns:ns="http://example.com/ns">
+      <ns:param>value</ns:param>
+    </ns:MyOperation>
+  </soap:Body>
+</soap:Envelope>`,
+  },
+  { label: "Form data JSON", body: JSON.stringify({ key: "value" }, null, 2) },
+  {
+    label: "JWT token (example)",
+    body: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
+  },
+];
+
+function BodySnippetsDropdown({ onInsert }: { onInsert: (body: string) => void }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="inline-flex items-center gap-1 rounded border border-glass px-1.5 py-0.5 text-[10px] text-neutral-500 transition hover:bg-white/[0.06] hover:text-neutral-300"
+      >
+        Snippets
+        <ChevronDown className="h-3 w-3" />
+      </button>
+      {open && (
+        <div className="absolute left-0 top-full z-20 mt-1 w-56 rounded-md border border-neutral-700 bg-neutral-900 py-1 shadow-lg">
+          {BODY_SNIPPETS.map((s) => (
+            <button
+              key={s.label}
+              type="button"
+              onClick={() => { onInsert(s.body); setOpen(false); }}
               className="w-full px-3 py-1.5 text-left text-xs text-neutral-300 hover:bg-neutral-800"
             >
               {s.label}

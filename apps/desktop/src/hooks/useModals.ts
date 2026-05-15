@@ -33,6 +33,7 @@ export type ModalId =
   | "requestDiff"
   | "collectionStats"
   | "envComparison"
+  | "sse"
   | null;
 
 export function useModals() {
