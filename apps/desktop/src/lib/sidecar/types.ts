@@ -37,6 +37,45 @@ export interface ExecuteRequestInput {
   follow_redirects?: boolean;
   environment_id?: string | null;
   collection_id?: string | null;
+  client_cert?: string | null;
+  client_key?: string | null;
+  ca_bundle_path?: string | null;
+  verify_ssl?: boolean;
+}
+
+/** mTLS / client certificate configuration for a request. */
+export interface CertConfig {
+  client_cert_path: string;
+  client_key_path: string;
+  ca_bundle_path: string;
+  verify_ssl: boolean;
+}
+
+/** Certificate inspection result from /api/certs/inspect. */
+export interface CertInfo {
+  subject: Record<string, string>;
+  issuer: Record<string, string>;
+  not_before: string;
+  not_after: string;
+  serial: string;
+  fingerprint_sha256: string;
+  is_expired: boolean;
+  extensions: string[];
+}
+
+export interface VerifyChainResponse {
+  valid: boolean;
+  error: string | null;
+}
+
+export interface SystemCertEntry {
+  subject: string;
+  fingerprint_sha256: string;
+}
+
+export interface SystemCertsResponse {
+  certificates: SystemCertEntry[];
+  count: number;
 }
 
 export interface ExecuteResponse {

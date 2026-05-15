@@ -420,6 +420,56 @@ export interface ContractCollectionOutput {
   invalid_count: number;
 }
 
+// ---- Report Generation types ------------------------------------------------
+
+export interface ReportAssertionResult {
+  assertion: Record<string, unknown>;
+  passed: boolean;
+  message: string;
+}
+
+export interface ReportRequestResult {
+  request_id: string;
+  request_name: string;
+  method: string;
+  url: string;
+  status: number | null;
+  elapsed_ms: number;
+  error: string | null;
+  assertion_results: ReportAssertionResult[];
+  assertions_passed: number;
+  assertions_failed: number;
+}
+
+export interface ReportGenerationInput {
+  collection_id: string;
+  collection_name: string;
+  results: ReportRequestResult[];
+  total_requests: number;
+  successful_requests: number;
+  failed_requests: number;
+  total_assertions: number;
+  passed_assertions: number;
+  failed_assertions: number;
+  total_elapsed_ms: number;
+}
+
+export interface HtmlReportOutput {
+  html: string;
+}
+
+export interface JunitReportOutput {
+  xml: string;
+}
+
+export interface JsonReportOutput {
+  report: Record<string, unknown>;
+}
+
+export interface MarkdownReportOutput {
+  markdown: string;
+}
+
 // ---- JUnit Reporter types ---------------------------------------------------
 
 export interface JunitTestResult {
@@ -629,6 +679,26 @@ export const testingMethods = {
     call<{ content: string; content_type: string }>("/api/reports/generate", {
       method: "POST",
       body: JSON.stringify({ results, format }),
+    }),
+  generateHtmlReport: (input: ReportGenerationInput) =>
+    call<HtmlReportOutput>("/api/reports/generate/html", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  generateJunitReport: (input: ReportGenerationInput) =>
+    call<JunitReportOutput>("/api/reports/generate/junit", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  generateJsonReport: (input: ReportGenerationInput) =>
+    call<JsonReportOutput>("/api/reports/generate/json", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  generateMarkdownReport: (input: ReportGenerationInput) =>
+    call<MarkdownReportOutput>("/api/reports/generate/markdown", {
+      method: "POST",
+      body: JSON.stringify(input),
     }),
   detectChangelog: (input: { collection_id: string; environment_id?: string }) =>
     call<ChangelogResult>("/api/changelog/detect", {

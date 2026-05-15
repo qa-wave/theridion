@@ -1,20 +1,21 @@
 import { useEffect, useMemo, useState } from "react";
 import { ChevronDown } from "lucide-react";
-import type { Assertion, AssertionResult, AuthConfig } from "../state/types";
-import type { CollectionVariable, ExecuteResponse, HealCandidate, RequestExample, StoredCollection } from "../lib/sidecar";
+import type { Assertion, AssertionResult, AuthConfig, CertConfig } from "../state/types";
+import type { CertInfo, CollectionVariable, ExecuteResponse, HealCandidate, RequestExample, StoredCollection } from "../lib/sidecar";
 import { sidecar } from "../lib/sidecar";
 import { CodeEditor } from "./CodeEditor";
 import { ScriptsPanel } from "./ScriptsPanel";
 import type { Method } from "../state/types";
 import { headersToText, parseHeadersText } from "../state/types";
 
-type Tab = "params" | "headers" | "body" | "auth" | "tests" | "scripts" | "notes";
+type Tab = "params" | "headers" | "body" | "auth" | "certs" | "tests" | "scripts" | "notes";
 
 const TABS: { id: Tab; label: string; comingSoon?: boolean }[] = [
   { id: "params", label: "Params" },
   { id: "headers", label: "Headers" },
   { id: "body", label: "Body" },
   { id: "auth", label: "Auth" },
+  { id: "certs", label: "Certs" },
   { id: "tests", label: "Tests" },
   { id: "scripts", label: "Scripts" },
   { id: "notes", label: "Notes" },
@@ -31,6 +32,8 @@ interface Props {
   onHeadersChange: (h: string) => void;
   onBodyChange: (b: string) => void;
   onAuthChange: (a: AuthConfig) => void;
+  certConfig: CertConfig;
+  onCertConfigChange: (c: CertConfig) => void;
   onAssertionsChange: (a: Assertion[]) => void;
   preRequestScript: string;
   onPreRequestScriptChange: (s: string) => void;
@@ -57,6 +60,8 @@ export function RequestPanel({
   onHeadersChange,
   onBodyChange,
   onAuthChange,
+  certConfig,
+  onCertConfigChange,
   onAssertionsChange,
   preRequestScript,
   onPreRequestScriptChange,
@@ -103,7 +108,7 @@ export function RequestPanel({
             : t.id === "params" ? countParams(url)
             : t.id === "tests" ? assertions.length
             : undefined;
-          const badge = (t.id === "auth" && auth.type !== "none") || (t.id === "notes" && notes.length > 0);
+          const badge = (t.id === "auth" && auth.type !== "none") || (t.id === "certs" && Boolean(certConfig.client_cert_path)) || (t.id === "notes" && notes.length > 0);
           return (
             <button
               key={t.id}
@@ -165,6 +170,7 @@ export function RequestPanel({
           onHeadersChange(lines.filter(Boolean).join("\n"));
         }} />}
         {tab === "auth" && <AuthView value={auth} onChange={onAuthChange} />}
+        {tab === "certs" && <CertificatesView value={certConfig} onChange={onCertConfigChange} />}
         {tab === "scripts" && (
           <ScriptsPanel
             preRequestScript={preRequestScript}
@@ -800,6 +806,162 @@ function AuthView({
             </select>
           </div>
         </div>
+      )}
+    </div>
+  );
+}
+
+function CertificatesView({
+  value,
+  onChange,
+}: {
+  value: CertConfig;
+  onChange: (c: CertConfig) => void;
+}) {
+  const inputClass =
+    "w-full rounded border border-glass bg-neutral-900/50 px-3 py-1.5 font-mono text-xs text-neutral-100 placeholder-neutral-600 focus:border-cobweb-500/40 focus:outline-none";
+  const [inspecting, setInspecting] = useState(false);
+  const [certInfo, setCertInfo] = useState<CertInfo | null>(null);
+  const [inspectError, setInspectError] = useState<string | null>(null);
+
+  async function inspectCert() {
+    if (!value.client_cert_path) return;
+    setInspecting(true);
+    setInspectError(null);
+    setCertInfo(null);
+    try {
+      const info = await sidecar.inspectCert(value.client_cert_path);
+      setCertInfo(info);
+    } catch (err) {
+      setInspectError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setInspecting(false);
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      <p className="text-[11px] uppercase tracking-wider text-neutral-500">
+        Client Certificate (mTLS)
+      </p>
+
+      <div>
+        <label className="mb-1 block text-[11px] uppercase tracking-wider text-neutral-500">
+          Client Certificate Path
+        </label>
+        <input
+          type="text"
+          value={value.client_cert_path}
+          onChange={(e) => onChange({ ...value, client_cert_path: e.target.value })}
+          placeholder="/path/to/client.pem"
+          className={inputClass}
+          spellCheck={false}
+        />
+      </div>
+
+      <div>
+        <label className="mb-1 block text-[11px] uppercase tracking-wider text-neutral-500">
+          Client Key Path
+        </label>
+        <input
+          type="text"
+          value={value.client_key_path}
+          onChange={(e) => onChange({ ...value, client_key_path: e.target.value })}
+          placeholder="/path/to/client-key.pem"
+          className={inputClass}
+          spellCheck={false}
+        />
+      </div>
+
+      <div>
+        <label className="mb-1 block text-[11px] uppercase tracking-wider text-neutral-500">
+          CA Bundle Path
+        </label>
+        <input
+          type="text"
+          value={value.ca_bundle_path}
+          onChange={(e) => onChange({ ...value, ca_bundle_path: e.target.value })}
+          placeholder="/path/to/ca-bundle.pem (optional)"
+          className={inputClass}
+          spellCheck={false}
+        />
+      </div>
+
+      <div className="flex items-center gap-3">
+        <label className="flex cursor-pointer items-center gap-2 text-xs text-neutral-300">
+          <input
+            type="checkbox"
+            checked={value.verify_ssl}
+            onChange={(e) => onChange({ ...value, verify_ssl: e.target.checked })}
+            className="h-3.5 w-3.5 rounded border-glass accent-cobweb-500"
+          />
+          Verify SSL
+        </label>
+        {!value.verify_ssl && (
+          <span className="text-[10px] text-amber-400">
+            SSL verification disabled — use only for testing
+          </span>
+        )}
+      </div>
+
+      {value.client_cert_path && (
+        <button
+          type="button"
+          onClick={inspectCert}
+          disabled={inspecting}
+          className="rounded border border-glass bg-neutral-900/50 px-3 py-1.5 text-xs text-cobweb-400 transition hover:bg-neutral-800 hover:text-cobweb-300 disabled:opacity-50"
+        >
+          {inspecting ? "Inspecting..." : "Inspect Certificate"}
+        </button>
+      )}
+
+      {inspectError && (
+        <p className="text-xs text-rose-400">{inspectError}</p>
+      )}
+
+      {certInfo && (
+        <div className="space-y-2 rounded border border-glass bg-neutral-900/30 p-3">
+          <div className="flex items-center gap-2">
+            <span className={`inline-block h-2 w-2 rounded-full ${certInfo.is_expired ? "bg-rose-500" : "bg-emerald-500"}`} />
+            <span className="text-xs font-medium text-neutral-200">
+              {certInfo.is_expired ? "Expired" : "Valid"}
+            </span>
+            <span className="text-[10px] text-neutral-500">
+              {certInfo.not_before} — {certInfo.not_after}
+            </span>
+          </div>
+          <div className="grid grid-cols-2 gap-2 text-[11px]">
+            <div>
+              <span className="text-neutral-500">Subject: </span>
+              <span className="text-neutral-300">{certInfo.subject.CN || JSON.stringify(certInfo.subject)}</span>
+            </div>
+            <div>
+              <span className="text-neutral-500">Issuer: </span>
+              <span className="text-neutral-300">{certInfo.issuer.CN || JSON.stringify(certInfo.issuer)}</span>
+            </div>
+            <div className="col-span-2">
+              <span className="text-neutral-500">SHA-256: </span>
+              <span className="break-all font-mono text-[10px] text-neutral-400">{certInfo.fingerprint_sha256}</span>
+            </div>
+            <div>
+              <span className="text-neutral-500">Serial: </span>
+              <span className="font-mono text-[10px] text-neutral-400">{certInfo.serial}</span>
+            </div>
+          </div>
+          {certInfo.extensions.length > 0 && (
+            <div>
+              <span className="text-[10px] text-neutral-500">Extensions: </span>
+              <span className="text-[10px] text-neutral-400">{certInfo.extensions.join(", ")}</span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {!value.client_cert_path && (
+        <p className="text-[11px] leading-relaxed text-neutral-600">
+          Configure client certificates for mTLS (mutual TLS) authentication.
+          Required when the server demands a client certificate to establish the connection.
+        </p>
       )}
     </div>
   );

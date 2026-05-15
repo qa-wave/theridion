@@ -2,12 +2,13 @@ import type {
   Assertion,
   AssertionResult,
   AuthConfig,
+  CertConfig,
   ExecuteResponse,
   ExecuteRequestInput,
   SavedRequest,
 } from "../lib/sidecar";
 
-export type { Assertion, AssertionResult, AuthConfig };
+export type { Assertion, AssertionResult, AuthConfig, CertConfig };
 export type Method = ExecuteRequestInput["method"];
 
 export const METHODS: Method[] = [
@@ -36,6 +37,8 @@ export interface RequestTab {
   headersRaw: string;
   body: string;
   auth: AuthConfig;
+  /** mTLS / client certificate configuration. */
+  certConfig: CertConfig;
   assertions: Assertion[];
   assertionResults: AssertionResult[] | null;
   preRequestScript: string;
@@ -73,6 +76,7 @@ export function newRequestTab(partial?: Partial<RequestTab>): RequestTab {
     headersRaw: "",
     body: "",
     auth: { type: "none" },
+    certConfig: { client_cert_path: "", client_key_path: "", ca_bundle_path: "", verify_ssl: true },
     assertions: [],
     assertionResults: null,
     preRequestScript: "",
@@ -99,6 +103,7 @@ export function signatureOf(t: Partial<RequestTab>): string {
     h: t.headersRaw,
     b: t.body,
     a: t.auth,
+    cc: t.certConfig,
     t: t.assertions,
     s: t.preRequestScript,
     ps: t.postResponseScript,

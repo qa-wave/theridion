@@ -348,6 +348,7 @@ export default function App() {
     patchActive({ busy: true, error: null });
     setConsoleEntries([]);
     try {
+      const cc = active.certConfig;
       const input: ExecuteRequestInput = {
         method: active.method,
         url: active.url,
@@ -356,6 +357,10 @@ export default function App() {
         auth: active.auth.type !== "none" ? active.auth : null,
         environment_id: activeEnvId,
         collection_id: active.savedAs?.collectionId ?? null,
+        client_cert: cc.client_cert_path || null,
+        client_key: cc.client_key_path || null,
+        ca_bundle_path: cc.ca_bundle_path || null,
+        verify_ssl: cc.verify_ssl,
       };
       const response = await sidecar.execute(input);
       setPreviousResponse(active.response);
@@ -1090,6 +1095,8 @@ export default function App() {
               onHeadersChange={(headersRaw) => patchActive({ headersRaw })}
               onBodyChange={(body) => patchActive({ body })}
               onAuthChange={(auth) => patchActive({ auth })}
+              certConfig={active.certConfig}
+              onCertConfigChange={(certConfig) => patchActive({ certConfig })}
               onAssertionsChange={(assertions) => patchActive({ assertions, assertionResults: null })}
               preRequestScript={active.preRequestScript}
               onPreRequestScriptChange={(preRequestScript) => patchActive({ preRequestScript })}

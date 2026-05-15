@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
-import { ArrowRight, BarChart3, Database, GitBranch, Loader2, Play, X } from "lucide-react";
-import { sidecar, type BatchOutput, type CollectionSummary, type EnvironmentSummary, type DependencyInfo } from "../lib/sidecar";
+import { ArrowRight, BarChart3, ChevronDown, Clipboard, Database, Download, FileCode, FileText, GitBranch, Globe, Loader2, Play, X } from "lucide-react";
+import { sidecar, type BatchOutput, type CollectionSummary, type EnvironmentSummary, type DependencyInfo, type ReportGenerationInput } from "../lib/sidecar";
 import { RequestTimeline } from "./RequestTimeline";
 import { useFocusTrap } from "../hooks/useFocusTrap";
 
@@ -26,6 +26,8 @@ export function BatchRunnerModal({ open, onClose }: Props) {
   const [depOrder, setDepOrder] = useState<DependencyInfo[] | null>(null);
   const [depBusy, setDepBusy] = useState(false);
   const [depUnresolved, setDepUnresolved] = useState<string[]>([]);
+  const [exportOpen, setExportOpen] = useState(false);
+  const [exportBusy, setExportBusy] = useState(false);
 
   if (!open) return null;
 
@@ -52,6 +54,98 @@ export function BatchRunnerModal({ open, onClose }: Props) {
       setResult(res);
     } catch (e: unknown) { setError(e instanceof Error ? e.message : String(e)); }
     finally { setBusy(false); }
+  }
+
+  function buildReportInput(): ReportGenerationInput | null {
+    if (!result) return null;
+    const allResults = result.rows.flatMap((row) =>
+      row.request_results.map((rr) => ({
+        request_id: String(rr.request_id ?? ""),
+        request_name: String(rr.name ?? `Row ${row.row_index}`),
+        method: String(rr.method ?? "GET"),
+        url: String(rr.url ?? ""),
+        status: rr.status != null ? Number(rr.status) : null,
+        elapsed_ms: Number(rr.elapsed_ms ?? 0),
+        error: rr.error ? String(rr.error) : null,
+        assertion_results: Array.isArray(rr.assertion_results) ? (rr.assertion_results as Array<Record<string, unknown>>) .map((a) => ({
+          assertion: (a.assertion ?? {}) as Record<string, unknown>,
+          passed: Boolean(a.passed),
+          message: String(a.message ?? ""),
+        })) : [],
+        assertions_passed: Number(rr.assertions_passed ?? 0),
+        assertions_failed: Number(rr.assertions_failed ?? 0),
+      })),
+    );
+    const collName = collections.find((c) => c.id === collectionId)?.name ?? "Batch Run";
+    const totalPassed = allResults.filter((r) => r.error == null && r.status != null && r.status < 400).length;
+    return {
+      collection_id: collectionId,
+      collection_name: collName,
+      results: allResults,
+      total_requests: allResults.length,
+      successful_requests: totalPassed,
+      failed_requests: allResults.length - totalPassed,
+      total_assertions: allResults.reduce((s, r) => s + r.assertions_passed + r.assertions_failed, 0),
+      passed_assertions: allResults.reduce((s, r) => s + r.assertions_passed, 0),
+      failed_assertions: allResults.reduce((s, r) => s + r.assertions_failed, 0),
+      total_elapsed_ms: result.elapsed_ms,
+    };
+  }
+
+  function downloadFile(content: string, filename: string, mime: string) {
+    const blob = new Blob([content], { type: mime });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  async function exportHtml() {
+    const input = buildReportInput();
+    if (!input) return;
+    setExportBusy(true);
+    try {
+      const res = await sidecar.generateHtmlReport(input);
+      const w = window.open("", "_blank");
+      if (w) { w.document.write(res.html); w.document.close(); }
+      else { downloadFile(res.html, `${input.collection_name}-report.html`, "text/html"); }
+    } catch { /* ignore */ }
+    finally { setExportBusy(false); setExportOpen(false); }
+  }
+
+  async function exportJunit() {
+    const input = buildReportInput();
+    if (!input) return;
+    setExportBusy(true);
+    try {
+      const res = await sidecar.generateJunitReport(input);
+      downloadFile(res.xml, `${input.collection_name}-junit.xml`, "application/xml");
+    } catch { /* ignore */ }
+    finally { setExportBusy(false); setExportOpen(false); }
+  }
+
+  async function exportJson() {
+    const input = buildReportInput();
+    if (!input) return;
+    setExportBusy(true);
+    try {
+      const res = await sidecar.generateJsonReport(input);
+      downloadFile(JSON.stringify(res.report, null, 2), `${input.collection_name}-report.json`, "application/json");
+    } catch { /* ignore */ }
+    finally { setExportBusy(false); setExportOpen(false); }
+  }
+
+  async function exportMarkdown() {
+    const input = buildReportInput();
+    if (!input) return;
+    setExportBusy(true);
+    try {
+      const res = await sidecar.generateMarkdownReport(input);
+      await navigator.clipboard.writeText(res.markdown);
+    } catch { /* ignore */ }
+    finally { setExportBusy(false); setExportOpen(false); }
   }
 
   const inputClass = "w-full rounded-md border border-glass bg-neutral-900/50 px-3 py-1.5 text-xs text-neutral-100 focus:border-cobweb-500/40 focus:outline-none";
@@ -191,21 +285,51 @@ export function BatchRunnerModal({ open, onClose }: Props) {
                   <span className="text-rose-400">Failed: {result.total_failed}</span>
                   <span className="text-neutral-400">Time: {result.elapsed_ms}ms</span>
                 </div>
-                <div className="flex rounded-md border border-glass overflow-hidden text-[11px]">
-                  <button
-                    type="button"
-                    onClick={() => setResultsView("table")}
-                    className={`px-2 py-0.5 transition ${resultsView === "table" ? "bg-cobweb-600/20 text-cobweb-400" : "text-neutral-500 hover:text-neutral-300"}`}
-                  >
-                    Table
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setResultsView("timeline")}
-                    className={`inline-flex items-center gap-1 px-2 py-0.5 transition ${resultsView === "timeline" ? "bg-cobweb-600/20 text-cobweb-400" : "text-neutral-500 hover:text-neutral-300"}`}
-                  >
-                    <BarChart3 className="h-3 w-3" /> Timeline
-                  </button>
+                <div className="flex items-center gap-2">
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setExportOpen(!exportOpen)}
+                      disabled={exportBusy}
+                      className="inline-flex items-center gap-1.5 rounded-md border border-glass px-2.5 py-1 text-[11px] text-neutral-400 transition hover:bg-white/[0.04] hover:text-neutral-200 disabled:opacity-50"
+                    >
+                      {exportBusy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />}
+                      Export
+                      <ChevronDown className="h-3 w-3" />
+                    </button>
+                    {exportOpen && (
+                      <div className="absolute right-0 top-full z-10 mt-1 w-44 rounded-lg border border-glass bg-neutral-900 py-1 shadow-xl shadow-black/50">
+                        <button type="button" onClick={exportHtml} className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-neutral-300 transition hover:bg-white/[0.06]">
+                          <Globe className="h-3.5 w-3.5 text-cobweb-400" /> HTML Report
+                        </button>
+                        <button type="button" onClick={exportJunit} className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-neutral-300 transition hover:bg-white/[0.06]">
+                          <FileCode className="h-3.5 w-3.5 text-amber-400" /> JUnit XML
+                        </button>
+                        <button type="button" onClick={exportJson} className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-neutral-300 transition hover:bg-white/[0.06]">
+                          <FileText className="h-3.5 w-3.5 text-blue-400" /> JSON
+                        </button>
+                        <button type="button" onClick={exportMarkdown} className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-neutral-300 transition hover:bg-white/[0.06]">
+                          <Clipboard className="h-3.5 w-3.5 text-emerald-400" /> Markdown (copy)
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex rounded-md border border-glass overflow-hidden text-[11px]">
+                    <button
+                      type="button"
+                      onClick={() => setResultsView("table")}
+                      className={`px-2 py-0.5 transition ${resultsView === "table" ? "bg-cobweb-600/20 text-cobweb-400" : "text-neutral-500 hover:text-neutral-300"}`}
+                    >
+                      Table
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setResultsView("timeline")}
+                      className={`inline-flex items-center gap-1 px-2 py-0.5 transition ${resultsView === "timeline" ? "bg-cobweb-600/20 text-cobweb-400" : "text-neutral-500 hover:text-neutral-300"}`}
+                    >
+                      <BarChart3 className="h-3 w-3" /> Timeline
+                    </button>
+                  </div>
                 </div>
               </div>
 

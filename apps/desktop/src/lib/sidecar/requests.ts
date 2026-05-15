@@ -3,7 +3,10 @@
  */
 
 import { call } from "./client";
-import type { AuthConfig, ExecuteRequestInput, ExecuteResponse, TimingBreakdown } from "./types";
+import type {
+  AuthConfig, ExecuteRequestInput, ExecuteResponse, TimingBreakdown,
+  CertInfo, VerifyChainResponse, SystemCertsResponse,
+} from "./types";
 import type { HealthResponse } from "./client";
 
 // ---- Multipart types ------------------------------------------------------
@@ -312,4 +315,17 @@ export const requestsMethods = {
   consoleEntries: () => call<{ entries: ConsoleLogEntry[]; total: number }>("/api/console/entries"),
   generateFake: (type: string, count?: number) =>
     call<{ values: string[] }>(`/api/generate/fake?type=${type}&count=${count ?? 1}`),
+
+  // ---- Certificate inspection -----------------------------------------------
+  inspectCert: (certPath: string) =>
+    call<CertInfo>("/api/certs/inspect", {
+      method: "POST",
+      body: JSON.stringify({ cert_path: certPath }),
+    }),
+  verifyChain: (certPath: string, caBundlePath: string) =>
+    call<VerifyChainResponse>("/api/certs/verify-chain", {
+      method: "POST",
+      body: JSON.stringify({ cert_path: certPath, ca_bundle_path: caBundlePath }),
+    }),
+  listSystemCerts: () => call<SystemCertsResponse>("/api/certs/system"),
 } as const;

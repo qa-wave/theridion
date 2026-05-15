@@ -9,6 +9,7 @@ export type { HealthResponse } from "./client";
 export type {
   AuthType, AuthConfig, TimingBreakdown, ExecuteRequestInput, ExecuteResponse,
   EnvVariable, Environment, EnvironmentSummary, CollectionVariable, StubOutput,
+  CertConfig, CertInfo, VerifyChainResponse, SystemCertEntry, SystemCertsResponse,
 } from "./types";
 
 export type {
@@ -37,6 +38,8 @@ export type {
   GrpcFieldDescriptor, GrpcDescribeInput, GrpcDescribeOutput,
   GrpcInvokeInput, GrpcInvokeOutput,
   MockRoute, MockStartInput, MockStartOutput, MockServerInfo, MockStatusOutput,
+  RecordedInteraction, RecordStartInput, RecordStartOutput, RecordStopOutput,
+  InteractionsOutput, ReplayStartInput, ReplayStartOutput, ReplayStatusOutput,
   JdbcInput, JdbcOutput,
   SSEConnectInput, SSEEvent, SSEResult,
 } from "./protocols";
@@ -57,6 +60,8 @@ export type {
   ContractGuardViolation, ContractValidateGuardInput, ContractGuardOutput,
   PerRequestValidation, ContractCollectionOutput,
   JunitTestResult, ReportResultItem,
+  ReportAssertionResult, ReportRequestResult, ReportGenerationInput,
+  HtmlReportOutput, JunitReportOutput, JsonReportOutput, MarkdownReportOutput,
   FieldChange, ChangelogEntry, ChangelogResult,
   GeneratedAssertion, RequestAssertions, RegressionOutput,
   DependencyInfo, CycleInfo, DependencyResult,
