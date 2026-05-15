@@ -7,7 +7,7 @@ import { CodeEditor } from "./CodeEditor";
 import type { Method } from "../state/types";
 import { headersToText, parseHeadersText } from "../state/types";
 
-type Tab = "params" | "headers" | "body" | "auth" | "tests" | "scripts";
+type Tab = "params" | "headers" | "body" | "auth" | "tests" | "scripts" | "notes";
 
 const TABS: { id: Tab; label: string; comingSoon?: boolean }[] = [
   { id: "params", label: "Params" },
@@ -16,6 +16,7 @@ const TABS: { id: Tab; label: string; comingSoon?: boolean }[] = [
   { id: "auth", label: "Auth" },
   { id: "tests", label: "Tests" },
   { id: "scripts", label: "Pre-request" },
+  { id: "notes", label: "Notes" },
 ];
 
 interface Props {
@@ -66,7 +67,6 @@ export function RequestPanel({
   onReEvaluate,
 }: Props) {
   const [tab, setTab] = useState<Tab>("params");
-  const [notesOpen, setNotesOpen] = useState(false);
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -88,7 +88,7 @@ export function RequestPanel({
             : t.id === "params" ? countParams(url)
             : t.id === "tests" ? assertions.length
             : undefined;
-          const badge = t.id === "auth" && auth.type !== "none";
+          const badge = (t.id === "auth" && auth.type !== "none") || (t.id === "notes" && notes.length > 0);
           return (
             <button
               key={t.id}
@@ -137,37 +137,6 @@ export function RequestPanel({
 
       {savedAs && <CollectionVarsIndicator collectionId={savedAs.collectionId} />}
 
-      {/* Collapsible Notes section */}
-      {onNotesChange && (
-        <div className="border-b border-glass">
-          <button
-            type="button"
-            onClick={() => setNotesOpen((o) => !o)}
-            className="flex w-full items-center gap-1.5 px-3 py-1.5 text-left text-[11px] text-neutral-500 transition hover:text-neutral-300"
-          >
-            <ChevronDown className={`h-3 w-3 transition-transform ${notesOpen ? "" : "-rotate-90"}`} />
-            <span>Notes</span>
-            {notes.length > 0 && (
-              <span className="ml-1 rounded-full bg-neutral-800/80 px-1.5 py-0.5 text-[9px] text-neutral-500">
-                {notes.length > 100 ? `${Math.ceil(notes.length / 100) * 100}+` : notes.length} chars
-              </span>
-            )}
-          </button>
-          {notesOpen && (
-            <div className="px-3 pb-2">
-              <textarea
-                value={notes}
-                onChange={(e) => onNotesChange(e.target.value)}
-                placeholder="Document why this request exists, expected behavior, test notes..."
-                rows={4}
-                className="w-full resize-y rounded border border-glass bg-neutral-900/50 px-3 py-2 font-mono text-xs text-neutral-100 placeholder-neutral-600 focus:border-cobweb-500/40 focus:outline-none"
-                spellCheck={false}
-              />
-            </div>
-          )}
-        </div>
-      )}
-
       <div key={tab} className="min-h-0 flex-1 overflow-auto p-4 animate-fade-in">
         {tab === "params" && <ParamsView url={url} onUrlChange={onUrlChange} />}
         {tab === "headers" && (
@@ -213,6 +182,22 @@ export function RequestPanel({
             response={response ?? null}
             onReEvaluate={onReEvaluate}
           />
+        )}
+        {tab === "notes" && onNotesChange && (
+          <div className="flex h-full min-h-0 flex-col">
+            <p className="mb-2 text-[11px] uppercase tracking-widest text-neutral-500">
+              Notes
+            </p>
+            <div className="min-h-[200px] flex-1 overflow-hidden rounded-lg border border-glass bg-neutral-900/50">
+              <textarea
+                value={notes}
+                onChange={(e) => onNotesChange(e.target.value)}
+                placeholder="Document this request — expected behavior, edge cases, related endpoints..."
+                className="h-full w-full resize-none bg-transparent px-3 py-2 font-mono text-xs text-neutral-100 placeholder-neutral-600 focus:outline-none"
+                spellCheck={false}
+              />
+            </div>
+          </div>
         )}
       </div>
     </div>
@@ -300,27 +285,199 @@ function ParamsView({ url, onUrlChange }: { url: string; onUrlChange: (u: string
   );
 }
 
+interface HeaderRow {
+  key: string;
+  value: string;
+  enabled: boolean;
+}
+
+function parseHeaderRows(raw: string): HeaderRow[] {
+  if (!raw.trim()) return [];
+  return raw.split(/\r?\n/).filter((l) => l.trim()).map((line) => {
+    const disabled = line.startsWith("# ");
+    const effective = disabled ? line.slice(2) : line;
+    const idx = effective.indexOf(":");
+    if (idx === -1) return { key: effective.trim(), value: "", enabled: !disabled };
+    return { key: effective.slice(0, idx).trim(), value: effective.slice(idx + 1).trim(), enabled: !disabled };
+  });
+}
+
+function serializeHeaderRows(rows: HeaderRow[]): string {
+  return rows
+    .filter((r) => r.key || r.value)
+    .map((r) => (r.enabled ? `${r.key}: ${r.value}` : `# ${r.key}: ${r.value}`))
+    .join("\n");
+}
+
 function HeadersView({ value, onChange }: { value: string; onChange: (s: string) => void }) {
+  const [mode, setMode] = useState<"table" | "raw">("table");
+  const [rows, setRows] = useState<HeaderRow[]>(() => parseHeaderRows(value));
+
+  // Sync rows from raw value when switching to table mode
+  function switchToTable() {
+    setRows(parseHeaderRows(value));
+    setMode("table");
+  }
+
+  function switchToRaw() {
+    onChange(serializeHeaderRows(rows));
+    setMode("raw");
+  }
+
+  function updateRow(idx: number, patch: Partial<HeaderRow>) {
+    const next = rows.map((r, i) => (i === idx ? { ...r, ...patch } : r));
+    setRows(next);
+    onChange(serializeHeaderRows(next));
+  }
+
+  function addRow() {
+    const next = [...rows, { key: "", value: "", enabled: true }];
+    setRows(next);
+  }
+
+  function deleteRow(idx: number) {
+    const next = rows.filter((_, i) => i !== idx);
+    setRows(next);
+    onChange(serializeHeaderRows(next));
+  }
+
+  function addQuickHeader(header: string) {
+    const idx = header.indexOf(":");
+    const key = idx !== -1 ? header.slice(0, idx).trim() : header;
+    const val = idx !== -1 ? header.slice(idx + 1).trim() : "";
+    const next = [...rows, { key, value: val, enabled: true }];
+    setRows(next);
+    onChange(serializeHeaderRows(next));
+  }
+
   return (
     <div>
       <div className="mb-2 flex items-center justify-between">
         <p className="text-[11px] uppercase tracking-wider text-neutral-500">
-          Headers <span className="ml-1 text-neutral-600 normal-case">— one per line: Name: value</span>
+          Headers
         </p>
-        <QuickHeaderDropdown onAdd={(header) => onChange(value ? value + "\n" + header : header)} />
+        <div className="flex items-center gap-2">
+          <div className="flex rounded-md border border-glass overflow-hidden text-[11px]">
+            <button
+              type="button"
+              onClick={switchToTable}
+              className={`px-2 py-0.5 transition ${
+                mode === "table"
+                  ? "bg-cobweb-600/20 text-cobweb-400"
+                  : "text-neutral-500 hover:text-neutral-300 hover:bg-neutral-800/40"
+              }`}
+            >
+              Table
+            </button>
+            <button
+              type="button"
+              onClick={switchToRaw}
+              className={`px-2 py-0.5 transition ${
+                mode === "raw"
+                  ? "bg-cobweb-600/20 text-cobweb-400"
+                  : "text-neutral-500 hover:text-neutral-300 hover:bg-neutral-800/40"
+              }`}
+            >
+              Raw
+            </button>
+          </div>
+          <QuickHeaderDropdown onAdd={(header) => {
+            if (mode === "table") {
+              addQuickHeader(header);
+            } else {
+              onChange(value ? value + "\n" + header : header);
+            }
+          }} />
+        </div>
       </div>
-      <textarea
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder="Accept: application/json&#10;Authorization: Bearer …"
-        rows={14}
-        className="w-full resize-y rounded border border-glass bg-neutral-900/50 px-3 py-2 font-mono text-xs text-neutral-100 placeholder-neutral-600 focus:border-cobweb-500/40 focus:outline-none"
-        spellCheck={false}
-      />
-      {!value.trim() && (
-        <p className="mt-3 text-[11px] leading-relaxed text-neutral-600">
-          Add headers like Accept, Authorization, Content-Type. Use the Quick Add dropdown above.
-        </p>
+
+      {mode === "raw" ? (
+        <>
+          <textarea
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder="Accept: application/json&#10;Authorization: Bearer ..."
+            rows={14}
+            className="w-full resize-y rounded border border-glass bg-neutral-900/50 px-3 py-2 font-mono text-xs text-neutral-100 placeholder-neutral-600 focus:border-cobweb-500/40 focus:outline-none"
+            spellCheck={false}
+          />
+          {!value.trim() && (
+            <p className="mt-3 text-[11px] leading-relaxed text-neutral-600">
+              Add headers like Accept, Authorization, Content-Type. Use the Quick Add dropdown above.
+            </p>
+          )}
+        </>
+      ) : (
+        <>
+          <div className="overflow-hidden rounded border border-glass">
+            <table className="w-full text-xs">
+              <thead className="bg-neutral-900/60 text-neutral-500">
+                <tr>
+                  <th className="w-8 px-2 py-1.5 text-center font-medium" />
+                  <th className="w-1/3 px-3 py-1.5 text-left font-medium">Name</th>
+                  <th className="px-3 py-1.5 text-left font-medium">Value</th>
+                  <th className="w-8" />
+                </tr>
+              </thead>
+              <tbody>
+                {rows.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="px-3 py-3 text-center text-neutral-600">
+                      No headers
+                    </td>
+                  </tr>
+                )}
+                {rows.map((r, idx) => (
+                  <tr key={idx} className={`border-t border-glass ${!r.enabled ? "text-neutral-600" : ""}`}>
+                    <td className="text-center">
+                      <input
+                        type="checkbox"
+                        checked={r.enabled}
+                        onChange={(e) => updateRow(idx, { enabled: e.target.checked })}
+                        className="h-3 w-3 rounded border-glass accent-cobweb-500"
+                      />
+                    </td>
+                    <td>
+                      <input
+                        value={r.key}
+                        onChange={(e) => updateRow(idx, { key: e.target.value })}
+                        placeholder="name"
+                        className={`w-full bg-transparent px-3 py-1.5 font-mono text-xs focus:outline-none ${!r.enabled ? "text-neutral-600" : ""}`}
+                        spellCheck={false}
+                      />
+                    </td>
+                    <td>
+                      <input
+                        value={r.value}
+                        onChange={(e) => updateRow(idx, { value: e.target.value })}
+                        placeholder="value"
+                        className={`w-full bg-transparent px-3 py-1.5 font-mono text-xs focus:outline-none ${!r.enabled ? "text-neutral-600" : ""}`}
+                        spellCheck={false}
+                      />
+                    </td>
+                    <td className="text-center">
+                      <button
+                        type="button"
+                        onClick={() => deleteRow(idx)}
+                        className="rounded p-1 text-neutral-600 transition hover:bg-neutral-800 hover:text-rose-400"
+                        title="Remove"
+                      >
+                        ×
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <button
+            type="button"
+            onClick={addRow}
+            className="mt-2 text-xs text-cobweb-400 hover:text-cobweb-300"
+          >
+            + Add header
+          </button>
+        </>
       )}
     </div>
   );

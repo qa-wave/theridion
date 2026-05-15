@@ -801,6 +801,15 @@ export default function App() {
           onRenameItem={renameItem}
           onImport={() => modals.open("import")}
           onRunCollection={() => modals.open("batch")}
+          onFileImport={async (content, filename) => {
+            try {
+              await sidecar.universalImport(content, filename);
+              await refreshCollections();
+              addToast("success", `Imported ${filename}`);
+            } catch (e) {
+              addToast("error", `Import failed: ${e instanceof Error ? e.message : String(e)}`);
+            }
+          }}
           inlineNewName={inlineNewName}
           onInlineNewCommit={(name) => {
             if (inlineNewName?.type === "collection") void commitNewCollection(name);

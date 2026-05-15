@@ -80,6 +80,7 @@ interface Props {
   inlineNewName?: { type: "collection" | "folder"; parentId?: string; collectionId?: string } | null;
   onInlineNewCommit?: (name: string) => void;
   onInlineNewCancel?: () => void;
+  onFileImport?: (content: string, filename: string) => void;
 }
 
 export function Sidebar({
@@ -106,9 +107,11 @@ export function Sidebar({
   inlineNewName,
   onInlineNewCommit,
   onInlineNewCancel,
+  onFileImport,
 }: Props) {
   const [query, setQuery] = useState("");
   const filter = query.toLowerCase();
+  const [fileDragOver, setFileDragOver] = useState(false);
   const [favorites, setFavorites] = useState<FavoriteItem[]>([]);
   const [favOpen, setFavOpen] = useState(true);
   const [dragItemId, setDragItemId] = useState<string | null>(null);
@@ -179,7 +182,37 @@ export function Sidebar({
 
   /* --- Expanded sidebar --- */
   return (
-    <aside className="flex h-full flex-col border-r border-glass bg-neutral-925/90 transition-all duration-200 ease-in-out">
+    <aside
+      className="relative flex h-full flex-col border-r border-glass bg-neutral-925/90 transition-all duration-200 ease-in-out"
+      onDragOver={(e) => {
+        e.preventDefault();
+        if (e.dataTransfer.types.includes("Files")) setFileDragOver(true);
+      }}
+      onDragLeave={(e) => {
+        // Only reset when leaving the aside itself, not its children
+        if (e.currentTarget === e.target || !e.currentTarget.contains(e.relatedTarget as Node)) {
+          setFileDragOver(false);
+        }
+      }}
+      onDrop={(e) => {
+        e.preventDefault();
+        setFileDragOver(false);
+        if (!onFileImport) return;
+        const files = Array.from(e.dataTransfer.files);
+        for (const file of files) {
+          const ext = file.name.split(".").pop()?.toLowerCase();
+          if (ext && ["json", "yaml", "yml", "har", "bru"].includes(ext)) {
+            file.text().then((content) => onFileImport(content, file.name));
+          }
+        }
+      }}
+    >
+      {/* File drag overlay */}
+      {fileDragOver && (
+        <div className="pointer-events-none absolute inset-0 z-50 flex items-center justify-center rounded-lg border-2 border-dashed border-sky-500/60 bg-sky-500/10 backdrop-blur-sm">
+          <p className="text-sm font-medium text-sky-300">Drop to import collection</p>
+        </div>
+      )}
       {/* Branding header */}
       <div className="px-4 pt-4 pb-2">
         <h1 className="brand-gradient text-sm font-bold tracking-widest uppercase">Theridion</h1>
