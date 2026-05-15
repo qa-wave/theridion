@@ -243,6 +243,62 @@ export interface MockStatusOutput {
   servers: MockServerInfo[];
 }
 
+// ---- Mock Record & Replay types ---------------------------------------------
+
+export interface RecordedInteraction {
+  method: string;
+  path: string;
+  query: string;
+  request_headers: Record<string, string>;
+  request_body: string | null;
+  status: number;
+  response_headers: Record<string, string>;
+  response_body: string;
+  elapsed_ms: number;
+  timestamp: number;
+}
+
+export interface RecordStartInput {
+  target_url: string;
+  port?: number;
+}
+
+export interface RecordStartOutput {
+  session_id: string;
+  port: number;
+  target_url: string;
+}
+
+export interface RecordStopOutput {
+  session_id: string;
+  interaction_count: number;
+  file: string;
+}
+
+export interface InteractionsOutput {
+  session_id: string | null;
+  interactions: RecordedInteraction[];
+  recordings: string[];
+}
+
+export interface ReplayStartInput {
+  recording_id?: string | null;
+  interactions?: RecordedInteraction[];
+  port?: number;
+  fuzzy_query?: boolean;
+}
+
+export interface ReplayStartOutput {
+  port: number;
+  route_count: number;
+}
+
+export interface ReplayStatusOutput {
+  running: boolean;
+  port: number | null;
+  route_count: number;
+}
+
 // ---- JDBC types -------------------------------------------------------------
 
 export interface JdbcInput {
@@ -409,4 +465,25 @@ export const protocolsMethods = {
       method: "POST",
       body: JSON.stringify(input),
     }),
+  // Record & Replay
+  mockRecordStart: (input: RecordStartInput) =>
+    call<RecordStartOutput>("/api/mock/record/start", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  mockRecordStop: () =>
+    call<RecordStopOutput>("/api/mock/record/stop", { method: "POST" }),
+  mockRecordInteractions: (recordingId?: string) =>
+    call<InteractionsOutput>(
+      `/api/mock/record/interactions${recordingId ? `?recording_id=${encodeURIComponent(recordingId)}` : ""}`,
+    ),
+  mockReplayStart: (input: ReplayStartInput) =>
+    call<ReplayStartOutput>("/api/mock/replay/start", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  mockReplayStop: () =>
+    call<{ status: string; port: string }>("/api/mock/replay/stop", { method: "POST" }),
+  mockReplayStatus: () =>
+    call<ReplayStatusOutput>("/api/mock/replay/status"),
 } as const;
