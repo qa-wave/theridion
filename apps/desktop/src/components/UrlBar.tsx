@@ -80,6 +80,25 @@ export function UrlBar({
     }
   }, [activeEnvId]);
 
+  // URL history for autocomplete (stored in localStorage).
+  const URL_HISTORY_KEY = "theridion.url-history";
+  const MAX_URL_HISTORY = 50;
+  const [urlHistory] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem(URL_HISTORY_KEY) ?? "[]"); } catch { return []; }
+  });
+  const [urlSuggestions, setUrlSuggestions] = useState<string[]>([]);
+  const [urlSuggestOpen, setUrlSuggestOpen] = useState(false);
+  const [urlSuggestIdx, setUrlSuggestIdx] = useState(0);
+
+  // Record URL to history on send.
+  useEffect(() => {
+    if (lastStatus === null || lastStatus === undefined || !url) return;
+    const hist: string[] = JSON.parse(localStorage.getItem(URL_HISTORY_KEY) ?? "[]");
+    const filtered = hist.filter((u) => u !== url);
+    filtered.unshift(url);
+    localStorage.setItem(URL_HISTORY_KEY, JSON.stringify(filtered.slice(0, MAX_URL_HISTORY)));
+  }, [lastStatus, url]);
+
   const allVars = useCallback(() => {
     const items: { name: string; label: string }[] = [];
     for (const g of globalVars) items.push({ name: g.name, label: `global: ${g.value}` });
@@ -92,19 +111,35 @@ export function UrlBar({
     // Check if cursor is after "{{" and before "}}"
     const before = value.slice(0, cursorPos);
     const lastOpen = before.lastIndexOf("{{");
-    if (lastOpen === -1) { setAutocompleteOpen(false); return; }
-    const afterOpen = before.slice(lastOpen + 2);
-    if (afterOpen.includes("}}")) { setAutocompleteOpen(false); return; }
-    // We have an open {{ without closing }}
-    const prefix = afterOpen.toLowerCase();
-    setVarPrefix(afterOpen);
-    const items = allVars().filter(v => v.name.toLowerCase().includes(prefix));
-    if (items.length > 0) {
-      setAutocompleteItems(items);
-      setAutocompleteIdx(0);
-      setAutocompleteOpen(true);
+    if (lastOpen !== -1) {
+      const afterOpen = before.slice(lastOpen + 2);
+      if (!afterOpen.includes("}}")) {
+        const prefix = afterOpen.toLowerCase();
+        setVarPrefix(afterOpen);
+        const items = allVars().filter(v => v.name.toLowerCase().includes(prefix));
+        if (items.length > 0) {
+          setAutocompleteItems(items);
+          setAutocompleteIdx(0);
+          setAutocompleteOpen(true);
+          setUrlSuggestOpen(false);
+          return;
+        }
+      }
+    }
+    setAutocompleteOpen(false);
+    // URL history suggestions (when not in variable mode)
+    if (value.length >= 3 && !value.includes("{{")) {
+      const q = value.toLowerCase();
+      const matches = urlHistory.filter((u) => u.toLowerCase().includes(q) && u !== value).slice(0, 6);
+      if (matches.length > 0) {
+        setUrlSuggestions(matches);
+        setUrlSuggestIdx(0);
+        setUrlSuggestOpen(true);
+      } else {
+        setUrlSuggestOpen(false);
+      }
     } else {
-      setAutocompleteOpen(false);
+      setUrlSuggestOpen(false);
     }
   }
 
@@ -148,6 +183,14 @@ export function UrlBar({
         setAutocompleteOpen(false);
         return;
       }
+    }
+    if (urlSuggestOpen) {
+      if (e.key === "ArrowDown") { e.preventDefault(); setUrlSuggestIdx((i) => Math.min(i + 1, urlSuggestions.length - 1)); return; }
+      if (e.key === "ArrowUp") { e.preventDefault(); setUrlSuggestIdx((i) => Math.max(i - 1, 0)); return; }
+      if (e.key === "Enter" || e.key === "Tab") {
+        if (urlSuggestions[urlSuggestIdx]) { e.preventDefault(); onUrlChange(urlSuggestions[urlSuggestIdx]); setUrlSuggestOpen(false); return; }
+      }
+      if (e.key === "Escape") { e.preventDefault(); setUrlSuggestOpen(false); return; }
     }
     if (e.key === "Enter" && canSend) {
       e.preventDefault();
@@ -242,6 +285,24 @@ export function UrlBar({
                 >
                   <span className="font-mono">{`{{${item.name}}}`}</span>
                   <span className="ml-2 truncate text-[10px] text-neutral-500">{item.label}</span>
+                </button>
+              ))}
+            </div>
+          )}
+          {/* URL history suggestions */}
+          {urlSuggestOpen && urlSuggestions.length > 0 && !autocompleteOpen && (
+            <div className="absolute left-0 top-full z-50 mt-1 w-full rounded-md border border-neutral-700 bg-neutral-900 py-1 shadow-xl">
+              <p className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-neutral-500">Recent URLs</p>
+              {urlSuggestions.map((u, i) => (
+                <button
+                  key={u}
+                  type="button"
+                  onMouseDown={(e) => { e.preventDefault(); onUrlChange(u); setUrlSuggestOpen(false); }}
+                  className={`flex w-full items-center px-3 py-1.5 text-left font-mono text-xs transition ${
+                    i === urlSuggestIdx ? "bg-cobweb-600/20 text-cobweb-300" : "text-neutral-400 hover:bg-neutral-800"
+                  }`}
+                >
+                  <span className="truncate">{u}</span>
                 </button>
               ))}
             </div>
