@@ -650,6 +650,10 @@ function BodyView({ value, onChange, onSetContentType }: { value: string; onChan
               Minify
             </button>
             <BodySnippetsDropdown onInsert={onChange} />
+            {value.trim().length > 0 && (() => {
+              try { JSON.parse(value); return <span className="ml-auto text-[10px] text-emerald-500/70">Valid JSON</span>; }
+              catch (e) { return <span className="ml-auto text-[10px] text-rose-500/70" title={String(e)}>Invalid JSON</span>; }
+            })()}
           </div>
           <div className="min-h-[280px] flex-1 overflow-hidden rounded border border-glass bg-neutral-900/50">
             <CodeEditor
