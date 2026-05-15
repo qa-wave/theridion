@@ -1386,10 +1386,36 @@ function prettify(body: string, contentType: string): string {
       // fall through
     }
   }
+  if (contentType.includes("xml") || looksLikeXml(body)) {
+    try {
+      return prettyXml(body);
+    } catch {
+      // fall through
+    }
+  }
   return body;
 }
 
 function looksLikeJson(s: string): boolean {
   const t = s.trimStart();
   return t.startsWith("{") || t.startsWith("[");
+}
+
+function looksLikeXml(s: string): boolean {
+  const t = s.trimStart();
+  return t.startsWith("<?xml") || t.startsWith("<") && t.includes("</");
+}
+
+function prettyXml(xml: string): string {
+  let indent = 0;
+  const lines: string[] = [];
+  // Split on tags
+  xml.replace(/>\s*</g, ">\n<").split("\n").forEach((node) => {
+    const n = node.trim();
+    if (!n) return;
+    if (n.startsWith("</")) indent--;
+    lines.push("  ".repeat(Math.max(0, indent)) + n);
+    if (n.startsWith("<") && !n.startsWith("</") && !n.startsWith("<?") && !n.endsWith("/>") && !/<\/[^>]+>$/.test(n)) indent++;
+  });
+  return lines.join("\n");
 }
