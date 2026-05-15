@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { Edit, Star, Trash2, Terminal, CopyPlus } from "lucide-react";
+import { Edit, ExternalLink, Star, Trash2, Terminal, CopyPlus } from "lucide-react";
 
 export interface ContextMenuAction {
   label: string;
@@ -75,8 +75,10 @@ export function buildSidebarActions(opts: {
   onToggleFavorite?: () => void;
   isFavorite?: boolean;
   onCopyAsCurl?: () => void;
+  onOpenInNewTab?: () => void;
 }): ContextMenuAction[] {
   const actions: ContextMenuAction[] = [];
+  if (opts.onOpenInNewTab) actions.push({ label: "Open in new tab", icon: <ExternalLink className="h-3.5 w-3.5" />, onClick: opts.onOpenInNewTab });
   if (opts.onRename) actions.push({ label: "Rename", icon: <Edit className="h-3.5 w-3.5" />, onClick: opts.onRename });
   if (opts.onDuplicate) actions.push({ label: "Duplicate", icon: <CopyPlus className="h-3.5 w-3.5" />, onClick: opts.onDuplicate });
   if (opts.onToggleFavorite) {

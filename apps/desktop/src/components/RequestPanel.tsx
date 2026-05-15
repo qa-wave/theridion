@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import type { Assertion, AssertionResult, AuthConfig } from "../state/types";
 import type { CollectionVariable, ExecuteResponse, HealCandidate, RequestExample, StoredCollection } from "../lib/sidecar";
@@ -67,6 +67,16 @@ export function RequestPanel({
   onReEvaluate,
 }: Props) {
   const [tab, setTab] = useState<Tab>("params");
+
+  // Listen for Alt+N tab switch events from App.tsx
+  useEffect(() => {
+    function onSwitchTab(e: Event) {
+      const detail = (e as CustomEvent).detail as Tab;
+      if (detail) setTab(detail);
+    }
+    window.addEventListener("theridion:switch-request-tab", onSwitchTab);
+    return () => window.removeEventListener("theridion:switch-request-tab", onSwitchTab);
+  }, []);
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -782,6 +792,47 @@ const ASSERTION_TYPES: { value: Assertion["type"]; label: string }[] = [
   { value: "body_regex", label: "Body matches regex" },
 ];
 
+function resolveJsonPath(body: string, path: string): string | null {
+  try {
+    let obj = JSON.parse(body);
+    for (const segment of path.split(".")) {
+      const bracketMatch = segment.match(/^(\w+)\[(\d+)]$/);
+      if (bracketMatch) {
+        obj = obj[bracketMatch[1]][parseInt(bracketMatch[2])];
+      } else {
+        obj = obj[segment];
+      }
+      if (obj === undefined) return null;
+    }
+    return JSON.stringify(obj);
+  } catch { return null; }
+}
+
+function JsonPathPreview({ path, responseBody }: { path: string; responseBody: string }) {
+  const [debouncedPath, setDebouncedPath] = useState(path);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedPath(path), 300);
+    return () => clearTimeout(timer);
+  }, [path]);
+
+  const resolved = useMemo(() => {
+    if (!debouncedPath.trim()) return null;
+    return resolveJsonPath(responseBody, debouncedPath);
+  }, [debouncedPath, responseBody]);
+
+  if (!debouncedPath.trim()) return null;
+
+  return (
+    <div className={`mt-0.5 text-[10px] font-mono ${resolved !== null ? "text-emerald-400" : "text-rose-400"}`}>
+      {resolved !== null
+        ? <>&#8594; {resolved.length > 80 ? resolved.slice(0, 80) + "..." : resolved}</>
+        : <>&#8594; path not found</>
+      }
+    </div>
+  );
+}
+
 function TestsView({
   assertions,
   results,
@@ -928,13 +979,18 @@ function TestsView({
               </select>
 
               {(a.type === "json_path" || a.type === "header_exists" || a.type === "header_equals") && (
-                <input
-                  value={a.path}
-                  onChange={(e) => updateAssertion(idx, { path: e.target.value })}
-                  placeholder={a.type === "json_path" ? "data.items[0].name" : "Content-Type"}
-                  className={inputClass}
-                  spellCheck={false}
-                />
+                <div className="flex-1 min-w-0">
+                  <input
+                    value={a.path}
+                    onChange={(e) => updateAssertion(idx, { path: e.target.value })}
+                    placeholder={a.type === "json_path" ? "data.items[0].name" : "Content-Type"}
+                    className={inputClass}
+                    spellCheck={false}
+                  />
+                  {a.type === "json_path" && response?.body && (
+                    <JsonPathPreview path={a.path} responseBody={response.body} />
+                  )}
+                </div>
               )}
 
               {a.type === "json_path" && (

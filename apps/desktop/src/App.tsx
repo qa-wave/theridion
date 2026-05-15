@@ -710,6 +710,12 @@ export default function App() {
     openAgentExplorer: () => modals.open("agentExplorer"),
     collections,
     onOpenRequest: openSaved,
+    environments,
+    activeEnvId,
+    onSelectEnv: (id) => {
+      setActiveEnvId(id);
+      addToast("info", id ? `Switched to: ${environments.find((e) => e.id === id)?.name}` : "Switched to: No environment");
+    },
   });
 
   // ---- keyboard shortcuts -------------------------------------------------
@@ -753,6 +759,14 @@ export default function App() {
         } else {
           setActiveEnvId(environments[nextIdx].id);
           addToast("info", `Switched to: ${environments[nextIdx].name}`);
+        }
+      } else if (e.altKey && !cmd && e.key >= "1" && e.key <= "7") {
+        e.preventDefault();
+        const tabMap: Record<string, string> = { "1": "params", "2": "headers", "3": "body", "4": "auth", "5": "tests", "6": "scripts", "7": "notes" };
+        const tabId = tabMap[e.key];
+        if (tabId) {
+          // Dispatch custom event for RequestPanel to pick up
+          window.dispatchEvent(new CustomEvent("theridion:switch-request-tab", { detail: tabId }));
         }
       } else if (cmd && e.key === "Enter") {
         e.preventDefault();
@@ -849,6 +863,11 @@ export default function App() {
               x: e.clientX,
               y: e.clientY,
               actions: buildSidebarActions({
+                onOpenInNewTab: !item.is_folder ? () => {
+                  const tab = tabFromSaved(collectionId, item);
+                  setTabs(curr => [...curr, tab]);
+                  setActiveId(tab.id);
+                } : undefined,
                 onRename: () => {
                   // Handled by inline rename in Sidebar
                   void renameItem(collectionId, item.id, item.name);
@@ -995,6 +1014,9 @@ export default function App() {
               onOpenSwagger={() => modals.open("swagger")}
               onOpenAgentExplorer={() => modals.open("agentExplorer")}
               onNewCollection={newCollection}
+              onAddAssertion={(assertion) => {
+                patchActive({ assertions: [...active.assertions, assertion], assertionResults: null });
+              }}
             />
           </div>
           {historyOpen && (
@@ -1198,6 +1220,18 @@ const SHORTCUT_SECTIONS: { title: string; items: { action: string; shortcut: str
       { action: "Settings", shortcut: "\u2318," },
       { action: "Network console", shortcut: "\u2318\u21E7N" },
       { action: "Switch environment", shortcut: "Ctrl+E" },
+    ],
+  },
+  {
+    title: "Request Panel",
+    items: [
+      { action: "Params tab", shortcut: "Alt+1" },
+      { action: "Headers tab", shortcut: "Alt+2" },
+      { action: "Body tab", shortcut: "Alt+3" },
+      { action: "Auth tab", shortcut: "Alt+4" },
+      { action: "Tests tab", shortcut: "Alt+5" },
+      { action: "Pre-request tab", shortcut: "Alt+6" },
+      { action: "Notes tab", shortcut: "Alt+7" },
     ],
   },
   {

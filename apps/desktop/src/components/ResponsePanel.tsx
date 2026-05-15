@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AlertTriangle, ArrowDown, ArrowUp, Bot, CheckCircle2, ChevronDown, Clock, Code2, Copy, Download, FileCode, FolderPlus, GitCompare, Inbox, Minus, Search, Terminal, Upload, XCircle, Zap } from "lucide-react";
+import type { Assertion } from "../state/types";
 import type { ExecuteResponse, SchemaValidateOutput, TimingBreakdown } from "../lib/sidecar";
 import { sidecar } from "../lib/sidecar";
 import { CodeEditor } from "./CodeEditor";
@@ -14,8 +15,40 @@ interface ResponseSnapshot {
   response: ExecuteResponse;
 }
 
-/** Per-URL response history (max 10 per URL). */
+/** Per-URL response history (max 5 per URL, max 50 URLs, persisted to localStorage). */
+const HISTORY_KEY = "theridion.response-history";
+const MAX_PER_URL = 5;
+const MAX_URLS = 50;
+
 const urlHistory = new Map<string, ResponseSnapshot[]>();
+
+// Load persisted history on module init.
+try {
+  const stored = localStorage.getItem(HISTORY_KEY);
+  if (stored) {
+    const parsed = JSON.parse(stored) as Record<string, ResponseSnapshot[]>;
+    for (const [key, snapshots] of Object.entries(parsed)) {
+      if (Array.isArray(snapshots)) {
+        urlHistory.set(key, snapshots);
+      }
+    }
+  }
+} catch { /* corrupt data — start fresh */ }
+
+function persistUrlHistory() {
+  try {
+    const obj: Record<string, ResponseSnapshot[]> = {};
+    for (const [key, snaps] of urlHistory) {
+      // Truncate body_preview for storage and strip the full response object.
+      obj[key] = snaps.map((s) => ({
+        ...s,
+        body_preview: s.body_preview.slice(0, 500),
+        response: s.response,
+      }));
+    }
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(obj));
+  } catch { /* quota exceeded — non-critical */ }
+}
 
 function recordUrlHistory(url: string, res: ExecuteResponse) {
   const key = url.replace(/\?.*/, ""); // strip query params for grouping
@@ -25,11 +58,17 @@ function recordUrlHistory(url: string, res: ExecuteResponse) {
     status: res.status,
     elapsed_ms: res.elapsed_ms,
     body_size: res.body_size_bytes,
-    body_preview: res.body.slice(0, 200),
+    body_preview: res.body.slice(0, 500),
     response: res,
   });
-  if (list.length > 10) list.shift();
+  if (list.length > MAX_PER_URL) list.shift();
   urlHistory.set(key, list);
+  // Enforce max URLs limit.
+  if (urlHistory.size > MAX_URLS) {
+    const oldest = urlHistory.keys().next().value;
+    if (oldest !== undefined) urlHistory.delete(oldest);
+  }
+  persistUrlHistory();
 }
 
 function getUrlHistory(url: string): ResponseSnapshot[] {
@@ -57,12 +96,13 @@ interface Props {
   onOpenSwagger?: () => void;
   onOpenAgentExplorer?: () => void;
   onNewCollection?: () => void;
+  onAddAssertion?: (assertion: Assertion) => void;
 }
 
 /** Keep last 5 response times for sparkline display. */
 const responseTimeHistory: number[] = [];
 
-export function ResponsePanel({ busy, response, error, onDiff, onCodegen, consoleEntries = [], isFirstRun, onImportCollection, onOpenSwagger, onOpenAgentExplorer, onNewCollection }: Props) {
+export function ResponsePanel({ busy, response, error, onDiff, onCodegen, consoleEntries = [], isFirstRun, onImportCollection, onOpenSwagger, onOpenAgentExplorer, onNewCollection, onAddAssertion }: Props) {
   const [tab, setTab] = useState<Tab>("body");
   const panelRef = useRef<HTMLDivElement>(null);
   const [headerSearch, setHeaderSearch] = useState("");
@@ -147,7 +187,7 @@ export function ResponsePanel({ busy, response, error, onDiff, onCodegen, consol
         </TabButton>
       </div>
       <div className="min-h-0 flex-1 overflow-hidden">
-        {tab === "body" && <BodyView res={displayResponse} />}
+        {tab === "body" && <BodyView res={displayResponse} onAddAssertion={onAddAssertion} />}
         {tab === "headers" && (
           <HeadersView
             res={displayResponse}
@@ -339,7 +379,7 @@ function StatusRow({ res, onDiff, onCodegen, history, onViewHistorical }: { res:
 const SIZE_WARNING_THRESHOLD = 1024 * 1024;       // 1 MB
 const SIZE_FORCE_RAW_THRESHOLD = 5 * 1024 * 1024;  // 5 MB
 
-function BodyView({ res }: { res: ExecuteResponse }) {
+function BodyView({ res, onAddAssertion }: { res: ExecuteResponse; onAddAssertion?: (assertion: Assertion) => void }) {
   const ct = res.headers["content-type"] ?? "";
   const pretty = useMemo(() => prettify(res.body, ct), [res.body, ct]);
   const [copyDropdownOpen, setCopyDropdownOpen] = useState(false);
@@ -401,6 +441,54 @@ function BodyView({ res }: { res: ExecuteResponse }) {
           <button type="button" onClick={copyAsRaw} className="ml-1 rounded border border-amber-700/40 px-1.5 py-0.5 text-[10px] hover:bg-amber-900/30">
             Copy to clipboard
           </button>
+        </div>
+      )}
+      {/* Quick-add assertion buttons */}
+      {onAddAssertion && (
+        <div className="flex items-center gap-1.5 border-b border-glass/60 px-3 py-1">
+          <span className="text-[10px] text-neutral-600 mr-1">Quick assert:</span>
+          <button
+            type="button"
+            onClick={() => onAddAssertion({ type: "status", expected: String(res.status), path: "", operator: "eq" })}
+            className="inline-flex items-center gap-1 rounded border border-glass px-1.5 py-0.5 text-[10px] text-neutral-500 transition hover:bg-white/[0.06] hover:text-neutral-300"
+          >
+            + Status {res.status}
+          </button>
+          {res.headers["content-type"] && (
+            <button
+              type="button"
+              onClick={() => onAddAssertion({ type: "header_equals", expected: res.headers["content-type"], path: "content-type", operator: "eq" })}
+              className="inline-flex items-center gap-1 rounded border border-glass px-1.5 py-0.5 text-[10px] text-neutral-500 transition hover:bg-white/[0.06] hover:text-neutral-300"
+            >
+              + Content-Type
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => onAddAssertion({ type: "response_time", expected: String(Math.ceil(res.elapsed_ms * 2)), path: "", operator: "eq" })}
+            className="inline-flex items-center gap-1 rounded border border-glass px-1.5 py-0.5 text-[10px] text-neutral-500 transition hover:bg-white/[0.06] hover:text-neutral-300"
+          >
+            + Time &lt; {Math.ceil(res.elapsed_ms * 2)} ms
+          </button>
+          {(() => {
+            try {
+              const parsed = JSON.parse(res.body);
+              if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+                const keys = Object.keys(parsed).slice(0, 3);
+                return keys.map((key) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => onAddAssertion({ type: "json_path", expected: JSON.stringify(parsed[key]).slice(0, 50), path: key, operator: "eq" })}
+                    className="inline-flex items-center gap-1 rounded border border-glass px-1.5 py-0.5 text-[10px] text-neutral-500 transition hover:bg-white/[0.06] hover:text-neutral-300"
+                  >
+                    + {key}
+                  </button>
+                ));
+              }
+            } catch { /* not JSON */ }
+            return null;
+          })()}
         </div>
       )}
       {/* Copy dropdown */}

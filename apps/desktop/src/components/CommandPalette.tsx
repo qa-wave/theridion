@@ -19,7 +19,7 @@ import {
   GitCompare,
   GitBranch,
 } from "lucide-react";
-import type { StoredCollection, CollectionItem } from "../lib/sidecar";
+import type { StoredCollection, CollectionItem, EnvironmentSummary } from "../lib/sidecar";
 import { HTTP_METHOD_COLOR, type Method } from "../state/types";
 
 export interface CommandAction {
@@ -84,7 +84,7 @@ function pushRecent(id: string) {
   localStorage.setItem(RECENT_KEY, JSON.stringify(recent.slice(0, MAX_RECENT)));
 }
 
-const GROUP_ORDER = ["RECENT", "NAVIGATION", "PROTOCOLS", "TOOLS", "REQUESTS"];
+const GROUP_ORDER = ["RECENT", "NAVIGATION", "PROTOCOLS", "ENVIRONMENTS", "TOOLS", "REQUESTS"];
 
 type GroupedAction = {
   type: "header";
@@ -112,7 +112,7 @@ function groupActions(actions: CommandAction[], showRecent: boolean): GroupedAct
   }
 
   for (const action of actions) {
-    const group = action.id.startsWith("req-") ? "REQUESTS" : (GROUP_MAP[action.id] ?? "TOOLS");
+    const group = action.id.startsWith("req-") ? "REQUESTS" : action.id.startsWith("env-") ? "ENVIRONMENTS" : (GROUP_MAP[action.id] ?? "TOOLS");
     if (!groups[group]) groups[group] = [];
     groups[group].push(action);
   }
@@ -351,6 +351,9 @@ export function useDefaultActions(callbacks: {
   openAgentExplorer?: () => void;
   collections?: StoredCollection[];
   onOpenRequest?: (collectionId: string, item: CollectionItem) => void;
+  environments?: EnvironmentSummary[];
+  activeEnvId?: string | null;
+  onSelectEnv?: (id: string | null) => void;
 }): CommandAction[] {
   const requestActions = useMemo(
     () =>
@@ -359,6 +362,23 @@ export function useDefaultActions(callbacks: {
         : [],
     [callbacks.collections, callbacks.onOpenRequest],
   );
+
+  const envActions: CommandAction[] = useMemo(() => {
+    if (!callbacks.environments || !callbacks.onSelectEnv) return [];
+    const actions: CommandAction[] = callbacks.environments.map((env) => ({
+      id: `env-${env.id}`,
+      label: `${callbacks.activeEnvId === env.id ? "\u2713 " : ""}${env.name}`,
+      icon: <Settings size={14} />,
+      onSelect: () => callbacks.onSelectEnv!(env.id),
+    }));
+    actions.push({
+      id: "env-none",
+      label: `${callbacks.activeEnvId === null ? "\u2713 " : ""}No environment`,
+      icon: <Settings size={14} />,
+      onSelect: () => callbacks.onSelectEnv!(null),
+    });
+    return actions;
+  }, [callbacks.environments, callbacks.activeEnvId, callbacks.onSelectEnv]);
 
   return useMemo(
     () => [
@@ -468,8 +488,9 @@ export function useDefaultActions(callbacks: {
       ...(callbacks.openAgentExplorer ? [{
         id: "agent-explorer", label: "AI: Explore API", icon: <Search size={14} />, onSelect: callbacks.openAgentExplorer,
       }] : []),
+      ...envActions,
       ...requestActions,
     ],
-    [callbacks, requestActions],
+    [callbacks, requestActions, envActions],
   );
 }
