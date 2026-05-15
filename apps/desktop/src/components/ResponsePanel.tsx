@@ -4,6 +4,9 @@ import type { Assertion } from "../state/types";
 import type { ExecuteResponse, SchemaValidateOutput, TimingBreakdown } from "../lib/sidecar";
 import { sidecar } from "../lib/sidecar";
 import { CodeEditor } from "./CodeEditor";
+import { JsonTreeView } from "./JsonTreeView";
+
+type BodyViewMode = "editor" | "tree" | "raw";
 
 /** Snapshot of a historical response for per-URL tracking. */
 interface ResponseSnapshot {
@@ -439,6 +442,7 @@ function BodyView({ res, onAddAssertion }: { res: ExecuteResponse; onAddAssertio
   const pretty = useMemo(() => prettify(res.body, ct), [res.body, ct]);
   const [copyDropdownOpen, setCopyDropdownOpen] = useState(false);
   const [forceRaw, setForceRaw] = useState(false);
+  const [viewMode, setViewMode] = useState<BodyViewMode>("editor");
   const [transform, setTransform] = useState<BodyTransform>("none");
   const [transformOpen, setTransformOpen] = useState(false);
 
@@ -607,8 +611,23 @@ function BodyView({ res, onAddAssertion }: { res: ExecuteResponse; onAddAssertio
           <span className="text-[10px] text-neutral-600">{lineCount} lines</span>
         </div>
       )}
-      {/* Transform + Copy dropdowns */}
+      {/* View mode + Transform + Copy dropdowns */}
       <div className="absolute right-3 top-2 z-10 flex items-center gap-1.5">
+        {/* View mode toggle (only show Tree option for JSON) */}
+        {ct.includes("json") || (() => { try { JSON.parse(res.body); return true; } catch { return false; } })() ? (
+          <div className="flex items-stretch rounded border border-glass bg-neutral-900/80 backdrop-blur">
+            {(["editor", "tree", "raw"] as const).map((m) => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => { setViewMode(m); if (m === "raw") setForceRaw(true); else setForceRaw(false); }}
+                className={`px-2 py-0.5 text-[10px] capitalize transition ${viewMode === m ? "bg-white/10 text-neutral-100" : "text-neutral-500 hover:text-neutral-300"}`}
+              >
+                {m === "editor" ? "Pretty" : m === "tree" ? "Tree" : "Raw"}
+              </button>
+            ))}
+          </div>
+        ) : null}
         {/* Transform dropdown */}
         <div className="relative">
           <button
@@ -683,7 +702,11 @@ function BodyView({ res, onAddAssertion }: { res: ExecuteResponse; onAddAssertio
         </div>
       </div>
       <div className="min-h-0 flex-1 overflow-hidden">
-        {isForcedRaw ? (
+        {viewMode === "tree" && !isForcedRaw ? (
+          <div className="h-full overflow-auto">
+            <JsonTreeView data={(() => { try { return JSON.parse(res.body); } catch { return res.body; } })()} />
+          </div>
+        ) : isForcedRaw || viewMode === "raw" ? (
           <textarea
             readOnly
             value={res.body}
