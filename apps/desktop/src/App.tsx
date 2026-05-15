@@ -233,6 +233,7 @@ export default function App() {
           auth: t.auth,
           assertions: t.assertions,
           preRequestScript: t.preRequestScript,
+          postResponseScript: t.postResponseScript,
           notes: t.notes,
           cleanSignature: t.cleanSignature,
           lastRunAt: t.lastRunAt,
@@ -287,6 +288,7 @@ export default function App() {
       auth: src.auth,
       assertions: src.assertions,
       preRequestScript: src.preRequestScript,
+      postResponseScript: src.postResponseScript,
     });
     setTabs((curr) => [...curr, dup]);
     setActiveId(dup.id);
@@ -469,6 +471,7 @@ export default function App() {
       auth: active.auth.type !== "none" ? active.auth : null,
       assertions: active.assertions,
       pre_request_script: active.preRequestScript || null,
+      post_response_script: active.postResponseScript || null,
       notes: active.notes || null,
     });
 
@@ -491,6 +494,7 @@ export default function App() {
         auth: active.auth,
         assertions: active.assertions,
         preRequestScript: active.preRequestScript,
+        postResponseScript: active.postResponseScript,
         notes: active.notes,
       }),
     });
@@ -1066,6 +1070,8 @@ export default function App() {
               onAssertionsChange={(assertions) => patchActive({ assertions, assertionResults: null })}
               preRequestScript={active.preRequestScript}
               onPreRequestScriptChange={(preRequestScript) => patchActive({ preRequestScript })}
+              postResponseScript={active.postResponseScript}
+              onPostResponseScriptChange={(postResponseScript) => patchActive({ postResponseScript })}
               notes={active.notes}
               onNotesChange={(notes) => patchActive({ notes })}
               savedAs={active.savedAs}

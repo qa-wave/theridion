@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { CheckCircle2, ChevronDown, ClipboardCopy, Loader2, Save, Send, XCircle } from "lucide-react";
+import { CheckCircle2, ChevronDown, ClipboardCopy, Globe, Loader2, Save, Send, XCircle } from "lucide-react";
 import { HTTP_METHOD_COLOR, METHODS } from "../state/types";
 import type { Method } from "../state/types";
+import type { EnvironmentSummary } from "../lib/sidecar";
 import { sidecar } from "../lib/sidecar";
 import { Tooltip } from "./Tooltip";
 
@@ -27,6 +28,8 @@ interface Props {
   onCopyAsCurl: () => void;
   onCopyShareable?: () => void;
   activeEnvId?: string | null;
+  environments?: EnvironmentSummary[];
+  onEnvChange?: (envId: string | null) => void;
   lastStatus?: number | null;
 }
 
@@ -44,6 +47,8 @@ export function UrlBar({
   onCopyAsCurl,
   onCopyShareable,
   activeEnvId,
+  environments,
+  onEnvChange,
   lastStatus,
 }: Props) {
   const [copied, setCopied] = useState(false);
@@ -286,6 +291,28 @@ export function UrlBar({
         >
           Share
         </button>
+      )}
+
+      {/* Environment quick switcher */}
+      {environments && environments.length > 0 && onEnvChange && (
+        <Tooltip content="Active environment" side="bottom">
+          <div className="relative inline-flex items-stretch overflow-hidden rounded-lg border border-neutral-800/60 bg-neutral-900/40 shadow-inner-glow">
+            <Globe className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-neutral-500" />
+            <select
+              value={activeEnvId ?? ""}
+              onChange={(e) => onEnvChange(e.target.value || null)}
+              className="appearance-none bg-transparent py-1.5 pl-7 pr-6 text-xs text-neutral-300 focus:outline-none"
+            >
+              <option value="" className="bg-neutral-900">No environment</option>
+              {environments.map((env) => (
+                <option key={env.id} value={env.id} className="bg-neutral-900">
+                  {env.name}
+                </option>
+              ))}
+            </select>
+            <span className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 text-[10px] text-neutral-600">&#x25BE;</span>
+          </div>
+        </Tooltip>
       )}
 
       {/* Send button — hero action */}
