@@ -377,7 +377,7 @@ export function Sidebar({
         )}
       </div>
 
-      {/* Collapse toggle at bottom */}
+      {/* Collapse toggle + shortcuts hint at bottom */}
       <div className="border-t border-glass px-3 py-2">
         <button
           type="button"
@@ -387,6 +387,17 @@ export function Sidebar({
         >
           <ChevronLeft className="h-4 w-4" />
           <span>Collapse</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            // Dispatch "?" key to trigger the shortcut overlay
+            window.dispatchEvent(new KeyboardEvent("keydown", { key: "?", bubbles: true }));
+          }}
+          className="mt-1 flex w-full items-center justify-center rounded-lg px-2 py-1 text-[10px] text-neutral-600 transition hover:bg-neutral-800 hover:text-neutral-400"
+          title="Keyboard shortcuts"
+        >
+          Shortcuts &#x2318;?
         </button>
       </div>
     </aside>

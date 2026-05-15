@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
-import { BarChart3, Database, Loader2, Play, X } from "lucide-react";
-import { sidecar, type BatchOutput, type CollectionSummary, type EnvironmentSummary } from "../lib/sidecar";
+import { ArrowRight, BarChart3, Database, GitBranch, Loader2, Play, X } from "lucide-react";
+import { sidecar, type BatchOutput, type CollectionSummary, type EnvironmentSummary, type DependencyInfo } from "../lib/sidecar";
 import { RequestTimeline } from "./RequestTimeline";
 import { useFocusTrap } from "../hooks/useFocusTrap";
 
@@ -23,6 +23,9 @@ export function BatchRunnerModal({ open, onClose }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [resultsView, setResultsView] = useState<"table" | "timeline">("table");
+  const [depOrder, setDepOrder] = useState<DependencyInfo[] | null>(null);
+  const [depBusy, setDepBusy] = useState(false);
+  const [depUnresolved, setDepUnresolved] = useState<string[]>([]);
 
   if (!open) return null;
 
@@ -111,15 +114,73 @@ export function BatchRunnerModal({ open, onClose }: Props) {
                 />
               </div>
 
-              <button
-                type="button"
-                onClick={run}
-                disabled={busy || !collectionId}
-                className="inline-flex items-center gap-2 rounded-md bg-cobweb-600/20 px-4 py-2 text-xs font-medium text-cobweb-400 transition hover:bg-cobweb-600/30 disabled:opacity-50"
-              >
-                {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
-                Run Batch
-              </button>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={run}
+                  disabled={busy || !collectionId}
+                  className="inline-flex items-center gap-2 rounded-md bg-cobweb-600/20 px-4 py-2 text-xs font-medium text-cobweb-400 transition hover:bg-cobweb-600/30 disabled:opacity-50"
+                >
+                  {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
+                  Run Batch
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (!collectionId) return;
+                    setDepBusy(true);
+                    try {
+                      const res = await sidecar.resolveDependencies(collectionId);
+                      setDepOrder(res.order);
+                      setDepUnresolved(res.unresolved);
+                    } catch { /* ignore */ }
+                    finally { setDepBusy(false); }
+                  }}
+                  disabled={depBusy || !collectionId}
+                  className="inline-flex items-center gap-2 rounded-md border border-glass px-4 py-2 text-xs text-neutral-400 transition hover:bg-white/[0.04] hover:text-neutral-200 disabled:opacity-50"
+                >
+                  {depBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <GitBranch className="h-3.5 w-3.5" />}
+                  Resolve Dependencies
+                </button>
+              </div>
+
+              {/* Dependency graph results */}
+              {depOrder && (
+                <div className="rounded-lg border border-glass bg-neutral-900/30 p-3">
+                  <p className="mb-2 text-[11px] uppercase tracking-wider text-neutral-500">
+                    Suggested Execution Order
+                  </p>
+                  {depUnresolved.length > 0 && (
+                    <p className="mb-2 text-xs text-amber-400">
+                      Unresolved variables: {depUnresolved.join(", ")}
+                    </p>
+                  )}
+                  <div className="space-y-1">
+                    {depOrder.map((dep, i) => (
+                      <div key={dep.request_id} className="flex items-center gap-2 text-xs">
+                        <span className="shrink-0 rounded-full bg-neutral-800 px-2 py-0.5 font-mono text-[10px] text-neutral-400">
+                          {i + 1}
+                        </span>
+                        <span className="font-medium text-neutral-200">{dep.name || dep.request_id}</span>
+                        {dep.depends_on.length > 0 && (
+                          <span className="flex items-center gap-1 text-neutral-500">
+                            <ArrowRight className="h-3 w-3" />
+                            depends on: {dep.depends_on.map((d) => {
+                              const found = depOrder.find((o) => o.request_id === d);
+                              return found?.name || d;
+                            }).join(", ")}
+                          </span>
+                        )}
+                        {dep.consumes.length > 0 && (
+                          <span className="text-[10px] text-cobweb-400">
+                            {"{{" + dep.consumes.join("}}, {{") + "}}"}
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </>
           ) : (
             <div>

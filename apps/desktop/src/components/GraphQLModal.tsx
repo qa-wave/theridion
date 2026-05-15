@@ -235,6 +235,8 @@ function TabBtn({ active, onClick, children }: { active: boolean; onClick: () =>
 }
 
 function SchemaExplorer({ schema }: { schema: IntrospectOutput }) {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [breadcrumb, setBreadcrumb] = useState<Array<{ name: string; fieldName?: string }>>([]);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   function toggle(name: string) {
@@ -245,44 +247,213 @@ function SchemaExplorer({ schema }: { schema: IntrospectOutput }) {
     });
   }
 
+  function navigateToType(typeName: string, fieldName?: string) {
+    const type = schema.types.find((t) => t.name === typeName);
+    if (type) {
+      setBreadcrumb((prev) => [...prev, { name: typeName, fieldName }]);
+    }
+  }
+
+  function navigateToBreadcrumb(index: number) {
+    setBreadcrumb((prev) => prev.slice(0, index + 1));
+  }
+
+  function resetBreadcrumb() {
+    setBreadcrumb([]);
+  }
+
+  function resolveTypeName(t: Record<string, unknown> | null): string | null {
+    if (!t) return null;
+    const name = t.name as string | null;
+    const kind = t.kind as string;
+    const ofType = t.ofType as Record<string, unknown> | null;
+    if (kind === "NON_NULL" || kind === "LIST") return resolveTypeName(ofType);
+    return name;
+  }
+
+  const activeTypeName = breadcrumb.length > 0 ? breadcrumb[breadcrumb.length - 1].name : null;
+  const activeType = activeTypeName ? schema.types.find((t) => t.name === activeTypeName) : null;
+
+  const filter = searchQuery.toLowerCase();
+  const filteredTypes = filter
+    ? schema.types.filter(
+        (t) =>
+          t.name.toLowerCase().includes(filter) ||
+          t.fields.some((f: Record<string, unknown>) =>
+            String(f.name).toLowerCase().includes(filter),
+          ),
+      )
+    : schema.types;
+
   const roots = [schema.query_type, schema.mutation_type, schema.subscription_type].filter(Boolean);
 
   return (
-    <div className="p-3 text-xs">
-      {roots.length > 0 && (
-        <div className="mb-3 flex gap-2">
-          {schema.query_type && <RootBadge label="Query" name={schema.query_type} />}
-          {schema.mutation_type && <RootBadge label="Mutation" name={schema.mutation_type} />}
-          {schema.subscription_type && <RootBadge label="Subscription" name={schema.subscription_type} />}
+    <div className="flex h-full flex-col text-xs">
+      {/* Search */}
+      <div className="border-b border-glass px-3 py-2">
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-neutral-500" />
+          <input
+            value={searchQuery}
+            onChange={(e) => { setSearchQuery(e.target.value); resetBreadcrumb(); }}
+            placeholder="Search types and fields..."
+            className="w-full rounded-md border border-glass bg-neutral-900/50 py-1 pl-7 pr-2 text-xs placeholder-neutral-600 focus:border-cobweb-500/40 focus:outline-none"
+            spellCheck={false}
+          />
+        </div>
+      </div>
+
+      {/* Breadcrumb */}
+      {breadcrumb.length > 0 && (
+        <div className="flex items-center gap-1 border-b border-glass px-3 py-1.5 text-[10px]">
+          <button
+            type="button"
+            onClick={resetBreadcrumb}
+            className="text-neutral-500 hover:text-neutral-200"
+          >
+            All Types
+          </button>
+          {breadcrumb.map((crumb, i) => (
+            <span key={i} className="flex items-center gap-1">
+              <span className="text-neutral-600">&rsaquo;</span>
+              {crumb.fieldName && (
+                <>
+                  <span className="text-cobweb-400">{crumb.fieldName}</span>
+                  <span className="text-neutral-600">&rsaquo;</span>
+                </>
+              )}
+              <button
+                type="button"
+                onClick={() => navigateToBreadcrumb(i)}
+                className={`font-mono ${i === breadcrumb.length - 1 ? "text-neutral-100 font-medium" : "text-neutral-400 hover:text-neutral-200"}`}
+              >
+                {crumb.name}
+              </button>
+            </span>
+          ))}
         </div>
       )}
-      <div className="space-y-0.5">
-        {schema.types.map((t) => (
-          <div key={t.name}>
-            <button
-              type="button"
-              onClick={() => toggle(t.name)}
-              className="flex w-full items-center gap-2 rounded-md px-2 py-1 text-left transition hover:bg-white/[0.03]"
-            >
-              <KindBadge kind={t.kind} />
-              <span className="font-mono font-medium text-neutral-200">{t.name}</span>
-              {t.fields.length > 0 && (
-                <span className="text-neutral-600">{t.fields.length} fields</span>
+
+      <div className="flex-1 overflow-y-auto p-3">
+        {/* Root badges */}
+        {!activeType && roots.length > 0 && (
+          <div className="mb-3 flex gap-2">
+            {schema.query_type && (
+              <button type="button" onClick={() => navigateToType(schema.query_type!)}>
+                <RootBadge label="Query" name={schema.query_type} />
+              </button>
+            )}
+            {schema.mutation_type && (
+              <button type="button" onClick={() => navigateToType(schema.mutation_type!)}>
+                <RootBadge label="Mutation" name={schema.mutation_type} />
+              </button>
+            )}
+            {schema.subscription_type && (
+              <button type="button" onClick={() => navigateToType(schema.subscription_type!)}>
+                <RootBadge label="Subscription" name={schema.subscription_type} />
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Active type detail view */}
+        {activeType ? (
+          <div>
+            <div className="mb-3 flex items-center gap-2">
+              <KindBadge kind={activeType.kind} />
+              <span className="font-mono font-medium text-neutral-200">{activeType.name}</span>
+              {activeType.description && (
+                <span className="text-neutral-500">{activeType.description}</span>
               )}
-            </button>
-            {expanded.has(t.name) && t.fields.length > 0 && (
-              <div className="ml-6 border-l border-glass pl-3 py-1 space-y-0.5">
-                {t.fields.map((f: Record<string, unknown>) => (
-                  <div key={String(f.name)} className="flex items-baseline gap-2 py-0.5">
-                    <span className="font-mono text-cobweb-400">{String(f.name)}</span>
-                    <span className="text-neutral-600">:</span>
-                    <span className="font-mono text-neutral-400">{formatType(f.type as Record<string, unknown>)}</span>
-                  </div>
-                ))}
+            </div>
+            {activeType.fields.length > 0 && (
+              <div className="space-y-0.5">
+                {activeType.fields.map((f: Record<string, unknown>) => {
+                  const isDeprecated = Boolean(f.isDeprecated || f.deprecationReason);
+                  const args = (f.args as Array<Record<string, unknown>> | undefined) ?? [];
+                  const linkedType = resolveTypeName(f.type as Record<string, unknown>);
+                  return (
+                    <div
+                      key={String(f.name)}
+                      className={`flex items-baseline gap-2 rounded-md px-2 py-1 hover:bg-white/[0.03] ${isDeprecated ? "opacity-60" : ""}`}
+                    >
+                      <span className={`font-mono text-cobweb-400 ${isDeprecated ? "line-through" : ""}`}>
+                        {String(f.name)}
+                      </span>
+                      {args.length > 0 && (
+                        <span className="text-neutral-600">
+                          ({args.map((a, i) => (
+                            <span key={String(a.name)}>
+                              {i > 0 && ", "}
+                              <span className="text-neutral-400">{String(a.name)}</span>
+                              <span className="text-neutral-600">: </span>
+                              <span className="text-neutral-500">{formatType(a.type as Record<string, unknown>)}</span>
+                            </span>
+                          ))})
+                        </span>
+                      )}
+                      <span className="text-neutral-600">:</span>
+                      {linkedType && schema.types.some((t) => t.name === linkedType) ? (
+                        <button
+                          type="button"
+                          onClick={() => navigateToType(linkedType, String(f.name))}
+                          className="font-mono text-cobweb-300 underline decoration-dotted hover:text-cobweb-200"
+                        >
+                          {formatType(f.type as Record<string, unknown>)}
+                        </button>
+                      ) : (
+                        <span className="font-mono text-neutral-400">
+                          {formatType(f.type as Record<string, unknown>)}
+                        </span>
+                      )}
+                      {isDeprecated && (
+                        <span className="rounded bg-amber-950 px-1 py-0.5 text-[9px] text-amber-400">
+                          deprecated
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
-        ))}
+        ) : (
+          /* Type list view */
+          <div className="space-y-0.5">
+            {filteredTypes.map((t) => (
+              <div key={t.name}>
+                <button
+                  type="button"
+                  onClick={() => t.fields.length > 0 ? navigateToType(t.name) : toggle(t.name)}
+                  className="flex w-full items-center gap-2 rounded-md px-2 py-1 text-left transition hover:bg-white/[0.03]"
+                >
+                  <KindBadge kind={t.kind} />
+                  <span className="font-mono font-medium text-neutral-200">{t.name}</span>
+                  {t.fields.length > 0 && (
+                    <span className="text-neutral-600">{t.fields.length} fields</span>
+                  )}
+                </button>
+                {expanded.has(t.name) && t.fields.length > 0 && (
+                  <div className="ml-6 border-l border-glass pl-3 py-1 space-y-0.5">
+                    {t.fields.map((f: Record<string, unknown>) => {
+                      const isDeprecated = Boolean(f.isDeprecated || f.deprecationReason);
+                      return (
+                        <div key={String(f.name)} className={`flex items-baseline gap-2 py-0.5 ${isDeprecated ? "opacity-60" : ""}`}>
+                          <span className={`font-mono text-cobweb-400 ${isDeprecated ? "line-through" : ""}`}>{String(f.name)}</span>
+                          <span className="text-neutral-600">:</span>
+                          <span className="font-mono text-neutral-400">{formatType(f.type as Record<string, unknown>)}</span>
+                          {isDeprecated && (
+                            <span className="rounded bg-amber-950 px-1 py-0.5 text-[9px] text-amber-400">deprecated</span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

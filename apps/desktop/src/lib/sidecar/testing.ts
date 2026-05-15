@@ -440,6 +440,72 @@ export interface ReportResultItem {
   assertions?: number;
 }
 
+// ---- API Changelog types ----------------------------------------------------
+
+export interface FieldChange {
+  path: string;
+  type: string;
+  old_value: string | null;
+  new_value: string | null;
+}
+
+export interface ChangelogEntry {
+  request_name: string;
+  changes: FieldChange[];
+  breaking: boolean;
+}
+
+export interface ChangelogResult {
+  collection_name: string;
+  entries: ChangelogEntry[];
+  breaking_changes: number;
+  total_changes: number;
+  timestamp: number;
+}
+
+// ---- Regression Generator types ---------------------------------------------
+
+export interface GeneratedAssertion {
+  type: string;
+  expected: string;
+  path: string;
+  operator: string;
+}
+
+export interface RequestAssertions {
+  request_id: string;
+  request_name: string;
+  assertions: GeneratedAssertion[];
+}
+
+export interface RegressionOutput {
+  collection_name: string;
+  total_assertions: number;
+  requests_processed: number;
+  request_assertions: RequestAssertions[];
+}
+
+// ---- Dependency Resolver types ----------------------------------------------
+
+export interface DependencyInfo {
+  request_id: string;
+  name: string;
+  depends_on: string[];
+  provides: string[];
+  consumes: string[];
+}
+
+export interface CycleInfo {
+  variable: string;
+  involved: string[];
+}
+
+export interface DependencyResult {
+  order: DependencyInfo[];
+  cycles: CycleInfo[];
+  unresolved: string[];
+}
+
 export const testingMethods = {
   evaluateAssertions: (input: {
     assertions: Assertion[];
@@ -563,5 +629,20 @@ export const testingMethods = {
     call<{ content: string; content_type: string }>("/api/reports/generate", {
       method: "POST",
       body: JSON.stringify({ results, format }),
+    }),
+  detectChangelog: (input: { collection_id: string; environment_id?: string }) =>
+    call<ChangelogResult>("/api/changelog/detect", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  generateRegression: (collectionId: string, environmentId?: string) =>
+    call<RegressionOutput>(`/api/test/generate-regression/${collectionId}`, {
+      method: "POST",
+      body: JSON.stringify({ environment_id: environmentId ?? null }),
+    }),
+  resolveDependencies: (collectionId: string) =>
+    call<DependencyResult>("/api/test/resolve-dependencies", {
+      method: "POST",
+      body: JSON.stringify({ collection_id: collectionId }),
     }),
 } as const;

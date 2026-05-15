@@ -53,6 +53,9 @@ export type {
   ContractGuardViolation, ContractValidateGuardInput, ContractGuardOutput,
   PerRequestValidation, ContractCollectionOutput,
   JunitTestResult, ReportResultItem,
+  FieldChange, ChangelogEntry, ChangelogResult,
+  GeneratedAssertion, RequestAssertions, RegressionOutput,
+  DependencyInfo, CycleInfo, DependencyResult,
 } from "./testing";
 
 export type {

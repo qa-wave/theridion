@@ -1,6 +1,42 @@
-import { useEffect, useRef, useState } from "react";
-import { ArrowDown, ArrowUp, Loader2, Plug, PlugZap, Send, Trash2, Wifi, X } from "lucide-react";
+import { useEffect, useRef, useState, useCallback } from "react";
+import { ArrowDown, ArrowUp, BookTemplate, ChevronDown, Loader2, Plug, PlugZap, Save, Send, Trash2, Wifi, X } from "lucide-react";
 import { getSidecarBaseUrl } from "../lib/sidecar";
+
+const BUILT_IN_TEMPLATES: Array<{ label: string; value: string }> = [
+  { label: "JSON message", value: '{"type": "ping"}' },
+  { label: "Subscribe", value: '{"action": "subscribe", "channel": "events"}' },
+  { label: "Unsubscribe", value: '{"action": "unsubscribe", "channel": "events"}' },
+  { label: "Auth", value: '{"type": "auth", "token": "{{token}}"}' },
+];
+
+const WS_TEMPLATES_KEY = "theridion.ws-templates";
+const WS_HISTORY_KEY = "theridion.ws-message-history";
+
+function loadCustomTemplates(): Array<{ label: string; value: string }> {
+  try {
+    return JSON.parse(localStorage.getItem(WS_TEMPLATES_KEY) ?? "[]");
+  } catch {
+    return [];
+  }
+}
+
+function saveCustomTemplates(templates: Array<{ label: string; value: string }>) {
+  localStorage.setItem(WS_TEMPLATES_KEY, JSON.stringify(templates));
+}
+
+function loadMessageHistory(): string[] {
+  try {
+    return JSON.parse(localStorage.getItem(WS_HISTORY_KEY) ?? "[]");
+  } catch {
+    return [];
+  }
+}
+
+function pushMessageHistory(msg: string) {
+  const history = loadMessageHistory().filter((m) => m !== msg);
+  history.unshift(msg);
+  localStorage.setItem(WS_HISTORY_KEY, JSON.stringify(history.slice(0, 10)));
+}
 
 interface WsMessage {
   direction: "sent" | "received";
@@ -108,12 +144,65 @@ export function WebSocketModal({ open, onClose }: Props) {
     setStatus("disconnected");
   }
 
+  const [templateOpen, setTemplateOpen] = useState(false);
+  const [customTemplates, setCustomTemplates] = useState(loadCustomTemplates);
+  const [historyIndex, setHistoryIndex] = useState(-1);
+  const messageHistoryRef = useRef(loadMessageHistory());
+
   function sendMessage() {
     if (!draft.trim() || !wsRef.current || status !== "connected") return;
     wsRef.current.send(JSON.stringify({ type: "send", data: draft }));
     setMessages((prev) => [...prev, { direction: "sent", data: draft, timestamp: Date.now() }]);
+    pushMessageHistory(draft);
+    messageHistoryRef.current = loadMessageHistory();
+    setHistoryIndex(-1);
     setDraft("");
   }
+
+  function applyTemplate(value: string) {
+    setDraft(value);
+    setTemplateOpen(false);
+  }
+
+  function saveAsTemplate() {
+    if (!draft.trim()) return;
+    const label = prompt("Template name:");
+    if (!label) return;
+    const updated = [...customTemplates, { label, value: draft }];
+    setCustomTemplates(updated);
+    saveCustomTemplates(updated);
+  }
+
+  function deleteCustomTemplate(index: number) {
+    const updated = customTemplates.filter((_, i) => i !== index);
+    setCustomTemplates(updated);
+    saveCustomTemplates(updated);
+  }
+
+  const handleInputKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      sendMessage();
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      const history = messageHistoryRef.current;
+      if (history.length > 0) {
+        const newIndex = Math.min(historyIndex + 1, history.length - 1);
+        setHistoryIndex(newIndex);
+        setDraft(history[newIndex]);
+      }
+    } else if (e.key === "ArrowDown") {
+      e.preventDefault();
+      const history = messageHistoryRef.current;
+      if (historyIndex > 0) {
+        const newIndex = historyIndex - 1;
+        setHistoryIndex(newIndex);
+        setDraft(history[newIndex]);
+      } else if (historyIndex === 0) {
+        setHistoryIndex(-1);
+        setDraft("");
+      }
+    }
+  }, [historyIndex, draft, status]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
@@ -234,33 +323,100 @@ export function WebSocketModal({ open, onClose }: Props) {
 
         {/* Send bar */}
         {status === "connected" && (
-          <div className="flex items-center gap-2 border-t border-glass px-4 py-2.5">
-            <input
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              placeholder="Type a message..."
-              className="flex-1 rounded-md border border-glass bg-neutral-900/50 px-3 py-1.5 font-mono text-xs text-neutral-100 placeholder-neutral-600 focus:border-cobweb-500/40 focus:outline-none"
-              spellCheck={false}
-              onKeyDown={(e) => { if (e.key === "Enter") sendMessage(); }}
-              autoFocus
-            />
-            <button
-              type="button"
-              onClick={sendMessage}
-              disabled={!draft.trim()}
-              className="bg-accent-gradient inline-flex items-center gap-1.5 rounded-md px-4 py-1.5 text-xs font-medium text-white shadow-glow-sm transition disabled:opacity-40 disabled:shadow-none"
-            >
-              <Send className="h-3.5 w-3.5" />
-              Send
-            </button>
-            <button
-              type="button"
-              onClick={() => setMessages([])}
-              className="rounded-md p-1.5 text-neutral-500 transition hover:bg-white/[0.05] hover:text-neutral-300"
-              title="Clear messages"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-            </button>
+          <div className="border-t border-glass">
+            <div className="flex items-center gap-2 px-4 py-2.5">
+              {/* Templates dropdown */}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setTemplateOpen(!templateOpen)}
+                  className="inline-flex items-center gap-1 rounded-md border border-glass px-2 py-1.5 text-xs text-neutral-400 transition hover:bg-white/[0.04] hover:text-neutral-200"
+                  title="Message templates"
+                >
+                  <BookTemplate className="h-3.5 w-3.5" />
+                  <ChevronDown className="h-3 w-3" />
+                </button>
+                {templateOpen && (
+                  <div className="absolute bottom-full left-0 mb-1 w-64 rounded-lg border border-glass bg-neutral-900 shadow-xl z-10">
+                    <div className="border-b border-glass px-3 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-neutral-500">
+                      Built-in
+                    </div>
+                    {BUILT_IN_TEMPLATES.map((t, i) => (
+                      <button
+                        key={`builtin-${i}`}
+                        type="button"
+                        onClick={() => applyTemplate(t.value)}
+                        className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-neutral-300 hover:bg-white/[0.04]"
+                      >
+                        <span className="truncate">{t.label}</span>
+                        <code className="ml-auto truncate text-[10px] text-neutral-600 max-w-[120px]">{t.value}</code>
+                      </button>
+                    ))}
+                    {customTemplates.length > 0 && (
+                      <>
+                        <div className="border-t border-glass px-3 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-neutral-500">
+                          Saved
+                        </div>
+                        {customTemplates.map((t, i) => (
+                          <div key={`custom-${i}`} className="group flex items-center hover:bg-white/[0.04]">
+                            <button
+                              type="button"
+                              onClick={() => applyTemplate(t.value)}
+                              className="flex flex-1 items-center gap-2 px-3 py-1.5 text-xs text-neutral-300"
+                            >
+                              <span className="truncate">{t.label}</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => deleteCustomTemplate(i)}
+                              className="mr-2 rounded p-0.5 text-neutral-600 opacity-0 group-hover:opacity-100 hover:text-rose-400"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </button>
+                          </div>
+                        ))}
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <input
+                value={draft}
+                onChange={(e) => { setDraft(e.target.value); setHistoryIndex(-1); }}
+                placeholder="Type a message... (Up arrow for history)"
+                className="flex-1 rounded-md border border-glass bg-neutral-900/50 px-3 py-1.5 font-mono text-xs text-neutral-100 placeholder-neutral-600 focus:border-cobweb-500/40 focus:outline-none"
+                spellCheck={false}
+                onKeyDown={handleInputKeyDown}
+                autoFocus
+              />
+              <button
+                type="button"
+                onClick={saveAsTemplate}
+                disabled={!draft.trim()}
+                className="rounded-md p-1.5 text-neutral-500 transition hover:bg-white/[0.05] hover:text-cobweb-300 disabled:opacity-30"
+                title="Save as template"
+              >
+                <Save className="h-3.5 w-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={sendMessage}
+                disabled={!draft.trim()}
+                className="bg-accent-gradient inline-flex items-center gap-1.5 rounded-md px-4 py-1.5 text-xs font-medium text-white shadow-glow-sm transition disabled:opacity-40 disabled:shadow-none"
+              >
+                <Send className="h-3.5 w-3.5" />
+                Send
+              </button>
+              <button
+                type="button"
+                onClick={() => setMessages([])}
+                className="rounded-md p-1.5 text-neutral-500 transition hover:bg-white/[0.05] hover:text-neutral-300"
+                title="Clear messages"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            </div>
           </div>
         )}
       </div>
