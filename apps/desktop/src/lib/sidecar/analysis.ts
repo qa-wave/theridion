@@ -627,6 +627,11 @@ export const analysisMethods = {
       method: "POST",
       body: JSON.stringify(input),
     }),
+  compareResponses: (input: CompareResponsesInput) =>
+    call<CompareResponsesOutput>("/api/compare/responses", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
 } as const;
 
 // ---- OWASP Scanner types ---------------------------------------------------
@@ -656,4 +661,25 @@ export interface OWASPScanOutput {
   score: number;
   scan_types_run: OWASPScanType[];
   elapsed_ms: number;
+}
+
+// ---- Response Comparison types -----------------------------------------------
+
+export interface CompareResponsesInput {
+  left: string;
+  right: string;
+  format: "json" | "text";
+}
+
+export interface ResponseChangeEntry {
+  path: string;
+  type: "added" | "removed" | "changed";
+  old_value: string | null;
+  new_value: string | null;
+}
+
+export interface CompareResponsesOutput {
+  summary: string;
+  changes: ResponseChangeEntry[];
+  diff_text: string;
 }
