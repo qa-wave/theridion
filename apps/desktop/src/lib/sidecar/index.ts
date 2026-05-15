@@ -22,8 +22,9 @@ export type {
   FormField, ExecuteMultipartInput, CaptureRule, ExecuteWithCapturesInput,
   ExecuteWithCapturesResponse, OAuth2TokenInput, OAuth2TokenOutput,
   OAuth1Input, OAuth1Output, OAuth2AuthorizeUrlInput, OAuth2AuthorizeUrlOutput,
-  OAuth2CallbackResult, CookieManagerEntry, CookieManagerList, ConsoleLogEntry,
-  ScriptAssertionItem, ScriptSafeOutput,
+  OAuth2CallbackResult, CookieManagerEntry, CookieManagerList,
+  CookieJarEntry, CookieJar, AllCookieJars,
+  ConsoleLogEntry, ScriptAssertionItem, ScriptSafeOutput,
 } from "./requests";
 
 export type {
@@ -85,6 +86,11 @@ export type {
 export type { ParsedCurl, UniversalImportResult, ReplayDiff, ReplayOutput } from "./codegen";
 
 export type {
+  HistoryEntryCreate, HistoryEntry as SidecarHistoryEntry, HistoryEntrySummary,
+  HistoryListResponse, HistoryStats,
+} from "./history";
+
+export type {
   TestgenCategory, TestgenOperationSummary, TestgenParseOutput, TestgenGenerateOutput,
   AiChatContext, AiSuggestion, AiChatOutput,
   SmartSuggestInput, SmartSuggestOutput,
@@ -128,6 +134,7 @@ import { analysisMethods } from "./analysis";
 import { codegenMethods } from "./codegen";
 import { aiMethods } from "./ai";
 import { advancedMethods } from "./advanced";
+import { historyMethods } from "./history";
 
 export const sidecar = {
   ...requestsMethods,
@@ -139,4 +146,5 @@ export const sidecar = {
   ...codegenMethods,
   ...aiMethods,
   ...advancedMethods,
+  ...historyMethods,
 } as const;

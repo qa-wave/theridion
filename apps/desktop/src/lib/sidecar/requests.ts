@@ -138,6 +138,28 @@ export interface CookieManagerList {
   cookies: CookieManagerEntry[];
 }
 
+// ---- Cookie Jar types (per-environment, full-featured) ----------------------
+
+export interface CookieJarEntry {
+  name: string;
+  value: string;
+  domain: string;
+  path: string;
+  expires: string | null;
+  httponly: boolean;
+  secure: boolean;
+  samesite: string | null;
+}
+
+export interface CookieJar {
+  environment_id: string;
+  cookies: CookieJarEntry[];
+}
+
+export interface AllCookieJars {
+  jars: Record<string, CookieJar>;
+}
+
 // ---- Script execution types -------------------------------------------------
 
 export interface ScriptAssertionItem {
@@ -261,6 +283,27 @@ export const requestsMethods = {
       method: "PUT",
       body: JSON.stringify({ cookies }),
     }),
+  // Cookie jar (per-environment)
+  listCookieJars: (envId?: string) =>
+    call<AllCookieJars>(`/api/cookies${envId ? `?env_id=${envId}` : ""}`),
+  getCookieJar: (envId: string) => call<CookieJar>(`/api/cookies/${envId}`),
+  setCookie: (envId: string, cookie: Omit<CookieJarEntry, "expires" | "httponly" | "secure" | "samesite"> & Partial<Pick<CookieJarEntry, "expires" | "httponly" | "secure" | "samesite">>) =>
+    call<CookieJar>(`/api/cookies/${envId}`, {
+      method: "PUT",
+      body: JSON.stringify(cookie),
+    }),
+  deleteCookie: async (envId: string, cookieName: string) => {
+    const { getSidecarBaseUrl: getUrl } = await import("./client");
+    const baseUrl = await getUrl();
+    const r = await fetch(`${baseUrl}/api/cookies/${envId}/${cookieName}`, { method: "DELETE" });
+    if (!r.ok) throw new Error(`delete cookie ${r.status}`);
+  },
+  clearCookieJar: async (envId?: string) => {
+    const { getSidecarBaseUrl: getUrl } = await import("./client");
+    const baseUrl = await getUrl();
+    const r = await fetch(`${baseUrl}/api/cookies${envId ? `?env_id=${envId}` : ""}`, { method: "DELETE" });
+    if (!r.ok) throw new Error(`clear cookies ${r.status}`);
+  },
   consoleLog: (entries: ConsoleLogEntry[]) =>
     call<{ stored: number }>("/api/console/log", {
       method: "POST",
