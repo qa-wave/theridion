@@ -160,13 +160,41 @@ export interface WsdlMockGenOutput {
 
 // ---- gRPC types -----------------------------------------------------------
 
+export interface GrpcMethodInfo {
+  name: string;
+  input_type: string;
+  output_type: string;
+  is_streaming: boolean;
+}
+
 export interface GrpcService {
   name: string;
-  methods: string[];
+  methods: GrpcMethodInfo[];
 }
 
 export interface GrpcReflectOutput {
   services: GrpcService[];
+}
+
+export interface GrpcFieldDescriptor {
+  name: string;
+  type: string;
+  label: string;
+  type_name: string | null;
+  fields: GrpcFieldDescriptor[] | null;
+}
+
+export interface GrpcDescribeInput {
+  host: string;
+  service: string;
+  method: string;
+}
+
+export interface GrpcDescribeOutput {
+  input_type: string;
+  output_type: string;
+  input_fields: GrpcFieldDescriptor[];
+  template: Record<string, unknown>;
 }
 
 export interface GrpcInvokeInput {
@@ -310,6 +338,11 @@ export const protocolsMethods = {
     call<GrpcReflectOutput>("/api/grpc/reflect", {
       method: "POST",
       body: JSON.stringify({ host }),
+    }),
+  grpcDescribe: (input: GrpcDescribeInput) =>
+    call<GrpcDescribeOutput>("/api/grpc/describe", {
+      method: "POST",
+      body: JSON.stringify(input),
     }),
   grpcInvoke: (input: GrpcInvokeInput) =>
     call<GrpcInvokeOutput>("/api/grpc/invoke", {
