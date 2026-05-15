@@ -61,6 +61,7 @@ import { RequestDiffModal } from "./components/RequestDiffModal";
 import { CollectionStatsModal } from "./components/CollectionStatsModal";
 import { ComparisonTableModal } from "./components/ComparisonTableModal";
 import { SSEModal } from "./components/SSEModal";
+import { ChangelogModal } from "./components/ChangelogModal";
 import { NetworkConsole, type NetworkEntry, type NetworkEntryType } from "./components/NetworkConsole";
 import { ActivityBar, type AppMode } from "./components/ActivityBar";
 import { ToastContainer, type Toast } from "./components/Toast";
@@ -777,6 +778,7 @@ export default function App() {
     openRequestDiff: () => modals.open("requestDiff"),
     openEnvComparison: () => modals.open("envComparison"),
     openSSE: () => modals.open("sse"),
+    openChangelog: () => modals.open("changelog"),
     collections,
     onOpenRequest: openSaved,
     environments,
@@ -1027,6 +1029,12 @@ export default function App() {
               addToast("success", "Copied shareable text");
             }}
             activeEnvId={activeEnvId}
+            environments={environments}
+            onEnvChange={(envId) => {
+              setActiveEnvId(envId);
+              if (envId) window.localStorage.setItem(ACTIVE_ENV_KEY, envId);
+              else window.localStorage.removeItem(ACTIVE_ENV_KEY);
+            }}
             lastStatus={lastStatus}
           />
           <SavePopover
@@ -1311,6 +1319,7 @@ export default function App() {
         environments={environments}
       />
       <SSEModal open={modals.isOpen("sse")} onClose={modals.close} />
+      <ChangelogModal open={modals.isOpen("changelog")} onClose={modals.close} />
 
       {/* Keyboard shortcut overlay */}
       {shortcutOverlayOpen && (

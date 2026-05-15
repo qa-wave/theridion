@@ -69,6 +69,7 @@ const GROUP_MAP: Record<string, string> = {
   "perf-dashboard": "TOOLS",
   "service-map": "TOOLS",
   "proxy-recorder": "TOOLS",
+  "api-changelog": "TOOLS",
   "tpl-get-json": "TEMPLATES",
   "tpl-post-json": "TEMPLATES",
   "tpl-graphql": "TEMPLATES",
@@ -362,6 +363,7 @@ export function useDefaultActions(callbacks: {
   openRequestDiff?: () => void;
   openEnvComparison?: () => void;
   openSSE?: () => void;
+  openChangelog?: () => void;
   collections?: StoredCollection[];
   onOpenRequest?: (collectionId: string, item: CollectionItem) => void;
   environments?: EnvironmentSummary[];
@@ -512,6 +514,9 @@ export function useDefaultActions(callbacks: {
       }] : []),
       ...(callbacks.openSSE ? [{
         id: "open-sse", label: "Server-Sent Events (SSE)", icon: <Radio size={14} />, onSelect: callbacks.openSSE,
+      }] : []),
+      ...(callbacks.openChangelog ? [{
+        id: "api-changelog", label: "API Changelog Detector", icon: <GitCompare size={14} />, onSelect: callbacks.openChangelog,
       }] : []),
       {
         id: "tpl-get-json",

@@ -34,6 +34,8 @@ export type ModalId =
   | "collectionStats"
   | "envComparison"
   | "sse"
+  | "changelog"
+  | "responseCompare"
   | null;
 
 export function useModals() {
