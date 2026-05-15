@@ -184,20 +184,7 @@ export function RequestPanel({
           />
         )}
         {tab === "notes" && onNotesChange && (
-          <div className="flex h-full min-h-0 flex-col">
-            <p className="mb-2 text-[11px] uppercase tracking-widest text-neutral-500">
-              Notes
-            </p>
-            <div className="min-h-[200px] flex-1 overflow-hidden rounded-lg border border-glass bg-neutral-900/50">
-              <textarea
-                value={notes}
-                onChange={(e) => onNotesChange(e.target.value)}
-                placeholder="Document this request — expected behavior, edge cases, related endpoints..."
-                className="h-full w-full resize-none bg-transparent px-3 py-2 font-mono text-xs text-neutral-100 placeholder-neutral-600 focus:outline-none"
-                spellCheck={false}
-              />
-            </div>
-          </div>
+          <NotesView notes={notes ?? ""} onChange={onNotesChange} />
         )}
       </div>
     </div>
@@ -1408,4 +1395,63 @@ function buildUrl(base: string, params: { key: string; value: string }[]): strin
     .map((p) => `${encodeURIComponent(p.key)}=${encodeURIComponent(p.value)}`)
     .join("&");
   return `${base}?${qs}`;
+}
+
+function NotesView({ notes, onChange }: { notes: string; onChange: (s: string) => void }) {
+  const [preview, setPreview] = useState(false);
+
+  function renderMarkdown(md: string): string {
+    // Minimal Markdown→HTML for preview: headings, bold, italic, code, lists, links
+    return md
+      .replace(/^### (.+)$/gm, '<h3 class="text-sm font-semibold text-neutral-200 mt-3 mb-1">$1</h3>')
+      .replace(/^## (.+)$/gm, '<h2 class="text-base font-semibold text-neutral-100 mt-4 mb-1">$1</h2>')
+      .replace(/^# (.+)$/gm, '<h1 class="text-lg font-bold text-neutral-100 mt-4 mb-2">$1</h1>')
+      .replace(/\*\*(.+?)\*\*/g, '<strong class="text-neutral-100">$1</strong>')
+      .replace(/\*(.+?)\*/g, '<em>$1</em>')
+      .replace(/`([^`]+)`/g, '<code class="rounded bg-neutral-800 px-1 py-0.5 text-cobweb-400">$1</code>')
+      .replace(/^- (.+)$/gm, '<li class="ml-4 list-disc">$1</li>')
+      .replace(/^\d+\. (.+)$/gm, '<li class="ml-4 list-decimal">$1</li>')
+      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="text-cobweb-400 underline">$1</a>')
+      .replace(/\n/g, '<br/>');
+  }
+
+  return (
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="mb-2 flex items-center gap-2">
+        <p className="text-[11px] uppercase tracking-widest text-neutral-500">Notes</p>
+        <div className="ml-auto flex rounded-md border border-glass overflow-hidden text-[10px]">
+          <button
+            type="button"
+            onClick={() => setPreview(false)}
+            className={`px-2 py-0.5 transition ${!preview ? "bg-cobweb-600/20 text-cobweb-400" : "text-neutral-500 hover:text-neutral-300"}`}
+          >
+            Write
+          </button>
+          <button
+            type="button"
+            onClick={() => setPreview(true)}
+            className={`px-2 py-0.5 transition ${preview ? "bg-cobweb-600/20 text-cobweb-400" : "text-neutral-500 hover:text-neutral-300"}`}
+          >
+            Preview
+          </button>
+        </div>
+      </div>
+      <div className="min-h-[200px] flex-1 overflow-hidden rounded-lg border border-glass bg-neutral-900/50">
+        {preview ? (
+          <div
+            className="h-full overflow-auto px-3 py-2 text-xs text-neutral-300 leading-relaxed"
+            dangerouslySetInnerHTML={{ __html: notes ? renderMarkdown(notes) : '<span class="text-neutral-600">No notes yet.</span>' }}
+          />
+        ) : (
+          <textarea
+            value={notes}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder="Document this request — supports **bold**, *italic*, `code`, # headings, - lists..."
+            className="h-full w-full resize-none bg-transparent px-3 py-2 font-mono text-xs text-neutral-100 placeholder-neutral-600 focus:outline-none"
+            spellCheck={false}
+          />
+        )}
+      </div>
+    </div>
+  );
 }
