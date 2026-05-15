@@ -420,17 +420,27 @@ export default function App() {
           localStorage.setItem("theridion.last-responses", JSON.stringify(stored));
         } catch { /* non-critical */ }
       }
-      setHistory((prev) => [
-        {
-          id: crypto.randomUUID(),
-          method: active.method,
-          url: active.url,
-          status: response.status,
-          elapsed_ms: response.elapsed_ms,
-          timestamp: Date.now(),
-        },
-        ...prev,
-      ].slice(0, 100));
+      const histEntry: HistoryEntry = {
+        id: crypto.randomUUID(),
+        method: active.method,
+        url: active.url,
+        status: response.status,
+        elapsed_ms: response.elapsed_ms,
+        timestamp: Date.now(),
+      };
+      setHistory((prev) => [histEntry, ...prev].slice(0, 100));
+      // Persist to backend (fire-and-forget)
+      sidecar.recordHistory({
+        method: active.method,
+        url: active.url,
+        status: response.status,
+        elapsed_ms: response.elapsed_ms,
+        timestamp: histEntry.timestamp,
+        request_body: active.body ?? undefined,
+        response_body: response.body.slice(0, 10000),
+        request_headers: parseHeadersText(active.headersRaw) ?? undefined,
+        response_headers: response.headers,
+      }).catch(() => { /* non-critical */ });
     } catch (e: unknown) {
       patchActive({
         busy: false,
@@ -1128,6 +1138,9 @@ export default function App() {
               <HistoryPanel
                 entries={history}
                 onSelect={(entry) => {
+                  newTab({ method: entry.method, url: entry.url });
+                }}
+                onReplay={(entry) => {
                   newTab({ method: entry.method, url: entry.url });
                 }}
                 onClear={() => setHistory([])}
