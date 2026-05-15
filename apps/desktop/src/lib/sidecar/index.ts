@@ -33,7 +33,9 @@ export type {
   WsSecurityConfig, WsSecurityInput, WsSecurityOutput,
   MtomAttachment, MtomInput, MtomOutput, WsdlDiffOutput, SoapCoverageOutput,
   XsdValidateOutput, WsdlMockGenOutput,
-  GrpcService, GrpcReflectOutput, GrpcInvokeInput, GrpcInvokeOutput,
+  GrpcMethodInfo, GrpcService, GrpcReflectOutput,
+  GrpcFieldDescriptor, GrpcDescribeInput, GrpcDescribeOutput,
+  GrpcInvokeInput, GrpcInvokeOutput,
   MockRoute, MockStartInput, MockStartOutput, MockServerInfo, MockStatusOutput,
   JdbcInput, JdbcOutput,
   SSEConnectInput, SSEEvent, SSEResult,
@@ -58,6 +60,8 @@ export type {
   FieldChange, ChangelogEntry, ChangelogResult,
   GeneratedAssertion, RequestAssertions, RegressionOutput,
   DependencyInfo, CycleInfo, DependencyResult,
+  PipelineExtractor, PipelineStep, PipelineInput, PipelineStepResult,
+  PipelineResult, PipelineValidationIssue, PipelineValidateOutput, PipelineTemplate,
 } from "./testing";
 
 export type {
@@ -121,6 +125,8 @@ export type {
   ProjectSummary, ProjectEnvironment, ProjectCollection, YamlProject,
   HarNetworkEntryData, HarExportResult, PostmanExportResult,
   FailureNotifyInput, FailureNotifyResult,
+  OpenApiImportFullInput, OpenApiImportFullOutput,
+  OpenApiPreviewRequest, OpenApiPreviewFolder, OpenApiPreviewOutput,
 } from "./advanced";
 
 // ---- Compose the unified sidecar object from all sub-modules ----
