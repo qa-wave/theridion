@@ -10,14 +10,16 @@ export type {
   AuthType, AuthConfig, TimingBreakdown, ExecuteRequestInput, ExecuteResponse,
   EnvVariable, Environment, EnvironmentSummary, CollectionVariable, StubOutput,
   CertConfig, CertInfo, VerifyChainResponse, SystemCertEntry, SystemCertsResponse,
+  BackoffStrategy, RetryConfig, RetryAttemptInfo, ExecuteWithRetryResponse,
 } from "./types";
+export { DEFAULT_RETRY_CONFIG } from "./types";
 
 export type {
   CollectionItem, SavedRequest, StoredCollection, CollectionSummary,
   SaveRequestInput, CreateFolderInput, FavoriteItem, ForkOutput, MergeOutput,
 } from "./collections";
 
-export type { EnvDiffOutput } from "./environments";
+export type { EnvDiffOutput, StructuredDiffOutput, DiffVarPair, DiffVarDifferent } from "./environments";
 
 export type {
   FormField, ExecuteMultipartInput, CaptureRule, ExecuteWithCapturesInput,
@@ -109,7 +111,9 @@ export type {
 export type {
   ServiceNode, ServiceEdge, ServiceGraph,
   ApiDocEndpoint, ApiDocOutput, ResponseSnapshot, TimelineOutput,
-  SchemaValidateOutput, RequestExample, RequestExampleInput,
+  SchemaValidationError, SchemaValidateOutput, SchemaGenerateOutput,
+  SchemaDiffField, SchemaDiffOutput,
+  RequestExample, RequestExampleInput,
   OpenApiImportInput, OpenApiImportOutput, OpenApiExportOutput,
   ContractValidateInput, ContractViolation, ContractValidateOutput,
   ObservedResponse, ContractDriftInput, ContractDriftOutput,

@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Download, Layers, Plus, Save, Trash2, Upload, X } from "lucide-react";
+import { Copy, Download, GitCompareArrows, Layers, Plus, Save, Trash2, Upload, X } from "lucide-react";
 import {
   sidecar,
   type Environment,
   type EnvVariable,
   type EnvironmentSummary,
 } from "../lib/sidecar";
+import { EnvDiffModal } from "./EnvDiffModal";
 
 interface Props {
   open: boolean;
@@ -27,6 +28,7 @@ export function EnvManagerModal({ open, onClose, onChanged }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [bulkMode, setBulkMode] = useState(false);
   const [bulkText, setBulkText] = useState("");
+  const [diffOpen, setDiffOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dirty = useMemo(() => isDirty(editing, draftName, draftRows), [editing, draftName, draftRows]);
 
@@ -78,6 +80,17 @@ export function EnvManagerModal({ open, onClose, onChanged }: Props) {
     setActiveId(null);
     await loadSummaries();
     await onChanged();
+  }
+
+  async function cloneEnv(id: string, name: string) {
+    try {
+      const cloned = await sidecar.cloneEnvironment(id, `${name} (Copy)`);
+      await loadSummaries();
+      await selectEnv(cloned.id);
+      await onChanged();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
   }
 
   function addRow() {
@@ -189,13 +202,24 @@ export function EnvManagerModal({ open, onClose, onChanged }: Props) {
           <h2 className="inline-flex items-center gap-2 text-sm font-semibold text-neutral-100">
             <Layers className="h-4 w-4 text-cobweb-400" /> Environments
           </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-md p-1 text-neutral-500 transition hover:bg-white/[0.05] hover:text-neutral-200"
-          >
-            <X className="h-4 w-4" />
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => setDiffOpen(true)}
+              disabled={summaries.length < 2}
+              className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] text-neutral-400 transition hover:bg-white/[0.05] hover:text-neutral-200 disabled:cursor-not-allowed disabled:opacity-40"
+              title="Compare two environments"
+            >
+              <GitCompareArrows className="h-3.5 w-3.5" /> Compare
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-md p-1 text-neutral-500 transition hover:bg-white/[0.05] hover:text-neutral-200"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
         </header>
 
         <div className="flex min-h-0 flex-1">
@@ -219,19 +243,34 @@ export function EnvManagerModal({ open, onClose, onChanged }: Props) {
                 <p className="px-3 py-2 text-xs text-neutral-600">No environments yet.</p>
               )}
               {summaries.map((s) => (
-                <button
+                <div
                   key={s.id}
-                  type="button"
-                  onClick={() => selectEnv(s.id)}
-                  className={`flex w-full items-center justify-between px-3 py-1.5 text-left text-xs transition ${
+                  className={`group flex w-full items-center px-3 py-1.5 text-xs transition ${
                     s.id === activeId
                       ? "bg-cobweb-950/30 text-cobweb-200"
                       : "text-neutral-400 hover:bg-white/[0.03] hover:text-neutral-200"
                   }`}
                 >
-                  <span className="truncate">{s.name}</span>
-                  <span className="ml-2 text-[10px] text-neutral-600">{s.variable_count}</span>
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => selectEnv(s.id)}
+                    className="flex-1 truncate text-left"
+                  >
+                    {s.name}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      void cloneEnv(s.id, s.name);
+                    }}
+                    className="ml-1 rounded p-0.5 text-neutral-600 opacity-0 transition hover:text-neutral-300 group-hover:opacity-100"
+                    title={`Clone "${s.name}"`}
+                  >
+                    <Copy className="h-3 w-3" />
+                  </button>
+                  <span className="ml-1 text-[10px] text-neutral-600">{s.variable_count}</span>
+                </div>
               ))}
             </div>
           </div>
@@ -407,6 +446,13 @@ export function EnvManagerModal({ open, onClose, onChanged }: Props) {
           </div>
         </div>
       </div>
+
+      <EnvDiffModal
+        open={diffOpen}
+        onClose={() => setDiffOpen(false)}
+        summaries={summaries}
+        initialLeftId={activeId}
+      />
     </div>
   );
 }

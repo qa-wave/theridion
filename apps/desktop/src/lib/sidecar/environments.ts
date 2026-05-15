@@ -5,7 +5,7 @@
 import { call, getSidecarBaseUrl } from "./client";
 import type { EnvVariable, Environment, EnvironmentSummary } from "./types";
 
-// ---- Env Diff types ------------------------------------------------------
+// ---- Env Diff types (legacy flat format) ---------------------------------
 
 export interface EnvDiffOutput {
   left_name: string;
@@ -15,6 +15,26 @@ export interface EnvDiffOutput {
   changed: number;
   added: number;
   removed: number;
+}
+
+// ---- Env Diff types (structured four-bucket format) ----------------------
+
+export interface DiffVarPair {
+  name: string;
+  value: string;
+}
+
+export interface DiffVarDifferent {
+  name: string;
+  left_value: string;
+  right_value: string;
+}
+
+export interface StructuredDiffOutput {
+  only_left: DiffVarPair[];
+  only_right: DiffVarPair[];
+  different: DiffVarDifferent[];
+  same: DiffVarPair[];
 }
 
 export const environmentsMethods = {
@@ -46,6 +66,16 @@ export const environmentsMethods = {
     call<EnvDiffOutput>("/api/envdiff/compare", {
       method: "POST",
       body: JSON.stringify({ left_id: leftId, right_id: rightId }),
+    }),
+  diffEnvironments: (leftId: string, rightId: string) =>
+    call<StructuredDiffOutput>("/api/environments/diff", {
+      method: "POST",
+      body: JSON.stringify({ left_id: leftId, right_id: rightId }),
+    }),
+  cloneEnvironment: (id: string, newName: string) =>
+    call<EnvironmentSummary>(`/api/environments/${id}/clone`, {
+      method: "POST",
+      body: JSON.stringify({ new_name: newName }),
     }),
   getGlobals: () =>
     call<{ variables: Array<{ name: string; value: string; enabled: boolean }> }>("/api/globals"),
