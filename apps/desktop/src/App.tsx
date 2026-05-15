@@ -859,6 +859,15 @@ export default function App() {
       } else if (cmd && e.key === "Enter") {
         e.preventDefault();
         void send();
+      } else if (cmd && e.key === "d") {
+        e.preventDefault();
+        duplicateTab(activeId);
+      } else if (cmd && e.shiftKey && e.key === "H") {
+        e.preventDefault();
+        setHistoryOpen((o) => !o);
+      } else if (cmd && e.key === "i") {
+        e.preventDefault();
+        modals.open("import");
       } else if (e.key === "?" && !cmd && !e.altKey) {
         // Don't trigger if user is typing in an input/textarea/contenteditable.
         const tag = (e.target as HTMLElement).tagName;
@@ -1362,6 +1371,7 @@ const SHORTCUT_SECTIONS: { title: string; items: { action: string; shortcut: str
     items: [
       { action: "New tab", shortcut: "\u2318T" },
       { action: "Close tab", shortcut: "\u2318W" },
+      { action: "Duplicate tab", shortcut: "\u2318D" },
     ],
   },
   {
@@ -1371,6 +1381,8 @@ const SHORTCUT_SECTIONS: { title: string; items: { action: string; shortcut: str
       { action: "Global search", shortcut: "\u2318\u21E7F" },
       { action: "Settings", shortcut: "\u2318," },
       { action: "Network console", shortcut: "\u2318\u21E7N" },
+      { action: "History panel", shortcut: "\u2318\u21E7H" },
+      { action: "Import", shortcut: "\u2318I" },
       { action: "Switch environment", shortcut: "Ctrl+E" },
     ],
   },
