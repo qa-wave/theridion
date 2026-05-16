@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AlertTriangle, ArrowDown, ArrowUp, Bot, CheckCircle2, ChevronDown, Clock, Code2, Copy, Download, FileCode, FolderPlus, GitCompare, Inbox, Minus, Search, Terminal, Upload, XCircle, Zap } from "lucide-react";
+import { AlertTriangle, ArrowDown, ArrowUp, Bot, CheckCircle2, ChevronDown, Clock, Code2, Copy, Download, FileCode, FolderPlus, GitCompare, Inbox, Minus, RefreshCw, Search, Star, Terminal, Upload, XCircle, Zap } from "lucide-react";
 import type { Assertion } from "../state/types";
-import type { ExecuteResponse, SchemaValidateOutput, TimingBreakdown } from "../lib/sidecar";
+import type { AutoCompareOutput, ExecuteResponse, SchemaValidateOutput, TimingBreakdown } from "../lib/sidecar";
 import { sidecar } from "../lib/sidecar";
 import { CodeEditor } from "./CodeEditor";
 import { JsonTreeView } from "./JsonTreeView";
@@ -115,6 +115,8 @@ export function ResponsePanel({ busy, response, error, onDiff, onCodegen, consol
   const cookieSearchRef = useRef<HTMLInputElement | null>(null);
   const lastTrackedRef = useRef<string | null>(null);
   const [viewingHistorical, setViewingHistorical] = useState<ExecuteResponse | null>(null);
+  const [goldenComparison, setGoldenComparison] = useState<AutoCompareOutput | null>(null);
+  const [goldenSaving, setGoldenSaving] = useState(false);
 
   // Track response time history for sparkline + per-URL history
   useEffect(() => {
@@ -129,6 +131,48 @@ export function ResponsePanel({ busy, response, error, onDiff, onCodegen, consol
     }
     // Clear historical view when new response arrives.
     setViewingHistorical(null);
+  }, [response]);
+
+  // Auto-compare against golden file after each new response
+  useEffect(() => {
+    if (!response) { setGoldenComparison(null); return; }
+    let cancelled = false;
+    sidecar.autoCompareGolden({
+      url: response.final_url,
+      method: "GET",
+      status: response.status,
+      headers: response.headers,
+      body: response.body,
+    }).then((result) => {
+      if (!cancelled) setGoldenComparison(result);
+    }).catch(() => {
+      if (!cancelled) setGoldenComparison(null);
+    });
+    return () => { cancelled = true; };
+  }, [response]);
+
+  const handleSaveGolden = useCallback(async () => {
+    if (!response) return;
+    setGoldenSaving(true);
+    try {
+      await sidecar.saveGolden({
+        url: response.final_url,
+        method: "GET",
+        status: response.status,
+        headers: response.headers,
+        body: response.body,
+      });
+      // Re-run auto-compare to refresh the indicator
+      const result = await sidecar.autoCompareGolden({
+        url: response.final_url,
+        method: "GET",
+        status: response.status,
+        headers: response.headers,
+        body: response.body,
+      });
+      setGoldenComparison(result);
+    } catch { /* non-critical */ }
+    setGoldenSaving(false);
   }, [response]);
 
   // Ctrl+F handler to focus search when response panel is active
@@ -167,6 +211,13 @@ export function ResponsePanel({ busy, response, error, onDiff, onCodegen, consol
           <button type="button" onClick={() => setViewingHistorical(null)} className="ml-auto text-amber-500 hover:text-amber-300">Show current</button>
         </div>
       )}
+      {/* Golden file comparison bar */}
+      <GoldenFileBar
+        comparison={goldenComparison}
+        onSave={handleSaveGolden}
+        saving={goldenSaving}
+        onUpdate={handleSaveGolden}
+      />
       <RateLimitIndicator headers={displayResponse.headers} />
       <div className="flex items-center gap-1 border-b border-neutral-800 px-2 py-0">
         <TabButton active={tab === "body"} onClick={() => setTab("body")}>Body</TabButton>
@@ -1420,4 +1471,91 @@ function prettyXml(xml: string): string {
     if (n.startsWith("<") && !n.startsWith("</") && !n.startsWith("<?") && !n.endsWith("/>") && !/<\/[^>]+>$/.test(n)) indent++;
   });
   return lines.join("\n");
+}
+
+function GoldenFileBar({ comparison, onSave, saving, onUpdate }: {
+  comparison: AutoCompareOutput | null;
+  onSave: () => void;
+  saving: boolean;
+  onUpdate: () => void;
+}) {
+  if (!comparison) {
+    // No golden file yet — show "Save as Golden" button
+    return (
+      <div className="flex items-center gap-2 border-b border-neutral-800/50 bg-neutral-950/40 px-3 py-1">
+        <button
+          type="button"
+          onClick={onSave}
+          disabled={saving}
+          className="inline-flex items-center gap-1.5 rounded px-2 py-0.5 text-[11px] text-neutral-500 transition hover:bg-neutral-800 hover:text-neutral-300 disabled:opacity-50"
+          title="Save current response as golden file baseline"
+        >
+          <Star className="h-3 w-3" />
+          {saving ? "Saving..." : "Save as Golden"}
+        </button>
+      </div>
+    );
+  }
+
+  if (!comparison.found) {
+    // No matching golden found for this URL
+    return (
+      <div className="flex items-center gap-2 border-b border-neutral-800/50 bg-neutral-950/40 px-3 py-1">
+        <button
+          type="button"
+          onClick={onSave}
+          disabled={saving}
+          className="inline-flex items-center gap-1.5 rounded px-2 py-0.5 text-[11px] text-neutral-500 transition hover:bg-neutral-800 hover:text-neutral-300 disabled:opacity-50"
+          title="Save current response as golden file baseline"
+        >
+          <Star className="h-3 w-3" />
+          {saving ? "Saving..." : "Save as Golden"}
+        </button>
+      </div>
+    );
+  }
+
+  // Golden file exists — show comparison result
+  const cmp = comparison.comparison!;
+  const isMatch = cmp.match;
+  const scorePercent = Math.round(cmp.score * 100);
+
+  return (
+    <div className={`flex items-center gap-2 border-b px-3 py-1 text-[11px] ${
+      isMatch
+        ? "border-emerald-800/30 bg-emerald-950/20 text-emerald-400"
+        : "border-amber-800/30 bg-amber-950/20 text-amber-400"
+    }`}>
+      {isMatch ? (
+        <>
+          <CheckCircle2 className="h-3 w-3 text-emerald-400" />
+          <span>Golden match ({scorePercent}%) — {comparison.golden_name}</span>
+        </>
+      ) : (
+        <>
+          <AlertTriangle className="h-3 w-3 text-amber-400" />
+          <span>
+            Drift detected ({scorePercent}% match) — {comparison.golden_name}
+            {!cmp.status_match && " | status changed"}
+            {!cmp.body_match && ` | body: +${cmp.body_diff.additions}/-${cmp.body_diff.deletions}`}
+            {cmp.header_changes.length > 0 && ` | ${cmp.header_changes.length} header changes`}
+          </span>
+        </>
+      )}
+      <div className="ml-auto flex items-center gap-1.5">
+        {!isMatch && (
+          <button
+            type="button"
+            onClick={onUpdate}
+            disabled={saving}
+            className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-[10px] text-amber-500 transition hover:bg-amber-900/30 hover:text-amber-300 disabled:opacity-50"
+            title="Update golden file with current response"
+          >
+            <RefreshCw className="h-2.5 w-2.5" />
+            Update Golden
+          </button>
+        )}
+      </div>
+    </div>
+  );
 }
