@@ -70,6 +70,7 @@ const GROUP_MAP: Record<string, string> = {
   "service-map": "TOOLS",
   "proxy-recorder": "TOOLS",
   "api-changelog": "TOOLS",
+  "doc-generator": "TOOLS",
   "tpl-get-json": "TEMPLATES",
   "tpl-post-json": "TEMPLATES",
   "tpl-graphql": "TEMPLATES",
@@ -367,6 +368,7 @@ export function useDefaultActions(callbacks: {
   openSSE?: () => void;
   openChangelog?: () => void;
   openPipeline?: () => void;
+  openDocGenerator?: () => void;
   collections?: StoredCollection[];
   onOpenRequest?: (collectionId: string, item: CollectionItem) => void;
   environments?: EnvironmentSummary[];
@@ -529,6 +531,9 @@ export function useDefaultActions(callbacks: {
       }] : []),
       ...(callbacks.openPipeline ? [{
         id: "pipeline", label: "Request Pipeline", icon: <GitBranch size={14} />, onSelect: callbacks.openPipeline,
+      }] : []),
+      ...(callbacks.openDocGenerator ? [{
+        id: "doc-generator", label: "Generate API Documentation", icon: <FileCode size={14} />, onSelect: callbacks.openDocGenerator,
       }] : []),
       {
         id: "tpl-get-json",
