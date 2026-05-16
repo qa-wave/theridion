@@ -5,6 +5,7 @@ import {
   type CollectionItem,
   type EnvironmentSummary,
   type ExecuteRequestInput,
+  type ExecuteResponse,
   type HealthResponse,
   type ParsedCurl,
   type StoredCollection,
@@ -59,6 +60,7 @@ import { PerformanceDashboardModal } from "./components/PerformanceDashboardModa
 import { AgentExplorerModal } from "./components/AgentExplorerModal";
 import { OWASPScannerModal } from "./components/OWASPScannerModal";
 import { RequestDiffModal } from "./components/RequestDiffModal";
+import { BodyDiffModal } from "./components/BodyDiffModal";
 import { CollectionStatsModal } from "./components/CollectionStatsModal";
 import { ComparisonTableModal } from "./components/ComparisonTableModal";
 import { SSEModal } from "./components/SSEModal";
@@ -138,6 +140,7 @@ export default function App() {
   const splitDragging = useState(false);
   const [networkHeight, setNetworkHeight] = useState(300);
   const [statsCollectionId, setStatsCollectionId] = useState<string | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
   const networkDragging = useRef(false);
 
   function addToast(type: Toast["type"], message: string) {
@@ -343,8 +346,19 @@ export default function App() {
   }
 
   // ---- send + save --------------------------------------------------------
+  function cancelRequest() {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+      patchActive({ busy: false, error: "Request cancelled" });
+      addToast("info", "Request cancelled");
+    }
+  }
+
   async function send() {
     if (!active.url || active.busy) return;
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
     patchActive({ busy: true, error: null });
     setConsoleEntries([]);
     try {
@@ -362,9 +376,17 @@ export default function App() {
         ca_bundle_path: cc.ca_bundle_path || null,
         verify_ssl: cc.verify_ssl,
       };
-      const response = await sidecar.execute(input);
+      let response: ExecuteResponse;
+      let retryAttempts: import("./state/types").RetryAttemptInfo[] | null = null;
+      if (active.retryConfig.enabled) {
+        const retryResult = await sidecar.executeWithRetry(input, active.retryConfig);
+        response = retryResult.final_response;
+        retryAttempts = retryResult.attempts;
+      } else {
+        response = await sidecar.execute(input);
+      }
       setPreviousResponse(active.response);
-      patchActive({ busy: false, response, error: null, lastRunAt: Date.now() });
+      patchActive({ busy: false, response, error: null, lastRunAt: Date.now(), retryAttempts });
       setRequestCount((c) => c + 1);
       setLastStatus(response.status);
       // Capture network entry for the Network Console.
@@ -798,6 +820,7 @@ export default function App() {
     openAgentExplorer: () => modals.open("agentExplorer"),
     openOwaspScanner: () => modals.open("owaspScanner"),
     openRequestDiff: () => modals.open("requestDiff"),
+    openBodyDiff: () => modals.open("bodyDiff"),
     openEnvComparison: () => modals.open("envComparison"),
     openSSE: () => modals.open("sse"),
     openChangelog: () => modals.open("changelog"),
@@ -1044,6 +1067,7 @@ export default function App() {
             onMethodChange={(method) => patchActive({ method })}
             onUrlChange={(url) => patchActive({ url })}
             onSend={send}
+            onCancel={cancelRequest}
             onSave={() => save()}
             onSaveAs={() => setSavePopoverOpen(true)}
             onCopyAsCurl={copyAsCurl}
@@ -1108,6 +1132,9 @@ export default function App() {
               method={active.method}
               onMethodChange={(method) => patchActive({ method })}
               response={active.response}
+              retryConfig={active.retryConfig}
+              onRetryConfigChange={(retryConfig) => patchActive({ retryConfig })}
+              retryAttempts={active.retryAttempts}
               breadcrumb={activeBreadcrumb}
               onReEvaluate={active.response && active.assertions.length > 0 ? async () => {
                 try {
@@ -1347,6 +1374,7 @@ export default function App() {
       <AgentExplorerModal open={modals.isOpen("agentExplorer")} onClose={modals.close} onCollectionCreated={refreshCollections} />
       <OWASPScannerModal open={modals.isOpen("owaspScanner")} onClose={modals.close} />
       <RequestDiffModal open={modals.isOpen("requestDiff")} onClose={modals.close} />
+      <BodyDiffModal open={modals.isOpen("bodyDiff")} onClose={modals.close} />
       <CollectionStatsModal
         open={modals.isOpen("collectionStats")}
         onClose={() => { modals.close(); setStatsCollectionId(null); }}

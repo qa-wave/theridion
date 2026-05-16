@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
-import { CheckCircle2, ChevronDown, ClipboardCopy, Globe, Loader2, Save, Send, XCircle } from "lucide-react";
+import { CheckCircle2, ChevronDown, ClipboardCopy, Globe, Save, Send, XCircle } from "lucide-react";
 import { HTTP_METHOD_COLOR, METHODS } from "../state/types";
 import type { Method } from "../state/types";
 import type { EnvironmentSummary } from "../lib/sidecar";
@@ -23,6 +23,7 @@ interface Props {
   onMethodChange: (m: Method) => void;
   onUrlChange: (u: string) => void;
   onSend: () => void;
+  onCancel?: () => void;
   onSave: () => void;
   onSaveAs: () => void;
   onCopyAsCurl: () => void;
@@ -42,6 +43,7 @@ export function UrlBar({
   onMethodChange,
   onUrlChange,
   onSend,
+  onCancel,
   onSave,
   onSaveAs,
   onCopyAsCurl,
@@ -391,35 +393,43 @@ export function UrlBar({
         </Tooltip>
       )}
 
-      {/* Send button — hero action */}
-      <button
-        type="button"
-        onClick={onSend}
-        disabled={!canSend}
-        className={`relative inline-flex items-center gap-2 overflow-hidden rounded-xl px-6 py-2.5 text-sm font-semibold tracking-wide text-white transition-all duration-200 disabled:cursor-not-allowed disabled:bg-neutral-800 disabled:text-neutral-500 disabled:shadow-none ${
-          canSend
-            ? "bg-accent-gradient shadow-glow-emerald hover:shadow-glow hover:scale-[1.03] active:scale-[0.97]"
-            : ""
-        } ${
-          sendFlash === "ok"
-            ? "ring-2 ring-emerald-400/60"
-            : sendFlash === "err"
-            ? "ring-2 ring-rose-400/60"
-            : ""
-        }`}
-      >
-        {busy && <div className="send-shimmer absolute inset-0" />}
-        {busy ? (
-          <Loader2 className="h-4 w-4 animate-spin" />
-        ) : sendFlash === "ok" ? (
-          <CheckCircle2 className="h-4 w-4 text-emerald-300" />
-        ) : sendFlash === "err" ? (
-          <XCircle className="h-4 w-4 text-rose-300" />
-        ) : (
-          <Send className="h-4 w-4" />
-        )}
-        {busy ? "Sending" : "Send"}
-      </button>
+      {/* Send / Cancel button — hero action */}
+      {busy && onCancel ? (
+        <button
+          type="button"
+          onClick={onCancel}
+          className="relative inline-flex items-center gap-2 overflow-hidden rounded-xl bg-rose-600/80 px-6 py-2.5 text-sm font-semibold tracking-wide text-white shadow-glow-emerald transition-all duration-200 hover:bg-rose-600 hover:scale-[1.03] active:scale-[0.97]"
+        >
+          <XCircle className="h-4 w-4" />
+          Cancel
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={onSend}
+          disabled={!canSend}
+          className={`relative inline-flex items-center gap-2 overflow-hidden rounded-xl px-6 py-2.5 text-sm font-semibold tracking-wide text-white transition-all duration-200 disabled:cursor-not-allowed disabled:bg-neutral-800 disabled:text-neutral-500 disabled:shadow-none ${
+            canSend
+              ? "bg-accent-gradient shadow-glow-emerald hover:shadow-glow hover:scale-[1.03] active:scale-[0.97]"
+              : ""
+          } ${
+            sendFlash === "ok"
+              ? "ring-2 ring-emerald-400/60"
+              : sendFlash === "err"
+              ? "ring-2 ring-rose-400/60"
+              : ""
+          }`}
+        >
+          {sendFlash === "ok" ? (
+            <CheckCircle2 className="h-4 w-4 text-emerald-300" />
+          ) : sendFlash === "err" ? (
+            <XCircle className="h-4 w-4 text-rose-300" />
+          ) : (
+            <Send className="h-4 w-4" />
+          )}
+          Send
+        </button>
+      )}
     </div>
     {resolvedUrl && (
       <div className="px-4 pb-1.5 -mt-1">
