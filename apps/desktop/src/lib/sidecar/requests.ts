@@ -76,6 +76,7 @@ export interface OAuth2TokenInput {
   redirect_uri?: string;
   scope?: string;
   grant_type?: string;
+  code_verifier?: string;
 }
 
 export interface OAuth2TokenOutput {
@@ -126,6 +127,14 @@ export interface OAuth2CallbackResult {
   code: string | null;
   state: string | null;
   error: string | null;
+}
+
+export interface OAuth2RefreshInput {
+  token_url: string;
+  refresh_token: string;
+  client_id: string;
+  client_secret?: string;
+  scope?: string;
 }
 
 // ---- Cookie Manager types ---------------------------------------------------
@@ -262,6 +271,13 @@ export const requestsMethods = {
     }),
   oauth2PollResult: () =>
     call<OAuth2CallbackResult>("/api/auth/oauth2/callback-server/result"),
+  oauth2StopCallback: () =>
+    call<{ status: string }>("/api/auth/oauth2/callback-server/stop", { method: "POST" }),
+  oauth2Refresh: (input: OAuth2RefreshInput) =>
+    call<OAuth2TokenOutput>("/api/auth/oauth2/refresh", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
   executeScript: (input: {
     script: string;
     variables?: Record<string, string>;
