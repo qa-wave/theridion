@@ -359,8 +359,8 @@ export function Sidebar({
               onRunCollection={onRunCollection}
               onGenerateDocs={async () => {
                 try {
-                  const result = await sidecar.generateDocs(c.id);
-                  const blob = new Blob([result.html], { type: "text/html" });
+                  const result = await sidecar.generateDocs({ collection_id: c.id, format: "html" });
+                  const blob = new Blob([result.content], { type: "text/html" });
                   const url = URL.createObjectURL(blob);
                   window.open(url, "_blank");
                 } catch (e) {

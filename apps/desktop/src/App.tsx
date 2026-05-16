@@ -66,6 +66,7 @@ import { ComparisonTableModal } from "./components/ComparisonTableModal";
 import { SSEModal } from "./components/SSEModal";
 import { ChangelogModal } from "./components/ChangelogModal";
 import { PipelineModal } from "./components/PipelineModal";
+import { DocGeneratorModal } from "./components/DocGeneratorModal";
 import { NetworkConsole, type NetworkEntry, type NetworkEntryType } from "./components/NetworkConsole";
 import { ActivityBar, type AppMode } from "./components/ActivityBar";
 import { ToastContainer, type Toast } from "./components/Toast";
@@ -825,6 +826,7 @@ export default function App() {
     openSSE: () => modals.open("sse"),
     openChangelog: () => modals.open("changelog"),
     openPipeline: () => modals.open("pipeline"),
+    openDocGenerator: () => modals.open("docGenerator"),
     collections,
     onOpenRequest: openSaved,
     environments,
@@ -1389,6 +1391,7 @@ export default function App() {
       <SSEModal open={modals.isOpen("sse")} onClose={modals.close} />
       <ChangelogModal open={modals.isOpen("changelog")} onClose={modals.close} />
       <PipelineModal open={modals.isOpen("pipeline")} onClose={modals.close} collections={collections} />
+      <DocGeneratorModal open={modals.isOpen("docGenerator")} onClose={modals.close} />
 
       {/* Keyboard shortcut overlay */}
       {shortcutOverlayOpen && (

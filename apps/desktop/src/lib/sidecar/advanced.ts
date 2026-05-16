@@ -540,6 +540,29 @@ export interface OpenApiEnhancedImportOutput {
   warnings: string[];
 }
 
+// ---- Doc Generator types ----------------------------------------------------
+
+export interface DocOptions {
+  title?: string;
+  description?: string;
+  base_url?: string;
+  include_examples?: boolean;
+  include_headers?: boolean;
+  group_by?: "folder" | "method" | "tag";
+}
+
+export interface DocGenerateInput {
+  collection_id: string;
+  format: "html" | "markdown" | "openapi";
+  options?: DocOptions;
+}
+
+export interface DocGenerateOutput {
+  content: string;
+  format: string;
+  endpoint_count: number;
+}
+
 export const advancedMethods = {
   getServiceMap: () => call<ServiceGraph>("/api/servicemap"),
   saveServiceMap: (graph: ServiceGraph) =>
@@ -671,8 +694,11 @@ export const advancedMethods = {
       method: "PUT",
       body: JSON.stringify({ bindings }),
     }),
-  generateDocs: (collectionId: string) =>
-    call<{ markdown: string; html: string }>(`/api/docs/generate/${collectionId}`, { method: "POST" }),
+  generateDocs: (input: DocGenerateInput) =>
+    call<DocGenerateOutput>("/api/docs/generate", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
   listCatalog: () => call<{ entries: CatalogEntry[] }>("/api/catalog"),
   createCatalogEntry: (entry: CatalogEntry) =>
     call<CatalogEntry>("/api/catalog", {
