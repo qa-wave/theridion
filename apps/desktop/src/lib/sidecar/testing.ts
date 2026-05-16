@@ -78,6 +78,26 @@ export interface HealAssertionOutput {
   auto_fixable: boolean;
 }
 
+// ---- Assertion Suggest types --------------------------------------------
+
+export interface AssertionSuggestInput {
+  status: number;
+  headers: Record<string, string>;
+  body: string;
+  elapsed_ms: number;
+}
+
+export interface AssertionSuggestion {
+  assertion: Assertion;
+  confidence: number;
+  reason: string;
+  category: string;
+}
+
+export interface AssertionSuggestOutput {
+  suggestions: AssertionSuggestion[];
+}
+
 // ---- Flow types ---------------------------------------------------------
 
 export interface FlowStep {
@@ -727,6 +747,11 @@ export const testingMethods = {
     }),
   getPipelineTemplates: () =>
     call<PipelineTemplate[]>("/api/pipeline/templates"),
+  suggestAssertions: (input: AssertionSuggestInput) =>
+    call<AssertionSuggestOutput>("/api/assertions/suggest", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
 } as const;
 
 // ---- Pipeline types ----------------------------------------------------------

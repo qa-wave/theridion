@@ -1273,6 +1273,205 @@ function TestsView({
           </div>
         );
       })}
+
+      <SuggestedAssertions response={response} onAdd={onChange} existing={assertions} />
+    </div>
+  );
+}
+
+const SUGGESTION_CATEGORIES = ["status", "performance", "structure", "content", "security"] as const;
+type SuggestionCategory = (typeof SUGGESTION_CATEGORIES)[number];
+
+function SuggestedAssertions({
+  response,
+  onAdd,
+  existing,
+}: {
+  response: ExecuteResponse | null;
+  onAdd: (assertions: Assertion[]) => void;
+  existing: Assertion[];
+}) {
+  const [suggestions, setSuggestions] = useState<import("../lib/sidecar").AssertionSuggestion[]>([]);
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [loading, setLoading] = useState(false);
+  const [activeCategories, setActiveCategories] = useState<Set<SuggestionCategory>>(
+    new Set(SUGGESTION_CATEGORIES),
+  );
+
+  // Fetch suggestions when response changes
+  useEffect(() => {
+    if (!response || !response.body && response.status === 0) {
+      setSuggestions([]);
+      return;
+    }
+    let cancelled = false;
+    setLoading(true);
+    setSelected(new Set());
+    sidecar
+      .suggestAssertions({
+        status: response.status,
+        headers: response.headers,
+        body: response.body,
+        elapsed_ms: response.elapsed_ms,
+      })
+      .then((result) => {
+        if (!cancelled) {
+          setSuggestions(result.suggestions);
+          setLoading(false);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setSuggestions([]);
+          setLoading(false);
+        }
+      });
+    return () => { cancelled = true; };
+  }, [response?.status, response?.body, response?.elapsed_ms]);
+
+  const filtered = useMemo(
+    () => suggestions.filter((s) => activeCategories.has(s.category as SuggestionCategory)),
+    [suggestions, activeCategories],
+  );
+
+  if (!response || (suggestions.length === 0 && !loading)) return null;
+
+  function toggleCategory(cat: SuggestionCategory) {
+    setActiveCategories((prev) => {
+      const next = new Set(prev);
+      if (next.has(cat)) next.delete(cat);
+      else next.add(cat);
+      return next;
+    });
+  }
+
+  function toggleSelection(idx: number) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(idx)) next.delete(idx);
+      else next.add(idx);
+      return next;
+    });
+  }
+
+  function addSelected() {
+    const toAdd = filtered
+      .filter((_, i) => selected.has(i))
+      .map((s) => s.assertion);
+    if (toAdd.length > 0) {
+      onAdd([...existing, ...toAdd]);
+      setSelected(new Set());
+    }
+  }
+
+  function addAll() {
+    const toAdd = filtered.map((s) => s.assertion);
+    if (toAdd.length > 0) {
+      onAdd([...existing, ...toAdd]);
+    }
+  }
+
+  function confidenceBadge(confidence: number) {
+    if (confidence >= 0.8) return { label: "High", cls: "bg-emerald-900/40 text-emerald-400 border-emerald-700/40" };
+    if (confidence >= 0.6) return { label: "Med", cls: "bg-amber-900/30 text-amber-400 border-amber-700/40" };
+    return { label: "Low", cls: "bg-neutral-800 text-neutral-400 border-neutral-700" };
+  }
+
+  return (
+    <div className="mt-4 border-t border-dashed border-neutral-700 pt-4">
+      <div className="mb-2 flex items-center justify-between">
+        <p className="text-[11px] uppercase tracking-wider text-neutral-500">
+          Suggested Assertions
+          {loading && <span className="ml-2 normal-case text-neutral-600">analyzing...</span>}
+        </p>
+        <div className="flex items-center gap-2">
+          {selected.size > 0 && (
+            <button
+              type="button"
+              onClick={addSelected}
+              className="rounded border border-cobweb-600/40 bg-cobweb-950/30 px-2 py-0.5 text-[10px] font-medium text-cobweb-400 transition hover:bg-cobweb-900/40"
+            >
+              Add Selected ({selected.size})
+            </button>
+          )}
+          {filtered.length > 0 && (
+            <button
+              type="button"
+              onClick={addAll}
+              className="rounded px-2 py-0.5 text-[10px] text-neutral-500 transition hover:text-neutral-300"
+            >
+              Add All
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Category filter chips */}
+      <div className="mb-2 flex flex-wrap gap-1">
+        {SUGGESTION_CATEGORIES.map((cat) => (
+          <button
+            key={cat}
+            type="button"
+            onClick={() => toggleCategory(cat)}
+            className={`rounded-full border px-2 py-0.5 text-[10px] capitalize transition ${
+              activeCategories.has(cat)
+                ? "border-cobweb-600/40 bg-cobweb-950/20 text-cobweb-400"
+                : "border-neutral-700 bg-neutral-900/30 text-neutral-600"
+            }`}
+          >
+            {cat}
+          </button>
+        ))}
+      </div>
+
+      {/* Suggestions list */}
+      {filtered.length === 0 && !loading && (
+        <p className="py-2 text-center text-[10px] text-neutral-600">
+          No suggestions for selected categories
+        </p>
+      )}
+      <div className="space-y-1">
+        {filtered.map((s, idx) => {
+          const badge = confidenceBadge(s.confidence);
+          const isSelected = selected.has(idx);
+          return (
+            <label
+              key={idx}
+              className={`flex cursor-pointer items-center gap-2 rounded border px-2 py-1.5 transition ${
+                isSelected
+                  ? "border-cobweb-600/40 bg-cobweb-950/20"
+                  : "border-neutral-700/50 bg-neutral-900/30 hover:bg-neutral-800/40"
+              }`}
+            >
+              <input
+                type="checkbox"
+                checked={isSelected}
+                onChange={() => toggleSelection(idx)}
+                className="h-3 w-3 rounded border-neutral-600 bg-neutral-800 accent-cobweb-500"
+              />
+              <span className="flex-1 min-w-0 truncate font-mono text-[10px] text-neutral-300">
+                {s.assertion.type}
+                {s.assertion.path && <span className="text-neutral-500"> $.{s.assertion.path}</span>}
+                {s.assertion.operator !== "eq" && s.assertion.operator !== "exists" && (
+                  <span className="text-neutral-500"> {s.assertion.operator}</span>
+                )}
+                {s.assertion.expected && (
+                  <span className="text-neutral-400"> = {s.assertion.expected}</span>
+                )}
+              </span>
+              <span
+                className={`shrink-0 rounded border px-1 py-0 text-[9px] font-medium ${badge.cls}`}
+                title={`${Math.round(s.confidence * 100)}% confidence`}
+              >
+                {badge.label}
+              </span>
+              <span className="shrink-0 text-[9px] text-neutral-600" title={s.reason}>
+                {s.category}
+              </span>
+            </label>
+          );
+        })}
+      </div>
     </div>
   );
 }
