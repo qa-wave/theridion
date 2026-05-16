@@ -57,6 +57,8 @@ export type {
   IdempotencySnapshot, IdempotencyResult, PaginationInput, PageResult, PaginationResult,
   ContractDriftEntry, ContractDriftCheckResult,
   EnvRunResult, RequestStatusRow, MultiEnvResult,
+  MultiEnvRequestTemplate, EnvRequestResult, ComparisonSummary,
+  SingleRequestMultiEnvOutput, CollectionRequestRow, CollectionMultiEnvOutput,
   FlowVisualNode, FlowGraphResult,
   MonitorConfig, MonitorListOutput, WebhookConfig, WebhookListOutput,
   RunRequestResult, RunCollectionOutput, RunWithTraceOutput,
@@ -71,6 +73,7 @@ export type {
   DepGraphNode, DepGraphEdge, DepGraphGroup, DepGraphResult,
   PipelineExtractor, PipelineStep, PipelineInput, PipelineStepResult,
   PipelineResult, PipelineValidationIssue, PipelineValidateOutput, PipelineTemplate,
+  CliRunOutput, CliRunWithTraceOutput, TraceHtmlOutput,
 } from "./testing";
 
 export type {
@@ -112,6 +115,11 @@ export type {
   PerfBudget, PerfBudgetCreate, PerfBudgetUpdate, PerfCheckInput,
   PerfViolation, PerfCheckOutput, AutoBudgetInput, AutoBudgetOutput,
 } from "./perfBudget";
+
+export type {
+  GoldenFile, SaveGoldenInput, CompareInput, AutoCompareInput,
+  HeaderChange, BodyDiff, CompareOutput, AutoCompareOutput,
+} from "./goldenFiles";
 
 export type {
   HistoryEntryCreate, HistoryEntry as SidecarHistoryEntry, HistoryEntrySummary,
@@ -170,6 +178,7 @@ import { advancedMethods } from "./advanced";
 import { historyMethods } from "./history";
 import { snippetsMethods } from "./snippets";
 import { perfBudgetMethods } from "./perfBudget";
+import { goldenFilesMethods } from "./goldenFiles";
 
 export const sidecar = {
   ...requestsMethods,
@@ -184,4 +193,5 @@ export const sidecar = {
   ...historyMethods,
   ...snippetsMethods,
   ...perfBudgetMethods,
+  ...goldenFilesMethods,
 } as const;

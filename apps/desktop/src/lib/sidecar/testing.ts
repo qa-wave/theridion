@@ -849,6 +849,27 @@ export const testingMethods = {
       method: "POST",
       body: JSON.stringify({ collection_id: collectionId }),
     }),
+  runCli: (collectionId: string, environmentId?: string) =>
+    call<CliRunOutput>(`/api/runner/cli?collection_id=${encodeURIComponent(collectionId)}`, {
+      method: "POST",
+      body: JSON.stringify({ environment_id: environmentId ?? null }),
+    }),
+  runCliWithTrace: (collectionId: string, environmentId?: string) =>
+    call<CliRunWithTraceOutput>(`/api/runner/cli/trace?collection_id=${encodeURIComponent(collectionId)}`, {
+      method: "POST",
+      body: JSON.stringify({ environment_id: environmentId ?? null }),
+    }),
+  downloadTrace: async (traceId: string): Promise<Blob> => {
+    const { getSidecarBaseUrl } = await import("./client");
+    const baseUrl = await getSidecarBaseUrl();
+    const resp = await fetch(`${baseUrl}/api/runner/trace/${encodeURIComponent(traceId)}`);
+    if (!resp.ok) throw new Error(`download trace ${resp.status}`);
+    return resp.blob();
+  },
+  traceToHtml: (traceId: string) =>
+    call<TraceHtmlOutput>(`/api/runner/trace/html?trace_id=${encodeURIComponent(traceId)}`, {
+      method: "POST",
+    }),
 } as const;
 
 // ---- Pipeline types ----------------------------------------------------------
@@ -912,4 +933,23 @@ export interface PipelineTemplate {
   name: string;
   description: string;
   steps: Record<string, unknown>[];
+}
+
+// ---- CLI Runner types -------------------------------------------------------
+
+export interface CliRunOutput {
+  output: string;
+  passed: number;
+  failed: number;
+  skipped: number;
+  total_ms: number;
+}
+
+export interface CliRunWithTraceOutput extends CliRunOutput {
+  trace_path: string;
+  trace_id: string;
+}
+
+export interface TraceHtmlOutput {
+  html: string;
 }

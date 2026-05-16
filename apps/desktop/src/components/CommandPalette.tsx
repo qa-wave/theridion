@@ -369,6 +369,7 @@ export function useDefaultActions(callbacks: {
   openChangelog?: () => void;
   openPipeline?: () => void;
   openDocGenerator?: () => void;
+  openDepGraph?: () => void;
   collections?: StoredCollection[];
   onOpenRequest?: (collectionId: string, item: CollectionItem) => void;
   environments?: EnvironmentSummary[];
@@ -534,6 +535,9 @@ export function useDefaultActions(callbacks: {
       }] : []),
       ...(callbacks.openDocGenerator ? [{
         id: "doc-generator", label: "Generate API Documentation", icon: <FileCode size={14} />, onSelect: callbacks.openDocGenerator,
+      }] : []),
+      ...(callbacks.openDepGraph ? [{
+        id: "dep-graph", label: "Dependency Graph", icon: <GitBranch size={14} />, onSelect: callbacks.openDepGraph,
       }] : []),
       {
         id: "tpl-get-json",

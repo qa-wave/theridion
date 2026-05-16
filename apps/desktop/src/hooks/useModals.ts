@@ -41,6 +41,7 @@ export type ModalId =
   | "bodyDiff"
   | "openapiImport"
   | "docGenerator"
+  | "depGraph"
   | null;
 
 export function useModals() {
