@@ -68,6 +68,7 @@ export type {
   FieldChange, ChangelogEntry, ChangelogResult,
   GeneratedAssertion, RequestAssertions, RegressionOutput,
   DependencyInfo, CycleInfo, DependencyResult,
+  DepGraphNode, DepGraphEdge, DepGraphGroup, DepGraphResult,
   PipelineExtractor, PipelineStep, PipelineInput, PipelineStepResult,
   PipelineResult, PipelineValidationIssue, PipelineValidateOutput, PipelineTemplate,
 } from "./testing";
@@ -106,6 +107,11 @@ export type { ParsedCurl, UniversalImportResult, ReplayDiff, ReplayOutput } from
 export type {
   Snippet, SnippetCreate, SnippetUpdate, SnippetList, SnippetExport,
 } from "./snippets";
+
+export type {
+  PerfBudget, PerfBudgetCreate, PerfBudgetUpdate, PerfCheckInput,
+  PerfViolation, PerfCheckOutput, AutoBudgetInput, AutoBudgetOutput,
+} from "./perfBudget";
 
 export type {
   HistoryEntryCreate, HistoryEntry as SidecarHistoryEntry, HistoryEntrySummary,
@@ -163,6 +169,7 @@ import { aiMethods } from "./ai";
 import { advancedMethods } from "./advanced";
 import { historyMethods } from "./history";
 import { snippetsMethods } from "./snippets";
+import { perfBudgetMethods } from "./perfBudget";
 
 export const sidecar = {
   ...requestsMethods,
@@ -176,4 +183,5 @@ export const sidecar = {
   ...advancedMethods,
   ...historyMethods,
   ...snippetsMethods,
+  ...perfBudgetMethods,
 } as const;

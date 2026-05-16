@@ -323,6 +323,49 @@ export interface MultiEnvResult {
   comparison: RequestStatusRow[];
 }
 
+// ---- Multi Env Parallel Runner (new) ----------------------------------------
+
+export interface MultiEnvRequestTemplate {
+  method: string;
+  url: string;
+  headers: Record<string, string>;
+  body?: string | null;
+}
+
+export interface EnvRequestResult {
+  env_id: string;
+  env_name: string;
+  status: number | null;
+  elapsed_ms: number;
+  body_preview: string;
+  headers: Record<string, string>;
+  error: string | null;
+  body_size: number;
+}
+
+export interface ComparisonSummary {
+  all_same_status: boolean;
+  fastest_env: string;
+  slowest_env: string;
+  response_size_diff: boolean;
+}
+
+export interface SingleRequestMultiEnvOutput {
+  results: EnvRequestResult[];
+  comparison: ComparisonSummary;
+}
+
+export interface CollectionRequestRow {
+  request_name: string;
+  results: EnvRequestResult[];
+  comparison: ComparisonSummary;
+}
+
+export interface CollectionMultiEnvOutput {
+  rows: CollectionRequestRow[];
+  summary: ComparisonSummary;
+}
+
 // ---- Flow Graph types -------------------------------------------------------
 
 export interface FlowVisualNode {
@@ -576,6 +619,38 @@ export interface DependencyResult {
   unresolved: string[];
 }
 
+// ---- Dependency Graph (visual) types -----------------------------------------
+
+export interface DepGraphNode {
+  id: string;
+  name: string;
+  method: string;
+  url: string;
+  produces: string[];
+  consumes: string[];
+  folder: string | null;
+}
+
+export interface DepGraphEdge {
+  from_id: string;
+  to_id: string;
+  variable: string;
+}
+
+export interface DepGraphGroup {
+  name: string;
+  node_ids: string[];
+}
+
+export interface DepGraphResult {
+  nodes: DepGraphNode[];
+  edges: DepGraphEdge[];
+  groups: DepGraphGroup[];
+  execution_order: string[];
+  has_cycle: boolean;
+  cycle_members: string[];
+}
+
 export const testingMethods = {
   evaluateAssertions: (input: {
     assertions: Assertion[];
@@ -646,6 +721,23 @@ export const testingMethods = {
     }),
   multiEnvRun: (input: { collection_id: string; environment_ids: string[] }) =>
     call<MultiEnvResult>("/api/test/multi-env", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  multiEnvRunSingle: (input: {
+    request: MultiEnvRequestTemplate;
+    environment_ids: string[];
+    collection_id?: string | null;
+  }) =>
+    call<SingleRequestMultiEnvOutput>("/api/runner/multi-env", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  multiEnvRunCollection: (input: {
+    collection_id: string;
+    environment_ids: string[];
+  }) =>
+    call<CollectionMultiEnvOutput>("/api/runner/multi-env/collection", {
       method: "POST",
       body: JSON.stringify(input),
     }),
@@ -751,6 +843,11 @@ export const testingMethods = {
     call<AssertionSuggestOutput>("/api/assertions/suggest", {
       method: "POST",
       body: JSON.stringify(input),
+    }),
+  buildDepGraph: (collectionId: string) =>
+    call<DepGraphResult>("/api/graph/collection", {
+      method: "POST",
+      body: JSON.stringify({ collection_id: collectionId }),
     }),
 } as const;
 
