@@ -92,6 +92,9 @@ export type {
   LoadRunConfig, TimelinePoint, LoadRunResult,
   OWASPSeverity, OWASPScanType, OWASPFinding, OWASPScanInput, OWASPScanOutput,
   CompareResponsesInput, ResponseChangeEntry, CompareResponsesOutput,
+  BodyDiffInput, BodyDiffStructuralChange, BodyDiffStats, BodyDiffOutput,
+  BodyFormatInput, BodyFormatOutput,
+  BodyMergeInput, BodyMergeConflict, BodyMergeOutput,
 } from "./analysis";
 
 export type { ParsedCurl, UniversalImportResult, ReplayDiff, ReplayOutput } from "./codegen";
@@ -136,6 +139,7 @@ export type {
   FailureNotifyInput, FailureNotifyResult,
   OpenApiEnhancedPreviewRequest, OpenApiEnhancedPreviewFolder, OpenApiEnhancedPreviewOutput,
   OpenApiEnhancedImportOutput,
+  DocOptions, DocGenerateInput, DocGenerateOutput,
 } from "./advanced";
 
 // ---- Compose the unified sidecar object from all sub-modules ----
