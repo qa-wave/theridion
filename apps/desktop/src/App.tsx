@@ -67,6 +67,7 @@ import { SSEModal } from "./components/SSEModal";
 import { ChangelogModal } from "./components/ChangelogModal";
 import { PipelineModal } from "./components/PipelineModal";
 import { DocGeneratorModal } from "./components/DocGeneratorModal";
+import { DependencyGraphModal } from "./components/DependencyGraphModal";
 import { NetworkConsole, type NetworkEntry, type NetworkEntryType } from "./components/NetworkConsole";
 import { ActivityBar, type AppMode } from "./components/ActivityBar";
 import { ToastContainer, type Toast } from "./components/Toast";
@@ -827,6 +828,7 @@ export default function App() {
     openChangelog: () => modals.open("changelog"),
     openPipeline: () => modals.open("pipeline"),
     openDocGenerator: () => modals.open("docGenerator"),
+    openDepGraph: () => modals.open("depGraph"),
     collections,
     onOpenRequest: openSaved,
     environments,
@@ -865,6 +867,12 @@ export default function App() {
       } else if (cmd && e.key === "w") {
         e.preventDefault();
         closeTab(activeId);
+      } else if (cmd && e.shiftKey && e.key === "C") {
+        e.preventDefault();
+        if (active.response?.body) {
+          void navigator.clipboard.writeText(active.response.body);
+          addToast("success", "Response body copied");
+        }
       } else if (cmd && e.shiftKey && e.key === "N") {
         e.preventDefault();
         setNetworkOpen((o) => !o);
@@ -1392,6 +1400,30 @@ export default function App() {
       <ChangelogModal open={modals.isOpen("changelog")} onClose={modals.close} />
       <PipelineModal open={modals.isOpen("pipeline")} onClose={modals.close} collections={collections} />
       <DocGeneratorModal open={modals.isOpen("docGenerator")} onClose={modals.close} />
+      <DependencyGraphModal
+        open={modals.isOpen("depGraph")}
+        onClose={modals.close}
+        collectionId={active.savedAs?.collectionId ?? collections[0]?.id ?? null}
+        onOpenRequest={(reqId) => {
+          const cId = active.savedAs?.collectionId ?? collections[0]?.id;
+          if (!cId) return;
+          const coll = collections.find((c) => c.id === cId);
+          if (!coll) return;
+          // Find the request in collection items (flat search)
+          function findItem(items: CollectionItem[]): CollectionItem | undefined {
+            for (const it of items) {
+              if (it.id === reqId) return it;
+              if (it.is_folder && it.items) {
+                const found = findItem(it.items);
+                if (found) return found;
+              }
+            }
+            return undefined;
+          }
+          const item = findItem(coll.items);
+          if (item) openSaved(cId, item);
+        }}
+      />
 
       {/* Keyboard shortcut overlay */}
       {shortcutOverlayOpen && (
@@ -1408,6 +1440,7 @@ const SHORTCUT_SECTIONS: { title: string; items: { action: string; shortcut: str
       { action: "Send request", shortcut: "\u2318\u23CE" },
       { action: "Save", shortcut: "\u2318S" },
       { action: "Save As", shortcut: "\u2318\u21E7S" },
+      { action: "Copy response body", shortcut: "\u2318\u21E7C" },
     ],
   },
   {
