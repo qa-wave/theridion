@@ -25,6 +25,7 @@ export type { EnvDiffOutput, StructuredDiffOutput, DiffVarPair, DiffVarDifferent
 export type {
   FormField, ExecuteMultipartInput, CaptureRule, ExecuteWithCapturesInput,
   ExecuteWithCapturesResponse, OAuth2TokenInput, OAuth2TokenOutput,
+  OAuth2RefreshInput,
   OAuth1Input, OAuth1Output, OAuth2AuthorizeUrlInput, OAuth2AuthorizeUrlOutput,
   OAuth2CallbackResult, CookieManagerEntry, CookieManagerList,
   CookieJarEntry, CookieJar, AllCookieJars,
@@ -108,6 +109,8 @@ export type {
   RequestDiffHeaderChange, RequestDiffBodyDiff, RequestDiffAuthDiff, RequestDiffOutput,
   HeaderFinding, HeaderRecommendation, HeaderCachingAnalysis, HeaderCompressionAnalysis,
   HeaderInsightsOutput,
+  BodySearchMatch, BodySearchOutput, BodySearchInput,
+  JsonPathMatch, JsonPathOutput, XPathMatch, XPathOutput,
 } from "./analysis";
 
 export type { ParsedCurl, UniversalImportResult, ReplayDiff, ReplayOutput } from "./codegen";
