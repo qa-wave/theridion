@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AlertTriangle, ArrowDown, ArrowUp, Bot, CheckCircle2, ChevronDown, Clock, Code2, Copy, Download, FileCode, FolderPlus, GitCompare, Inbox, Minus, RefreshCw, Search, Shield, Star, Terminal, Upload, XCircle, Zap } from "lucide-react";
 import type { Assertion } from "../state/types";
-import type { AutoCompareOutput, ExecuteResponse, HeaderInsightsOutput, SchemaValidateOutput, TimingBreakdown } from "../lib/sidecar";
+import type { AutoCompareOutput, BodySearchMatch, ExecuteResponse, HeaderInsightsOutput, SchemaValidateOutput, TimingBreakdown } from "../lib/sidecar";
 import { sidecar } from "../lib/sidecar";
 import { CodeEditor } from "./CodeEditor";
 import { JsonTreeView } from "./JsonTreeView";
 import { RateLimitIndicator } from "./RateLimitIndicator";
+import { ResponseBodySearch } from "./ResponseBodySearch";
 
 type BodyViewMode = "editor" | "tree" | "raw";
 
@@ -504,6 +505,10 @@ function BodyView({ res, onAddAssertion }: { res: ExecuteResponse; onAddAssertio
   const [viewMode, setViewMode] = useState<BodyViewMode>("editor");
   const [transform, setTransform] = useState<BodyTransform>("none");
   const [transformOpen, setTransformOpen] = useState(false);
+  const [searchVisible, setSearchVisible] = useState(false);
+  const [searchMatches, setSearchMatches] = useState<BodySearchMatch[]>([]);
+  const [currentMatchIdx, setCurrentMatchIdx] = useState(0);
+  const decorationsRef = useRef<string[]>([]);
 
   const displayBody = useMemo(() => {
     if (transform === "minify") return minifyJson(res.body);
@@ -518,7 +523,63 @@ function BodyView({ res, onAddAssertion }: { res: ExecuteResponse; onAddAssertio
   const isForcedRaw = res.body_size_bytes >= SIZE_FORCE_RAW_THRESHOLD || forceRaw;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const editorRef = useRef<any>(null);
+  const bodyContainerRef = useRef<HTMLDivElement>(null);
   const lineCount = useMemo(() => pretty.split("\n").length, [pretty]);
+  const isXml = ct.includes("xml") || res.body.trimStart().startsWith("<");
+
+  // Ctrl+F to open search in body view
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key === "f") {
+        if (!bodyContainerRef.current?.contains(document.activeElement) && !bodyContainerRef.current?.matches(":hover")) return;
+        e.preventDefault();
+        setSearchVisible(true);
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  // Apply Monaco decorations when matches change
+  useEffect(() => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    if (searchMatches.length === 0) {
+      decorationsRef.current = editor.deltaDecorations(decorationsRef.current, []);
+      return;
+    }
+    const model = editor.getModel();
+    if (!model) return;
+    const newDecorations = searchMatches.map((m, idx) => {
+      const startPos = model.getPositionAt(m.start);
+      const endPos = model.getPositionAt(m.end);
+      return {
+        range: {
+          startLineNumber: startPos.lineNumber,
+          startColumn: startPos.column,
+          endLineNumber: endPos.lineNumber,
+          endColumn: endPos.column,
+        },
+        options: {
+          className: idx === currentMatchIdx ? "search-match-current" : "search-match",
+          overviewRuler: { color: idx === currentMatchIdx ? "#10b981" : "#6b7280", position: 1 },
+        },
+      };
+    });
+    decorationsRef.current = editor.deltaDecorations(decorationsRef.current, newDecorations);
+  }, [searchMatches, currentMatchIdx]);
+
+  // Scroll to current match in Monaco
+  useEffect(() => {
+    const editor = editorRef.current;
+    if (!editor || searchMatches.length === 0 || currentMatchIdx < 0) return;
+    const match = searchMatches[currentMatchIdx];
+    if (!match) return;
+    const model = editor.getModel();
+    if (!model) return;
+    const pos = model.getPositionAt(match.start);
+    editor.revealLineInCenter(pos.lineNumber);
+  }, [currentMatchIdx, searchMatches]);
 
   function copyAsFormatted() {
     try {
@@ -586,7 +647,16 @@ function BodyView({ res, onAddAssertion }: { res: ExecuteResponse; onAddAssertio
   }
 
   return (
-    <div className="relative flex h-full flex-col">
+    <div ref={bodyContainerRef} className="relative flex h-full flex-col">
+      {/* Body search overlay */}
+      <ResponseBodySearch
+        body={displayBody}
+        visible={searchVisible}
+        onClose={() => { setSearchVisible(false); setSearchMatches([]); }}
+        onMatchesChange={setSearchMatches}
+        onCurrentMatchChange={setCurrentMatchIdx}
+        isXml={isXml}
+      />
       {/* Large response warning */}
       {isLarge && (
         <div className="flex items-center gap-2 border-b border-amber-800/30 bg-amber-950/20 px-3 py-1.5 text-[11px] text-amber-400">

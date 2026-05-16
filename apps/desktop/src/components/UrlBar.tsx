@@ -12,7 +12,28 @@ const BUILTIN_VARS: { name: string; label: string }[] = [
   { name: "$uuid", label: "UUID v4" },
   { name: "$isoDate", label: "ISO 8601 date" },
   { name: "$randomInt", label: "Random integer" },
+  { name: "$if ", label: "Conditional block" },
+  { name: "$endif", label: "End conditional" },
+  { name: "$each ", label: "Loop over array" },
+  { name: "$end", label: "End loop" },
+  { name: "$concat ", label: "String concatenation" },
+  { name: "$math ", label: "Arithmetic expression" },
+  { name: "$default ", label: "Default/fallback value" },
+  { name: "$env ", label: "System env variable" },
 ];
+
+/** Pipe filters available after | in template expressions. */
+// @ts-expect-error reserved for future pipe autocomplete
+const _PIPE_FILTERS = [
+  { name: "upper", label: "Uppercase" },
+  { name: "lower", label: "Lowercase" },
+  { name: "base64", label: "Base64 encode" },
+  { name: "json", label: "JSON stringify" },
+  { name: "urlencode", label: "URL encode" },
+  { name: "trim", label: "Trim whitespace" },
+  { name: "slice:0:N", label: "Substring slice" },
+] as const;
+void _PIPE_FILTERS;
 
 interface Props {
   method: Method;
