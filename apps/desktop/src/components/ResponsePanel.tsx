@@ -5,6 +5,7 @@ import type { ExecuteResponse, SchemaValidateOutput, TimingBreakdown } from "../
 import { sidecar } from "../lib/sidecar";
 import { CodeEditor } from "./CodeEditor";
 import { JsonTreeView } from "./JsonTreeView";
+import { RateLimitIndicator } from "./RateLimitIndicator";
 
 type BodyViewMode = "editor" | "tree" | "raw";
 
@@ -166,6 +167,7 @@ export function ResponsePanel({ busy, response, error, onDiff, onCodegen, consol
           <button type="button" onClick={() => setViewingHistorical(null)} className="ml-auto text-amber-500 hover:text-amber-300">Show current</button>
         </div>
       )}
+      <RateLimitIndicator headers={displayResponse.headers} />
       <div className="flex items-center gap-1 border-b border-neutral-800 px-2 py-0">
         <TabButton active={tab === "body"} onClick={() => setTab("body")}>Body</TabButton>
         <TabButton active={tab === "headers"} onClick={() => setTab("headers")}>

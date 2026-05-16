@@ -647,6 +647,20 @@ export const analysisMethods = {
       method: "POST",
       body: JSON.stringify(input),
     }),
+  rateLimitAnalyze: (headers: Record<string, string>) =>
+    call<RateLimitAnalyzeOutput>("/api/ratelimit/analyze", {
+      method: "POST",
+      body: JSON.stringify({ headers }),
+    }),
+  rateLimitTrack: (input: { url: string; headers: Record<string, string> }) =>
+    call<RateLimitTrackOutput>("/api/ratelimit/track", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  rateLimitStatus: () =>
+    call<RateLimitStatusOutput>("/api/ratelimit/status"),
+  rateLimitHistory: (urlHash: string) =>
+    call<RateLimitHistoryOutput>(`/api/ratelimit/history/${urlHash}`),
 } as const;
 
 // ---- OWASP Scanner types ---------------------------------------------------
@@ -755,4 +769,50 @@ export interface BodyMergeOutput {
   merged: string;
   conflicts: BodyMergeConflict[];
   format_detected: string;
+}
+
+// ---- Rate Limit Detector types -----------------------------------------------
+
+export interface RateLimitAnalyzeOutput {
+  detected: boolean;
+  limit: number | null;
+  remaining: number | null;
+  reset_at: string | null;
+  reset_seconds: number | null;
+  retry_after: number | null;
+  policy: string | null;
+  provider: string | null;
+  percentage_used: number | null;
+  headers_found: string[];
+}
+
+export interface RateLimitTrackOutput {
+  url_hash: string;
+  tracked: boolean;
+}
+
+export interface RateLimitStatusEntry {
+  url_hash: string;
+  url: string;
+  limit: number | null;
+  remaining: number | null;
+  reset_seconds: number | null;
+  percentage_used: number | null;
+  last_seen: number;
+}
+
+export interface RateLimitStatusOutput {
+  entries: RateLimitStatusEntry[];
+}
+
+export interface RateLimitHistoryPoint {
+  timestamp: number;
+  limit: number | null;
+  remaining: number | null;
+  percentage_used: number | null;
+}
+
+export interface RateLimitHistoryOutput {
+  url_hash: string;
+  points: RateLimitHistoryPoint[];
 }
