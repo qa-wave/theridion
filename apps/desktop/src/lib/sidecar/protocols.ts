@@ -339,6 +339,46 @@ export interface SSEResult {
   error: string | null;
 }
 
+// ---- WebSocket Advanced types -----------------------------------------------
+
+export interface WsAdvancedConnectInput {
+  url: string;
+  headers?: Record<string, string>;
+  subprotocols?: string[];
+  auto_reconnect?: boolean;
+  reconnect_interval_ms?: number;
+  max_reconnects?: number;
+  ping_interval_ms?: number | null;
+}
+
+export interface WsAdvancedConnectOutput {
+  connection_id: string;
+  status: "connected" | "error";
+  subprotocol: string | null;
+  error: string | null;
+}
+
+export interface WsAdvancedMetrics {
+  connection_id: string;
+  status: "connected" | "disconnected" | "reconnecting";
+  messages_sent: number;
+  messages_received: number;
+  bytes_sent: number;
+  bytes_received: number;
+  connection_duration_ms: number;
+  reconnect_count: number;
+  last_ping_rtt_ms: number | null;
+  avg_ping_rtt_ms: number | null;
+}
+
+export interface WsFrameEntry {
+  timestamp: number;
+  direction: "sent" | "received";
+  frame_type: "text" | "binary" | "ping" | "pong" | "close";
+  size_bytes: number;
+  data_preview: string | null;
+}
+
 export const protocolsMethods = {
   executeGraphQL: (input: GraphQLExecuteInput) =>
     call<GraphQLResponse>("/api/graphql/execute", {
@@ -486,4 +526,35 @@ export const protocolsMethods = {
     call<{ status: string; port: string }>("/api/mock/replay/stop", { method: "POST" }),
   mockReplayStatus: () =>
     call<ReplayStatusOutput>("/api/mock/replay/status"),
+
+  // ---- WebSocket Advanced ------------------------------------------------
+  wsAdvancedConnect: (input: WsAdvancedConnectInput) =>
+    call<WsAdvancedConnectOutput>("/api/ws/connect", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  wsAdvancedSendBinary: (connectionId: string, payloadBase64: string) =>
+    call<{ status: string; size_bytes: string }>("/api/ws/send-binary", {
+      method: "POST",
+      body: JSON.stringify({ connection_id: connectionId, payload_base64: payloadBase64 }),
+    }),
+  wsAdvancedSendText: (connectionId: string, data: string) =>
+    call<{ status: string; size_bytes: string }>("/api/ws/send-text", {
+      method: "POST",
+      body: JSON.stringify({ connection_id: connectionId, data }),
+    }),
+  wsAdvancedMetrics: (connectionId: string) =>
+    call<WsAdvancedMetrics>(`/api/ws/metrics?connection_id=${encodeURIComponent(connectionId)}`),
+  wsAdvancedFrames: (connectionId: string) =>
+    call<WsFrameEntry[]>(`/api/ws/frames?connection_id=${encodeURIComponent(connectionId)}`),
+  wsAdvancedSubscribe: (connectionId: string, channel: string, pattern?: string) =>
+    call<{ status: string; channel: string }>("/api/ws/subscribe", {
+      method: "POST",
+      body: JSON.stringify({ connection_id: connectionId, channel, pattern }),
+    }),
+  wsAdvancedDisconnect: (connectionId: string) =>
+    call<{ status: string }>("/api/ws/disconnect", {
+      method: "POST",
+      body: JSON.stringify({ connection_id: connectionId }),
+    }),
 } as const;
