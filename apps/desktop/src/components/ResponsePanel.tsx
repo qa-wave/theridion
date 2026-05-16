@@ -1471,6 +1471,14 @@ function Empty() {
 }
 
 function Loading() {
+  const [elapsed, setElapsed] = useState(0);
+  useEffect(() => {
+    const start = Date.now();
+    const id = setInterval(() => setElapsed(Date.now() - start), 100);
+    return () => clearInterval(id);
+  }, []);
+  const secs = (elapsed / 1000).toFixed(1);
+
   return (
     <div className="flex h-full flex-col">
       {/* Skeleton status row (4 cards) */}
@@ -1494,8 +1502,9 @@ function Loading() {
           <div key={i} className="skeleton h-4" style={{ width: `${pct}%` }} />
         ))}
       </div>
-      <div className="flex items-center justify-center pb-4 text-xs text-neutral-500 tracking-wide">
-        Sending request...
+      <div className="flex items-center justify-center gap-3 pb-4">
+        <span className="text-xs text-neutral-500 tracking-wide">Sending request...</span>
+        <span className="font-mono text-xs text-neutral-400 tabular-nums">{secs}s</span>
       </div>
     </div>
   );
