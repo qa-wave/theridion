@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AlertTriangle, ArrowDown, ArrowUp, Bot, CheckCircle2, ChevronDown, Clock, Code2, Copy, Download, FileCode, FolderPlus, GitCompare, Inbox, Minus, RefreshCw, Search, Star, Terminal, Upload, XCircle, Zap } from "lucide-react";
+import { AlertTriangle, ArrowDown, ArrowUp, Bot, CheckCircle2, ChevronDown, Clock, Code2, Copy, Download, FileCode, FolderPlus, GitCompare, Inbox, Minus, RefreshCw, Search, Shield, Star, Terminal, Upload, XCircle, Zap } from "lucide-react";
 import type { Assertion } from "../state/types";
-import type { AutoCompareOutput, ExecuteResponse, SchemaValidateOutput, TimingBreakdown } from "../lib/sidecar";
+import type { AutoCompareOutput, ExecuteResponse, HeaderInsightsOutput, SchemaValidateOutput, TimingBreakdown } from "../lib/sidecar";
 import { sidecar } from "../lib/sidecar";
 import { CodeEditor } from "./CodeEditor";
 import { JsonTreeView } from "./JsonTreeView";
@@ -203,7 +203,7 @@ export function ResponsePanel({ busy, response, error, onDiff, onCodegen, consol
 
   return (
     <div ref={panelRef} className="flex h-full min-h-0 flex-col">
-      <StatusRow res={displayResponse} onDiff={onDiff} onCodegen={onCodegen} history={history} onViewHistorical={(snap) => setViewingHistorical(snap.response)} />
+      <StatusRow res={displayResponse} onDiff={onDiff} onCodegen={onCodegen} history={history} onViewHistorical={(snap) => setViewingHistorical(snap.response)} onAddAssertion={onAddAssertion} />
       {viewingHistorical && (
         <div className="flex items-center gap-2 border-b border-amber-800/30 bg-amber-950/20 px-3 py-1 text-[11px] text-amber-400">
           <Clock className="h-3 w-3" />
@@ -292,7 +292,7 @@ function TabButton({
   );
 }
 
-function StatusRow({ res, onDiff, onCodegen, history, onViewHistorical }: { res: ExecuteResponse; onDiff?: () => void; onCodegen?: () => void; history?: ResponseSnapshot[]; onViewHistorical?: (snap: ResponseSnapshot) => void }) {
+function StatusRow({ res, onDiff, onCodegen, history, onViewHistorical, onAddAssertion }: { res: ExecuteResponse; onDiff?: () => void; onCodegen?: () => void; history?: ResponseSnapshot[]; onViewHistorical?: (snap: ResponseSnapshot) => void; onAddAssertion?: (a: Assertion) => void }) {
   const [histDropdownOpen, setHistDropdownOpen] = useState(false);
   const tone = statusTone(res.status);
   const toneGlow = {
@@ -347,8 +347,14 @@ function StatusRow({ res, onDiff, onCodegen, history, onViewHistorical }: { res:
 
   return (
     <div className="grid grid-cols-4 gap-3 border-b border-glass bg-neutral-950/60 px-4 py-2.5">
-      {/* Status card */}
-      <div className={`stat-card !py-2 !px-4 flex flex-col items-center justify-center ${toneGlow[tone]} ${toneBorder[tone]}`} style={{ animation: "badge-pop 0.3s ease-out" }} key={`${res.status}-${res.elapsed_ms}`}>
+      {/* Status card — double-click to add status assertion */}
+      <div
+        className={`stat-card !py-2 !px-4 flex flex-col items-center justify-center cursor-pointer ${toneGlow[tone]} ${toneBorder[tone]}`}
+        style={{ animation: "badge-pop 0.3s ease-out" }}
+        key={`${res.status}-${res.elapsed_ms}`}
+        onDoubleClick={() => onAddAssertion?.({ type: "status", expected: String(res.status), path: "", operator: "eq" })}
+        title="Double-click to add status assertion"
+      >
         <span className={`metric-value !text-[28px] font-mono ${toneText[tone]}`}>
           {res.status}
         </span>
@@ -897,39 +903,66 @@ function HeadersView({
             ))}
           </tbody>
         </table>
-        <SecurityHeaderAnalysis headers={res.headers} />
+        <HeaderInsightsPanel headers={res.headers} />
       </div>
     </div>
   );
 }
 
-const SECURITY_HEADERS: { name: string; label: string; severity: "high" | "medium" | "low" }[] = [
-  { name: "strict-transport-security", label: "HSTS", severity: "high" },
-  { name: "content-security-policy", label: "CSP", severity: "high" },
-  { name: "x-content-type-options", label: "X-Content-Type-Options", severity: "medium" },
-  { name: "x-frame-options", label: "X-Frame-Options", severity: "medium" },
-  { name: "referrer-policy", label: "Referrer-Policy", severity: "low" },
-  { name: "permissions-policy", label: "Permissions-Policy", severity: "low" },
-  { name: "x-xss-protection", label: "X-XSS-Protection", severity: "low" },
-];
-
-function SecurityHeaderAnalysis({ headers }: { headers: Record<string, string> }) {
+function HeaderInsightsPanel({ headers }: { headers: Record<string, string> }) {
   const [expanded, setExpanded] = useState(false);
-  const lowerHeaders = useMemo(() => {
-    const m: Record<string, string> = {};
-    for (const [k, v] of Object.entries(headers)) m[k.toLowerCase()] = v;
-    return m;
-  }, [headers]);
+  const [insights, setInsights] = useState<HeaderInsightsOutput | null>(null);
+  const [loading, setLoading] = useState(false);
+  const headersKey = useMemo(() => JSON.stringify(headers), [headers]);
 
-  const results = SECURITY_HEADERS.map((h) => ({
-    ...h,
-    present: h.name in lowerHeaders,
-    value: lowerHeaders[h.name],
-  }));
+  useEffect(() => {
+    if (!expanded) return;
+    let cancelled = false;
+    setLoading(true);
+    sidecar.analyzeHeaders(headers).then((result) => {
+      if (!cancelled) setInsights(result);
+    }).catch(() => {
+      if (!cancelled) setInsights(null);
+    }).finally(() => {
+      if (!cancelled) setLoading(false);
+    });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [expanded, headersKey]);
 
-  const presentCount = results.filter((r) => r.present).length;
-  const score = Math.round((presentCount / SECURITY_HEADERS.length) * 100);
-  const scoreColor = score >= 70 ? "text-emerald-400" : score >= 40 ? "text-amber-400" : "text-rose-400";
+  // Quick local score for the collapsed badge
+  const quickScore = useMemo(() => {
+    if (insights) return insights.score;
+    const secHeaders = ["strict-transport-security", "content-security-policy", "x-frame-options", "x-content-type-options", "referrer-policy", "permissions-policy"];
+    const lower = Object.keys(headers).map((k) => k.toLowerCase());
+    const found = secHeaders.filter((h) => lower.includes(h)).length;
+    return Math.round((found / secHeaders.length) * 100);
+  }, [headers, insights]);
+
+  const gradeColor = (grade: string) => {
+    if (grade === "A") return "text-emerald-400 bg-emerald-950/40 border-emerald-700/30";
+    if (grade === "B") return "text-emerald-300 bg-emerald-950/30 border-emerald-700/20";
+    if (grade === "C") return "text-amber-400 bg-amber-950/40 border-amber-700/30";
+    if (grade === "D") return "text-amber-300 bg-amber-950/30 border-amber-700/20";
+    return "text-rose-400 bg-rose-950/40 border-rose-700/30";
+  };
+
+  const scoreColor = quickScore >= 70 ? "text-emerald-400" : quickScore >= 40 ? "text-amber-400" : "text-rose-400";
+
+  const statusIcon = (status: string) => {
+    if (status === "good") return <span className="text-emerald-400">{"\u2713"}</span>;
+    if (status === "warning") return <span className="text-amber-400">{"\u26A0"}</span>;
+    if (status === "missing") return <span className="text-rose-400">{"\u2717"}</span>;
+    return <span className="text-neutral-500">{"\u2139"}</span>;
+  };
+
+  const categoryLabel: Record<string, string> = {
+    security: "Security",
+    caching: "Caching",
+    performance: "Performance",
+    info_leak: "Info Leak",
+    compression: "Compression",
+  };
 
   return (
     <div className="border-t border-glass/60">
@@ -938,29 +971,124 @@ function SecurityHeaderAnalysis({ headers }: { headers: Record<string, string> }
         onClick={() => setExpanded((e) => !e)}
         className="flex w-full items-center justify-between px-4 py-2 text-left text-[11px] text-neutral-500 transition hover:bg-neutral-900/40"
       >
-        <span className="uppercase tracking-wider font-medium">Security Analysis</span>
+        <span className="flex items-center gap-1.5 uppercase tracking-wider font-medium">
+          <Shield className="h-3 w-3" />
+          Header Insights
+        </span>
         <span className="flex items-center gap-2">
-          <span className={`font-mono font-bold ${scoreColor}`}>{score}%</span>
-          <span>{presentCount}/{SECURITY_HEADERS.length} headers</span>
+          <span className={`font-mono font-bold ${scoreColor}`}>{quickScore}%</span>
+          {insights && (
+            <span className={`rounded border px-1.5 py-0.5 text-[10px] font-bold ${gradeColor(insights.grade)}`}>
+              {insights.grade}
+            </span>
+          )}
           <span className="text-neutral-600">{expanded ? "\u25B2" : "\u25BC"}</span>
         </span>
       </button>
       {expanded && (
-        <div className="space-y-1.5 px-4 pb-3">
-          {results.map((r) => (
-            <div key={r.name} className="flex items-center gap-2 text-xs">
-              <span className={r.present ? "text-emerald-400" : r.severity === "high" ? "text-rose-400" : r.severity === "medium" ? "text-amber-400" : "text-neutral-500"}>
-                {r.present ? "\u2713" : "\u2717"}
-              </span>
-              <span className={r.present ? "text-neutral-300" : "text-neutral-500"}>{r.label}</span>
-              <span className={`ml-1 rounded px-1 py-0.5 text-[9px] ${
-                r.severity === "high" ? "bg-rose-950/30 text-rose-400" : r.severity === "medium" ? "bg-amber-950/30 text-amber-400" : "bg-neutral-800 text-neutral-500"
-              }`}>{r.severity}</span>
-              {r.present && r.value && (
-                <span className="ml-auto truncate max-w-[200px] font-mono text-[10px] text-neutral-600">{r.value}</span>
+        <div className="px-4 pb-4">
+          {loading && !insights && (
+            <div className="py-3 text-center text-xs text-neutral-500">Analyzing headers...</div>
+          )}
+          {insights && (
+            <div className="space-y-4">
+              {/* Score badge */}
+              <div className="flex items-center gap-4">
+                <div className={`flex items-center justify-center rounded-lg border px-3 py-2 ${gradeColor(insights.grade)}`}>
+                  <span className="text-[28px] font-bold font-mono leading-none">{insights.grade}</span>
+                </div>
+                <div>
+                  <div className="text-sm font-medium text-neutral-200">Security Score: {insights.score}/100</div>
+                  <div className="text-[11px] text-neutral-500">{insights.findings.filter((f) => f.status === "good").length} checks passed</div>
+                </div>
+              </div>
+
+              {/* Caching summary */}
+              <div className="rounded-md border border-glass bg-neutral-900/40 p-3">
+                <div className="flex items-center gap-2 mb-1.5">
+                  <span className="text-[11px] uppercase tracking-wider text-neutral-500 font-medium">Caching</span>
+                  <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${
+                    insights.caching.strategy === "aggressive" ? "bg-emerald-950/40 text-emerald-400" :
+                    insights.caching.strategy === "public" ? "bg-cobweb-950/40 text-cobweb-400" :
+                    insights.caching.strategy === "private" ? "bg-amber-950/40 text-amber-400" :
+                    "bg-neutral-800 text-neutral-400"
+                  }`}>
+                    {insights.caching.strategy}
+                  </span>
+                  {insights.caching.effective_ttl !== null && (
+                    <span className="text-[10px] font-mono text-neutral-400">
+                      TTL: {insights.caching.effective_ttl}s
+                    </span>
+                  )}
+                </div>
+                <div className="text-xs text-neutral-400">{insights.caching.summary}</div>
+              </div>
+
+              {/* Findings grouped by category */}
+              {(["security", "caching", "performance", "info_leak", "compression"] as const).map((cat) => {
+                const catFindings = insights.findings.filter((f) => f.category === cat);
+                if (catFindings.length === 0) return null;
+                return (
+                  <div key={cat}>
+                    <div className="text-[11px] uppercase tracking-wider text-neutral-500 font-medium mb-1.5">
+                      {categoryLabel[cat]}
+                    </div>
+                    <div className="space-y-1">
+                      {catFindings.map((f, i) => (
+                        <div key={i} className="flex items-start gap-2 rounded-md border border-glass/40 bg-neutral-900/30 px-3 py-1.5 text-xs">
+                          {statusIcon(f.status)}
+                          <div className="flex-1 min-w-0">
+                            <span className="font-mono text-neutral-300 mr-1.5">{f.header}</span>
+                            <span className="text-neutral-500">{f.message}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+
+              {/* Recommendations */}
+              {insights.recommendations.length > 0 && (
+                <div>
+                  <div className="text-[11px] uppercase tracking-wider text-neutral-500 font-medium mb-1.5">
+                    Recommendations
+                  </div>
+                  <div className="space-y-1.5">
+                    {insights.recommendations.map((rec, i) => (
+                      <div key={i} className="flex items-start gap-2 rounded-md border border-glass/40 bg-neutral-900/30 px-3 py-2 text-xs">
+                        <span className={`shrink-0 rounded px-1 py-0.5 text-[9px] font-medium ${
+                          rec.severity === "high" ? "bg-rose-950/40 text-rose-400" :
+                          rec.severity === "medium" ? "bg-amber-950/40 text-amber-400" :
+                          "bg-neutral-800 text-neutral-500"
+                        }`}>
+                          {rec.severity}
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-neutral-300">{rec.message}</div>
+                          {rec.suggested_value && (
+                            <div className="mt-1 flex items-center gap-1.5">
+                              <code className="rounded bg-neutral-800 px-1.5 py-0.5 font-mono text-[10px] text-neutral-400 break-all">
+                                {rec.header}: {rec.suggested_value}
+                              </code>
+                              <button
+                                type="button"
+                                onClick={() => void navigator.clipboard?.writeText(`${rec.header}: ${rec.suggested_value}`)}
+                                className="shrink-0 rounded p-0.5 text-neutral-600 transition hover:bg-neutral-800 hover:text-neutral-300"
+                                title="Copy suggested header"
+                              >
+                                <Copy className="h-3 w-3" />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               )}
             </div>
-          ))}
+          )}
         </div>
       )}
     </div>

@@ -661,6 +661,16 @@ export const analysisMethods = {
     call<RateLimitStatusOutput>("/api/ratelimit/status"),
   rateLimitHistory: (urlHash: string) =>
     call<RateLimitHistoryOutput>(`/api/ratelimit/history/${urlHash}`),
+  diffRequests: (input: RequestDiffInput) =>
+    call<RequestDiffOutput>("/api/requests/diff", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  analyzeHeaders: (headers: Record<string, string>) =>
+    call<HeaderInsightsOutput>("/api/headers/analyze", {
+      method: "POST",
+      body: JSON.stringify({ headers }),
+    }),
 } as const;
 
 // ---- OWASP Scanner types ---------------------------------------------------
@@ -815,4 +825,88 @@ export interface RateLimitHistoryPoint {
 export interface RateLimitHistoryOutput {
   url_hash: string;
   points: RateLimitHistoryPoint[];
+}
+
+// ---- Request Diff types -----------------------------------------------------
+
+export interface RequestDiffRef {
+  collection_id: string;
+  request_id: string;
+}
+
+export interface RequestDiffInput {
+  left: RequestDiffRef;
+  right: RequestDiffRef;
+}
+
+export interface RequestDiffUrlDiff {
+  left: string;
+  right: string;
+}
+
+export interface RequestDiffHeaderChange {
+  name: string;
+  type: "added" | "removed" | "changed";
+  left_value: string | null;
+  right_value: string | null;
+}
+
+export interface RequestDiffBodyDiff {
+  format: "json" | "text";
+  changes: Array<Record<string, unknown>>;
+  unified: string;
+}
+
+export interface RequestDiffAuthDiff {
+  left_type: string;
+  right_type: string;
+  details: string;
+}
+
+export interface RequestDiffOutput {
+  method_changed: boolean;
+  url_diff: RequestDiffUrlDiff | null;
+  header_changes: RequestDiffHeaderChange[];
+  body_diff: RequestDiffBodyDiff | null;
+  auth_diff: RequestDiffAuthDiff | null;
+  summary: string;
+}
+
+// ---- Header Insights types --------------------------------------------------
+
+export interface HeaderFinding {
+  category: "security" | "caching" | "performance" | "info_leak" | "compression";
+  header: string;
+  status: "good" | "warning" | "missing" | "info";
+  message: string;
+  recommendation: string;
+}
+
+export interface HeaderRecommendation {
+  header: string;
+  severity: "high" | "medium" | "low";
+  message: string;
+  suggested_value: string;
+}
+
+export interface HeaderCachingAnalysis {
+  strategy: "none" | "private" | "public" | "aggressive";
+  directives: string[];
+  effective_ttl: number | null;
+  summary: string;
+}
+
+export interface HeaderCompressionAnalysis {
+  encoding: string | null;
+  is_compressed: boolean;
+  message: string;
+}
+
+export interface HeaderInsightsOutput {
+  score: number;
+  grade: "A" | "B" | "C" | "D" | "F";
+  findings: HeaderFinding[];
+  recommendations: HeaderRecommendation[];
+  caching: HeaderCachingAnalysis;
+  compression: HeaderCompressionAnalysis;
 }
