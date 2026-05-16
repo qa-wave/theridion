@@ -17,6 +17,7 @@ export { DEFAULT_RETRY_CONFIG } from "./types";
 export type {
   CollectionItem, SavedRequest, StoredCollection, CollectionSummary,
   SaveRequestInput, CreateFolderInput, FavoriteItem, ForkOutput, MergeOutput,
+  CollectionStats,
 } from "./collections";
 
 export type { EnvDiffOutput, StructuredDiffOutput, DiffVarPair, DiffVarDifferent } from "./environments";
@@ -103,6 +104,10 @@ export type {
   RateLimitAnalyzeOutput, RateLimitTrackOutput,
   RateLimitStatusEntry, RateLimitStatusOutput,
   RateLimitHistoryPoint, RateLimitHistoryOutput,
+  RequestDiffRef, RequestDiffInput, RequestDiffUrlDiff,
+  RequestDiffHeaderChange, RequestDiffBodyDiff, RequestDiffAuthDiff, RequestDiffOutput,
+  HeaderFinding, HeaderRecommendation, HeaderCachingAnalysis, HeaderCompressionAnalysis,
+  HeaderInsightsOutput,
 } from "./analysis";
 
 export type { ParsedCurl, UniversalImportResult, ReplayDiff, ReplayOutput } from "./codegen";
@@ -164,6 +169,11 @@ export type {
   DocOptions, DocGenerateInput, DocGenerateOutput,
 } from "./advanced";
 
+export type {
+  TagCount, TagListResponse, AssignTagsInput, RemoveTagInput,
+  BulkAssignInput, TagSearchResult, TagSearchResponse,
+} from "./tags";
+
 // ---- Compose the unified sidecar object from all sub-modules ----
 
 import { collectionsMethods } from "./collections";
@@ -179,6 +189,7 @@ import { historyMethods } from "./history";
 import { snippetsMethods } from "./snippets";
 import { perfBudgetMethods } from "./perfBudget";
 import { goldenFilesMethods } from "./goldenFiles";
+import { tagsMethods } from "./tags";
 
 export const sidecar = {
   ...requestsMethods,
@@ -194,4 +205,5 @@ export const sidecar = {
   ...snippetsMethods,
   ...perfBudgetMethods,
   ...goldenFilesMethods,
+  ...tagsMethods,
 } as const;
