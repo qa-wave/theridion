@@ -177,6 +177,12 @@ export type {
   BulkAssignInput, TagSearchResult, TagSearchResponse,
 } from "./tags";
 
+export type {
+  RenderOptions, TemplateRenderInput, TemplateRenderOutput,
+  TemplateValidateInput, TemplateValidateOutput,
+  TemplateExtractInput, TemplateExtractOutput,
+} from "./templateEngine";
+
 // ---- Compose the unified sidecar object from all sub-modules ----
 
 import { collectionsMethods } from "./collections";
@@ -193,6 +199,7 @@ import { snippetsMethods } from "./snippets";
 import { perfBudgetMethods } from "./perfBudget";
 import { goldenFilesMethods } from "./goldenFiles";
 import { tagsMethods } from "./tags";
+import { templateEngineMethods } from "./templateEngine";
 
 export const sidecar = {
   ...requestsMethods,
@@ -209,4 +216,5 @@ export const sidecar = {
   ...perfBudgetMethods,
   ...goldenFilesMethods,
   ...tagsMethods,
+  ...templateEngineMethods,
 } as const;

@@ -5,6 +5,7 @@ import type { Method } from "../state/types";
 import type { EnvironmentSummary } from "../lib/sidecar";
 import { sidecar } from "../lib/sidecar";
 import { Tooltip } from "./Tooltip";
+import { TemplateValidationIndicator, TemplatePreviewButton } from "./TemplateHelper";
 
 /** Built-in template functions available in {{...}} expressions. */
 const BUILTIN_VARS: { name: string; label: string }[] = [
@@ -23,8 +24,8 @@ const BUILTIN_VARS: { name: string; label: string }[] = [
 ];
 
 /** Pipe filters available after | in template expressions. */
-// @ts-expect-error reserved for future pipe autocomplete
-const _PIPE_FILTERS = [
+// @ts-ignore reserved for future use
+const PIPE_FILTERS: { name: string; label: string }[] = [
   { name: "upper", label: "Uppercase" },
   { name: "lower", label: "Lowercase" },
   { name: "base64", label: "Base64 encode" },
@@ -32,8 +33,7 @@ const _PIPE_FILTERS = [
   { name: "urlencode", label: "URL encode" },
   { name: "trim", label: "Trim whitespace" },
   { name: "slice:0:N", label: "Substring slice" },
-] as const;
-void _PIPE_FILTERS;
+];
 
 interface Props {
   method: Method;
@@ -137,6 +137,21 @@ export function UrlBar({
     if (lastOpen !== -1) {
       const afterOpen = before.slice(lastOpen + 2);
       if (!afterOpen.includes("}}")) {
+        // Check if user is typing after a pipe | for filter autocomplete
+        const pipeMatch = afterOpen.match(/\|\s*(\w*)$/);
+        if (pipeMatch) {
+          const filterPrefix = pipeMatch[1].toLowerCase();
+          setVarPrefix(pipeMatch[1]);
+          const items = PIPE_FILTERS.filter(f => f.name.toLowerCase().startsWith(filterPrefix));
+          if (items.length > 0) {
+            setAutocompleteItems(items);
+            setAutocompleteIdx(0);
+            setAutocompleteOpen(true);
+            setUrlSuggestOpen(false);
+            return;
+          }
+        }
+        // Regular variable/function autocomplete
         const prefix = afterOpen.toLowerCase();
         setVarPrefix(afterOpen);
         const items = allVars().filter(v => v.name.toLowerCase().includes(prefix));
@@ -452,7 +467,21 @@ export function UrlBar({
         </button>
       )}
     </div>
-    {resolvedUrl && (
+    {url.includes("{{") && (
+      <div className="flex items-center gap-2 px-4 pb-1.5 -mt-1">
+        {resolvedUrl && (
+          <p className="flex-1 truncate font-mono text-[10px] text-neutral-600" title={resolvedUrl}>
+            <span className="text-neutral-500">→</span> {resolvedUrl}
+          </p>
+        )}
+        <TemplateValidationIndicator template={url} />
+        <TemplatePreviewButton
+          template={url}
+          variables={Object.fromEntries([...globalVars, ...envVars].map(v => [v.name, v.value]))}
+        />
+      </div>
+    )}
+    {!url.includes("{{") && resolvedUrl && (
       <div className="px-4 pb-1.5 -mt-1">
         <p className="truncate font-mono text-[10px] text-neutral-600" title={resolvedUrl}>
           <span className="text-neutral-500">→</span> {resolvedUrl}
