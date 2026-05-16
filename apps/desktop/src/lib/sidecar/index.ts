@@ -48,6 +48,7 @@ export type {
 
 export type {
   AssertionType, Assertion, AssertionResult, AssertionEvalOutput,
+  AssertionSuggestInput, AssertionSuggestion, AssertionSuggestOutput,
   BatchOutput, HealAssertionInput, HealCandidate, HealAssertionOutput,
   FlowStep, FlowRunInput, FlowStepResult, FlowTraceEvent, FlowDatasetResult, FlowRunOutput,
   TestStep, TestBuilderData, DataLoopInput, DataLoopRowResult, DataLoopOutput,
@@ -95,9 +96,16 @@ export type {
   BodyDiffInput, BodyDiffStructuralChange, BodyDiffStats, BodyDiffOutput,
   BodyFormatInput, BodyFormatOutput,
   BodyMergeInput, BodyMergeConflict, BodyMergeOutput,
+  RateLimitAnalyzeOutput, RateLimitTrackOutput,
+  RateLimitStatusEntry, RateLimitStatusOutput,
+  RateLimitHistoryPoint, RateLimitHistoryOutput,
 } from "./analysis";
 
 export type { ParsedCurl, UniversalImportResult, ReplayDiff, ReplayOutput } from "./codegen";
+
+export type {
+  Snippet, SnippetCreate, SnippetUpdate, SnippetList, SnippetExport,
+} from "./snippets";
 
 export type {
   HistoryEntryCreate, HistoryEntry as SidecarHistoryEntry, HistoryEntrySummary,
@@ -154,6 +162,7 @@ import { codegenMethods } from "./codegen";
 import { aiMethods } from "./ai";
 import { advancedMethods } from "./advanced";
 import { historyMethods } from "./history";
+import { snippetsMethods } from "./snippets";
 
 export const sidecar = {
   ...requestsMethods,
@@ -166,4 +175,5 @@ export const sidecar = {
   ...aiMethods,
   ...advancedMethods,
   ...historyMethods,
+  ...snippetsMethods,
 } as const;
