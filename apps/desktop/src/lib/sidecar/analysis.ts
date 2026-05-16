@@ -671,6 +671,21 @@ export const analysisMethods = {
       method: "POST",
       body: JSON.stringify({ headers }),
     }),
+  searchBody: (input: BodySearchInput) =>
+    call<BodySearchOutput>("/api/search/body", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  searchJsonPath: (input: { body: string; path: string }) =>
+    call<JsonPathOutput>("/api/search/json-path", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  searchXPath: (input: { body: string; xpath: string }) =>
+    call<XPathOutput>("/api/search/xpath", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
 } as const;
 
 // ---- OWASP Scanner types ---------------------------------------------------
@@ -909,4 +924,48 @@ export interface HeaderInsightsOutput {
   recommendations: HeaderRecommendation[];
   caching: HeaderCachingAnalysis;
   compression: HeaderCompressionAnalysis;
+}
+
+// ---- Body Search types ------------------------------------------------------
+
+export interface BodySearchMatch {
+  start: number;
+  end: number;
+  line: number;
+  column: number;
+  context: string;
+}
+
+export interface BodySearchOutput {
+  matches: BodySearchMatch[];
+  total: number;
+  query_valid: boolean;
+}
+
+export interface BodySearchInput {
+  body: string;
+  query: string;
+  regex?: boolean;
+  case_sensitive?: boolean;
+}
+
+export interface JsonPathMatch {
+  path: string;
+  value: unknown;
+  type: string;
+}
+
+export interface JsonPathOutput {
+  matches: JsonPathMatch[];
+  total: number;
+}
+
+export interface XPathMatch {
+  path: string;
+  value: string;
+}
+
+export interface XPathOutput {
+  matches: XPathMatch[];
+  total: number;
 }
