@@ -25,6 +25,7 @@ export interface CollectionItem {
   notes?: string | null;
   examples?: RequestExample[];
   captures?: CaptureRule[];
+  tags?: string[];
   // folder field (when is_folder=true)
   items?: CollectionItem[];
 }
@@ -186,4 +187,44 @@ export const collectionsMethods = {
       `/api/advanced/collections/${collectionId}/requests/${requestId}/examples`,
       { method: "PATCH", body: JSON.stringify({ examples }) },
     ),
+  getCollectionStats: (collectionId: string) =>
+    call<CollectionStats>(`/api/collections/${collectionId}/stats`),
 } as const;
+
+export interface CollectionStats {
+  collection_id: string;
+  collection_name: string;
+  request_breakdown: {
+    total: number;
+    by_method: Record<string, number>;
+    by_folder: Array<{ name: string; request_count: number }>;
+  };
+  coverage: {
+    with_assertions: number;
+    without_assertions: number;
+    assertion_coverage_pct: number;
+    assertion_type_distribution: Record<string, number>;
+  };
+  auth_usage: {
+    with_auth: number;
+    without_auth: number;
+    auth_coverage_pct: number;
+    auth_type_distribution: Record<string, number>;
+  };
+  url_analysis: {
+    unique_base_urls: string[];
+    parameterized_urls: number;
+    url_patterns: Record<string, number>;
+  };
+  body_analysis: {
+    with_body: number;
+    without_body: number;
+    content_types: Record<string, number>;
+    avg_body_size: number;
+  };
+  complexity: {
+    total_headers: number;
+    total_variables_used: number;
+    scripts_attached: number;
+  };
+}

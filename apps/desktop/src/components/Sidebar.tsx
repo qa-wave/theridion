@@ -25,6 +25,7 @@ import { HTTP_METHOD_COLOR } from "../state/types";
 import type { CollectionItem, StoredCollection, FavoriteItem } from "../lib/sidecar";
 import { sidecar } from "../lib/sidecar";
 import { Tooltip } from "./Tooltip";
+import { TagPills, TagFilterBar } from "./TagManager";
 
 /** Stored in localStorage per request: last run result for hover preview. */
 interface LastResponseInfo {
@@ -119,6 +120,7 @@ export function Sidebar({
   const [query, setQuery] = useState("");
   const filter = query.toLowerCase();
   const [fileDragOver, setFileDragOver] = useState(false);
+  const [activeTagFilters, setActiveTagFilters] = useState<string[]>([]);
   const [favorites, setFavorites] = useState<FavoriteItem[]>([]);
   const [favOpen, setFavOpen] = useState(true);
   const [dragItemId, setDragItemId] = useState<string | null>(null);
@@ -318,6 +320,14 @@ export function Sidebar({
         </div>
       </div>
 
+      <TagFilterBar
+        activeTags={activeTagFilters}
+        onToggleTag={(tag) => setActiveTagFilters((prev) =>
+          prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
+        )}
+        onClear={() => setActiveTagFilters([])}
+      />
+
       <div className="flex-1 overflow-y-auto px-1 pb-3">
         {inlineNewName?.type === "collection" && onInlineNewCommit && onInlineNewCancel && (
           <div className="px-2 py-1">
@@ -372,6 +382,7 @@ export function Sidebar({
               inlineNewFolder={inlineNewName?.type === "folder" && inlineNewName.collectionId === c.id ? { type: "folder" as const, parentId: inlineNewName.parentId, collectionId: inlineNewName.collectionId } : null}
               onInlineNewCommit={onInlineNewCommit}
               onInlineNewCancel={onInlineNewCancel}
+              tagFilters={activeTagFilters}
             />
           ))
         )}
@@ -544,6 +555,7 @@ function CollectionNode({
   inlineNewFolder,
   onInlineNewCommit,
   onInlineNewCancel,
+  tagFilters,
 }: {
   collection: StoredCollection;
   filter: string;
@@ -574,14 +586,15 @@ function CollectionNode({
   inlineNewFolder?: { type: "folder"; parentId?: string; collectionId?: string } | null;
   onInlineNewCommit?: (name: string) => void;
   onInlineNewCancel?: () => void;
+  tagFilters?: string[];
 }) {
   const [open, setOpen] = useState(true);
   const [renaming, setRenaming] = useState(false);
-  const visibleItems = filter
-    ? filterTree(collection.items, filter)
+  const visibleItems = (filter || tagFilters?.length)
+    ? filterTree(collection.items, filter, tagFilters)
     : collection.items;
 
-  if (filter && visibleItems.length === 0) return null;
+  if ((filter || tagFilters?.length) && visibleItems.length === 0) return null;
 
   const itemCount = countRequests(collection.items);
 
@@ -1126,6 +1139,7 @@ function RequestRow({
             {request.method ?? ""}
           </span>
           <span className="truncate">{request.name}</span>
+          <TagPills tags={request.tags ?? []} />
         </button>
       )}
       {onToggleFavorite && (
@@ -1194,20 +1208,19 @@ function countRequests(items: CollectionItem[]): number {
 }
 
 /** Filter the tree, keeping any branch where some descendant matches. */
-function filterTree(items: CollectionItem[], q: string): CollectionItem[] {
+function filterTree(items: CollectionItem[], q: string, tagFilters?: string[]): CollectionItem[] {
   const out: CollectionItem[] = [];
   for (const it of items) {
     if (it.is_folder) {
-      const subItems = filterTree(it.items ?? [], q);
-      const selfMatches = it.name.toLowerCase().includes(q);
-      if (subItems.length > 0 || selfMatches) {
+      const subItems = filterTree(it.items ?? [], q, tagFilters);
+      const selfMatches = !q || it.name.toLowerCase().includes(q);
+      if (subItems.length > 0 || (selfMatches && !tagFilters?.length)) {
         out.push({ ...it, items: subItems });
       }
     } else {
-      if (
-        it.name.toLowerCase().includes(q) ||
-        (it.url ?? "").toLowerCase().includes(q)
-      ) {
+      const textMatch = !q || it.name.toLowerCase().includes(q) || (it.url ?? "").toLowerCase().includes(q);
+      const tagMatch = !tagFilters?.length || tagFilters.some((t) => (it.tags ?? []).includes(t));
+      if (textMatch && tagMatch) {
         out.push(it);
       }
     }
