@@ -38,7 +38,9 @@ export type ModalId =
   | "changelog"
   | "responseCompare"
   | "pipeline"
+  | "bodyDiff"
   | "openapiImport"
+  | "docGenerator"
   | null;
 
 export function useModals() {

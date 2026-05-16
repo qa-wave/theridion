@@ -632,6 +632,21 @@ export const analysisMethods = {
       method: "POST",
       body: JSON.stringify(input),
     }),
+  diffBodies: (input: BodyDiffInput) =>
+    call<BodyDiffOutput>("/api/diff/bodies", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  formatBody: (input: BodyFormatInput) =>
+    call<BodyFormatOutput>("/api/diff/format", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  mergeBodies: (input: BodyMergeInput) =>
+    call<BodyMergeOutput>("/api/diff/merge", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
 } as const;
 
 // ---- OWASP Scanner types ---------------------------------------------------
@@ -682,4 +697,62 @@ export interface CompareResponsesOutput {
   summary: string;
   changes: ResponseChangeEntry[];
   diff_text: string;
+}
+
+// ---- Body Diff types --------------------------------------------------------
+
+export interface BodyDiffInput {
+  left: string;
+  right: string;
+  format?: "json" | "xml" | "text" | "auto";
+}
+
+export interface BodyDiffStructuralChange {
+  path: string;
+  type: "added" | "removed" | "changed";
+  old: unknown;
+  new: unknown;
+}
+
+export interface BodyDiffStats {
+  additions: number;
+  deletions: number;
+  modifications: number;
+}
+
+export interface BodyDiffOutput {
+  format_detected: string;
+  structural_changes: BodyDiffStructuralChange[];
+  unified_diff: string;
+  stats: BodyDiffStats;
+}
+
+export interface BodyFormatInput {
+  body: string;
+  format?: "json" | "xml" | "auto";
+}
+
+export interface BodyFormatOutput {
+  formatted: string;
+  format_detected: string;
+}
+
+export interface BodyMergeInput {
+  base: string;
+  left: string;
+  right: string;
+  format?: "json" | "xml" | "text" | "auto";
+}
+
+export interface BodyMergeConflict {
+  path: string;
+  base_value: unknown;
+  left_value: unknown;
+  right_value: unknown;
+}
+
+export interface BodyMergeOutput {
+  merged: string;
+  conflicts: BodyMergeConflict[];
+  format_detected: string;
 }

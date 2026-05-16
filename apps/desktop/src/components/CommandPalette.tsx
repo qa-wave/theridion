@@ -362,6 +362,7 @@ export function useDefaultActions(callbacks: {
   openAgentExplorer?: () => void;
   openOwaspScanner?: () => void;
   openRequestDiff?: () => void;
+  openBodyDiff?: () => void;
   openEnvComparison?: () => void;
   openSSE?: () => void;
   openChangelog?: () => void;
@@ -513,6 +514,9 @@ export function useDefaultActions(callbacks: {
       }] : []),
       ...(callbacks.openRequestDiff ? [{
         id: "request-diff", label: "Request Diff (compare two requests)", icon: <GitCompare size={14} />, onSelect: callbacks.openRequestDiff,
+      }] : []),
+      ...(callbacks.openBodyDiff ? [{
+        id: "body-diff", label: "Body Diff (compare request bodies)", icon: <GitCompare size={14} />, onSelect: callbacks.openBodyDiff,
       }] : []),
       ...(callbacks.openEnvComparison ? [{
         id: "env-comparison", label: "Compare across environments", icon: <Columns3 size={14} />, onSelect: callbacks.openEnvComparison,
